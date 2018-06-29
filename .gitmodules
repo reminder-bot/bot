@@ -1,3 +1,6 @@
 [submodule "languages"]
 	path = languages
 	url = https://github.com/reminder-bot/languages
+[submodule "start"]
+	path = start
+	url = https://github.com/reminder-bot/start
