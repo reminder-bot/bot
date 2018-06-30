@@ -956,7 +956,7 @@ class BotClient(discord.Client):
             reminders = session.query(Reminder).filter(Reminder.time <= time.time()).all()
 
             for reminder in reminders:
-                print('Looping for reminder(s)...')
+                print('Looping for reminder {}'.format(reminder))
 
                 if reminder.interval is not None and reminder.interval < 8:
                     session.query(Reminder).filter(Reminder.id == reminder.id).delete()
@@ -1030,7 +1030,7 @@ class BotClient(discord.Client):
                         except:
                             pass
                     session.query(Reminder).filter(Reminder.id == reminder.id).delete()
-                    print(e)
+                    print('Ln 1033: {}'.format(e))
 
             try:
                 for message, info in self.process_deletes.copy().items():
@@ -1046,10 +1046,10 @@ class BotClient(discord.Client):
                             try:
                                 await message.delete()
                             except Exception as e:
-                                print(e)
+                                print('Ln 1049: {}'.format(e))
 
             except Exception as e:
-                print('Error in deletion loop: {}'.format(e))
+                print('Ln 1052: {}'.format(e))
 
             with open('DATA/process_deletes.mp', 'wb') as f:
                 msgpack.dump(self.process_deletes, f)
