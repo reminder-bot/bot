@@ -61,7 +61,7 @@ class BotClient(discord.Client):
 
         }
 
-        for fn in os.listdir('EXT'):
+        for fn in os.listdir('languages'):
             if fn.startswith('strings_'):
                 with open('languages/' + fn, 'r') as f:
                     a = f.read()
@@ -101,7 +101,7 @@ class BotClient(discord.Client):
             self.process_deletes = {}
 
         try:
-            open('EXT/strings_EN.py', 'r').close()
+            open('languages/strings_EN.py', 'r').close()
         except FileNotFoundError:
             print('English strings file not present. Exiting...')
             sys.exit()
@@ -607,7 +607,7 @@ class BotClient(discord.Client):
         reminder = Reminder(time=msg_time, interval=msg_interval, channel=scope, message=msg_text)
 
         await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['interval']['success'].format(pref, scope, round(msg_time - time.time()))))
-        
+
         session.add(reminder)
         session.commit()
 
@@ -1023,6 +1023,13 @@ class BotClient(discord.Client):
                         session.commit()
 
                 except Exception as e:
+                    for channel in recipient.guild.channels:
+                        try:
+                            await channel.send('Not enough permissions to send reminders to designated channels.')
+                            break
+                        except:
+                            pass
+                    session.query(Reminder).filter(Reminder.id == reminder.id).delete()
                     print(e)
 
             try:
