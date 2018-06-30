@@ -265,7 +265,10 @@ class BotClient(discord.Client):
     async def cleanup(self, *args):
         all_ids = [g.id for g in self.guilds]
 
-        session.query(Server).filter(Server.id.in_(all_ids)).delete()
+        print(session.query(Server).all())
+        session.query(Server).filter(Server.id.notin_(all_ids)).delete(synchronize_session='fetch')
+        print(session.query(Server).all())
+        
         session.commit()
 
 
