@@ -268,7 +268,7 @@ class BotClient(discord.Client):
         print(session.query(Server).all())
         session.query(Server).filter(Server.id.notin_(all_ids)).delete(synchronize_session='fetch')
         print(session.query(Server).all())
-        
+
         session.commit()
 
 
@@ -329,8 +329,8 @@ class BotClient(discord.Client):
             session.commit()
 
         server = None if message.guild is None else session.query(Server).filter_by(id=message.guild.id).first()
-        if server is not None and message.channel.id in server.autoclears.keys():
-            self.process_deletes[message.id] = {'time' : time.time() + server.autoclears[message.channel.id], 'channel' : message.channel.id}
+        if server is not None and message.channel.id in map(int, server.autoclears.keys()):
+            self.process_deletes[message.id] = {'time' : time.time() + server.autoclears[str(message.channel.id)], 'channel' : message.channel.id}
 
         if message.author.bot or message.content == None:
             return
@@ -635,24 +635,24 @@ class BotClient(discord.Client):
                 continue
 
         if len(message.channel_mentions) == 0:
-            if message.channel.id in server.autoclears.keys():
-                del server.autoclears[message.channel.id]
+            if message.channel.id in map(int, server.autoclears.keys()):
+                del server.autoclears[str(message.channel.id)]
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['autoclear']['disable'].format(message.channel.mention)))
             else:
-                server.autoclears[message.channel.id] = seconds
+                server.autoclears[str(message.channel.id)] = seconds
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['autoclear']['enable'].format(seconds, message.channel.mention)))
 
         else:
             disable_all = True
             for i in message.channel_mentions:
-                if i.id not in server.autoclears.keys():
+                if i.id not in map(int, server.autoclears.keys()):
                     disable_all = False
-                server.autoclears[i.id] = seconds
+                server.autoclears[str(i.id)] = seconds
 
 
             if disable_all:
                 for i in message.channel_mentions:
-                    del server.autoclears[i.id]
+                    del server.autoclears[str(i.id)]
 
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['autoclear']['disable'].format(', '.join(map(lambda x: x.name, message.channel_mentions)))))
             else:
