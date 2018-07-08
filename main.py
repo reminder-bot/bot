@@ -15,7 +15,7 @@ import configparser
 import json
 
 
-class BotClient(discord.Client):
+class BotClient(discord.AutoShardedClient):
     def __init__(self, *args, **kwargs):
         super(BotClient, self).__init__(*args, **kwargs)
 
