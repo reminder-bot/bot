@@ -420,7 +420,10 @@ class BotClient(discord.Client):
         if server is None:
             return
 
-        if stripped == '':
+        elif not message.author.guild_permissions.manage_guild:
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['admin_required']))
+
+        elif stripped == '':
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['timezone']['no_argument'].format(prefix=server.prefix, timezone=server.timezone)))
 
         else:
