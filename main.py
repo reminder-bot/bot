@@ -6,7 +6,6 @@ import pytz
 import asyncio
 import aiohttp
 
-from itertools import chain
 from datetime import datetime
 import time
 import sys
@@ -50,7 +49,8 @@ class BotClient(discord.AutoShardedClient):
             'clear' : self.clear,
 
             'cleanup' : self.cleanup,
-            'welcome' : self.welcome
+            'welcome' : self.welcome,
+            'ping' : self.time_stats
         }
 
         self.strings = {
@@ -270,6 +270,23 @@ class BotClient(discord.AutoShardedClient):
         print(session.query(Server).all())
 
         session.commit()
+
+
+    async def time_stats(self, message, *args):
+        uptime = self.times['last_loop'] - self.times['start']
+        loop_time = uptime / self.times['loops']
+
+        message_ts = message.created_at.timestamp()
+
+        m = await message.channel.send('.')
+
+        ping = m.created_at.timestamp() - message_ts
+
+        await m.edit(content='''
+Uptime: {}s
+Loop Time: {}ms (Ideal: 2500ms)
+Ping: {}ms
+'''.format(round(uptime), round(loop_time*1000), round(ping*1000)))
 
 
     async def on_ready(self):
@@ -968,14 +985,13 @@ class BotClient(discord.AutoShardedClient):
                     session.query(Reminder).filter(Reminder.id == reminder.id).delete()
                     continue
 
-                users = self.get_all_members()
-                channels = self.get_all_channels()
+                recipient = self.get_channel(reminder.channel)
 
-                msg_points = chain(users, channels)
+                if recipient is None:
+                    print('{}: No channel found. Looking up user'.format(datetime.utcnow().strftime('%H:%M:%S')))
+                    recipient = self.get_user(reminder.channel)
 
-                recipient = discord.utils.get(msg_points, id=reminder.channel)
-
-                if recipient == None:
+                if recipient is None:
                     print('{}: Failed to locate channel'.format(datetime.utcnow().strftime('%H:%M:%S')))
                     session.query(Reminder).filter(Reminder.id == reminder.id).delete()
                     continue
