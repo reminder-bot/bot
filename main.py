@@ -265,9 +265,7 @@ class BotClient(discord.AutoShardedClient):
     async def cleanup(self, *args):
         all_ids = [g.id for g in self.guilds]
 
-        print(session.query(Server).all())
         session.query(Server).filter(Server.id.notin_(all_ids)).delete(synchronize_session='fetch')
-        print(session.query(Server).all())
 
         session.commit()
 
