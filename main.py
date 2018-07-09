@@ -985,11 +985,13 @@ Ping: {}ms
                     session.query(Reminder).filter(Reminder.id == reminder.id).delete()
                     continue
 
+                is_user = False
                 recipient = self.get_channel(reminder.channel)
 
                 if recipient is None:
                     print('{}: No channel found. Looking up user'.format(datetime.utcnow().strftime('%H:%M:%S')))
                     recipient = self.get_user(reminder.channel)
+                    is_user = True
 
                 if recipient is None:
                     print('{}: Failed to locate channel'.format(datetime.utcnow().strftime('%H:%M:%S')))
@@ -1003,7 +1005,10 @@ Ping: {}ms
                         print('{}: Administered reminder to {}'.format(datetime.utcnow().strftime('%H:%M:%S'), recipient.name))
 
                     else:
-                        server_members = recipient.guild.members
+                        if is_user:
+                            server_members = [recipient]
+                        else:
+                            server_members = recipient.guild.members
 
                         if any([self.get_patrons(m.id, level=1) for m in server_members]):
                             if reminder.message.startswith('-del_on_send'):
@@ -1045,12 +1050,13 @@ Ping: {}ms
                         session.commit()
 
                 except Exception as e:
-                    for channel in recipient.guild.channels:
-                        try:
-                            await channel.send('Not enough permissions to send reminders to designated channels.')
-                            break
-                        except:
-                            pass
+                    if not is_user:
+                        for channel in recipient.guild.channels:
+                            try:
+                                await channel.send('Not enough permissions to send reminders to designated channels.')
+                                break
+                            except:
+                                pass
                     session.query(Reminder).filter(Reminder.id == reminder.id).delete()
                     print('Ln 1033: {}'.format(e))
 
