@@ -516,7 +516,7 @@ Ping: {}ms
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['remind']['invalid_time']))
             return
 
-        if msg_time is None:
+        if msg_time is None or msg_time - time.time() > 1576800000:
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['remind']['invalid_time']))
             return
 
@@ -584,7 +584,7 @@ Ping: {}ms
 
         msg_time = self.format_time(args[0], server)
 
-        if msg_time == None:
+        if msg_time is None or msg_time - time.time() > 1576800000:
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['remind']['invalid_time']))
             return
 
@@ -944,7 +944,6 @@ Ping: {}ms
 
         num = await client.wait_for('message', check=lambda m: m.author == message.author and m.channel == message.channel)
         nums = [n.strip() for n in num.content.split(',')]
-
 
         dels = 0
         for i in nums:
