@@ -25,32 +25,34 @@ class BotClient(discord.AutoShardedClient):
         }
 
         self.commands = {
-            'help' : self.help,
-            'info' : self.info,
-            'donate' : self.donate,
+        ## format: 'command' : [<function>, <works in DMs?>]
 
-            'prefix' : self.change_prefix,
-            'blacklist' : self.blacklist,
-            'restrict' : self.restrict,
+            'help' : [self.help, True],
+            'info' : [self.info, True],
+            'donate' : [self.donate, True],
 
-            'timezone' : self.timezone,
-            'clock' : self.clock,
-            'lang' : self.language,
+            'prefix' : [self.change_prefix, False],
+            'blacklist' : [self.blacklist, False],
+            'restrict' : [self.restrict, False],
 
-            'remind' : self.remind,
-            'interval' : self.interval,
-            'del' : self.delete,
+            'timezone' : [self.timezone, False],
+            'clock' : [self.clock, False],
+            'lang' : [self.language, False],
 
-            'todo' : self.todo,
-            'todos' : self.todo,
-            'tag' : self.tag,
+            'remind' : [self.remind, False],
+            'interval' : [self.interval, False],
+            'del' : [self.delete, True],
 
-            'autoclear' : self.autoclear,
-            'clear' : self.clear,
+            'todo' : [self.todo, True],
+            'todos' : [self.todo, False],
+            'tag' : [self.tag, False],
 
-            'cleanup' : self.cleanup,
-            'welcome' : self.welcome,
-            'ping' : self.time_stats
+            'autoclear' : [self.autoclear, False],
+            'clear' : [self.clear, False],
+
+            'cleanup' : [self.cleanup, False],
+            'welcome' : [self.welcome, False],
+            'ping' : [self.time_stats, True]
         }
 
         self.strings = {
@@ -368,30 +370,40 @@ Ping: {}ms
 
         if message.content.startswith('mbprefix'):
             await self.change_prefix(message, ' '.join(message.content.split(' ')[1:]), server)
+            return True
 
+        command = ''
+        stripped = ''
 
         if message.content[0:len(prefix)] == prefix:
-            command = (message.content + ' ')[len(prefix):message.content.find(' ')]
-            if command in self.commands:
-                if server is not None and message.channel.id in server.blacklist['data'] and not message.content.startswith(('{}help'.format(server.prefix), '{}blacklist'.format(server.prefix))):
-                    await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['blacklisted']))
-                    return False
 
-                stripped = (message.content + ' ')[message.content.find(' '):].strip()
-                await self.commands[command](message, stripped, server)
-                return True
+            command = (message.content + ' ')[len(prefix):message.content.find(' ')]
+            stripped = (message.content + ' ')[message.content.find(' '):].strip()
 
         elif self.user.id in map(lambda x: x.id, message.mentions) and len(message.content.split(' ')) > 1:
-            if message.content.split(' ')[1] in self.commands.keys():
-                if server is not None and message.channel.id in server.blacklist['data'] and not message.content.startswith(('{}help'.format(server.prefix), '{}blacklist'.format(server.prefix))):
-                    await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['blacklisted']))
-                    return False
 
-                stripped = (message.content + ' ').split(' ', 2)[-1].strip()
-                await self.commands[message.content.split(' ')[1]](message, stripped, server)
+            command = message.content.split(' ')[1]
+            stripped = (message.content + ' ').split(' ', 2)[-1].strip()
+
+        else:
+            return False
+
+        if command in self.commands.keys():
+            if server is not None and message.channel.id in server.blacklist['data'] and not message.content.startswith(('{}help'.format(server.prefix), '{}blacklist'.format(server.prefix))):
+                await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['blacklisted']))
+                return False
+
+            command_form = self.commands[command]
+
+            if command_form[1] or server is not None:
+                await command_form[0](message, stripped, server)
                 return True
 
-        return False
+            else:
+                return False
+
+        else:
+            return False
 
 
     async def help(self, message, stripped, server):
@@ -414,15 +426,15 @@ Ping: {}ms
             return
 
         if stripped:
-            old = server.prefix
             stripped += ' '
-            server.prefix = stripped[:stripped.find(' ')]
+            new = stripped[:stripped.find(' ')]
 
-            if len(server.prefix) > 5:
+            if len(new) > 5:
                 await message.channel.send(self.get_strings(server)['prefix']['too_long'])
-                server.prefix = old
 
             else:
+                server.prefix = new
+
                 await message.channel.send(self.get_strings(server)['prefix']['success'].format(prefix=server.prefix))
 
         else:
@@ -432,10 +444,8 @@ Ping: {}ms
 
 
     async def timezone(self, message, stripped, server):
-        if server is None:
-            return
 
-        elif not message.author.guild_permissions.manage_guild:
+        if not message.author.guild_permissions.manage_guild:
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['admin_required']))
 
         elif stripped == '':
@@ -454,8 +464,6 @@ Ping: {}ms
 
 
     async def language(self, message, stripped, server):
-        if server is None:
-            return
 
         if stripped.lower() in self.languages.keys():
             server.language = self.languages[stripped.lower()]
@@ -473,8 +481,6 @@ Ping: {}ms
 
 
     async def clock(self, message, stripped, server):
-        if server is None:
-            return
 
         t = datetime.now(pytz.timezone(server.timezone))
 
@@ -486,8 +492,6 @@ Ping: {}ms
 
 
     async def remind(self, message, stripped, server):
-        if server is None:
-            return
 
         args = stripped.split(' ')
 
@@ -553,8 +557,6 @@ Ping: {}ms
 
 
     async def interval(self, message, stripped, server):
-        if server is None:
-            return
 
         if not self.get_patrons(message.author.id, level=1):
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['interval']['donor'].format(prefix=server.prefix)))
@@ -636,8 +638,6 @@ Ping: {}ms
 
 
     async def autoclear(self, message, stripped, server):
-        if server is None:
-            return
 
         if not message.author.guild_permissions.manage_guild:
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['admin_required']))
@@ -680,8 +680,6 @@ Ping: {}ms
 
 
     async def blacklist(self, message, stripped, server):
-        if server is None:
-            return
 
         if not message.author.guild_permissions.manage_guild:
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['admin_required']))
@@ -720,8 +718,6 @@ Ping: {}ms
 
 
     async def clear(self, message, stripped, server):
-        if server is None:
-            return
 
         if not message.author.guild_permissions.manage_messages:
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['admin_required']))
@@ -744,8 +740,6 @@ Ping: {}ms
 
 
     async def restrict(self, message, stripped, server):
-        if server is None:
-            return
 
         if not message.author.guild_permissions.manage_guild:
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['admin_required']))
@@ -777,8 +771,6 @@ Ping: {}ms
 
 
     async def tag(self, message, stripped, server):
-        if server is None:
-            return
 
         not_done = True
 
