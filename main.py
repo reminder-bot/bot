@@ -595,7 +595,7 @@ Ping: {}ms
 
         msg_interval = self.format_time(args[0], message.guild.id)
 
-        if msg_interval == None:
+        if msg_interval == None or msg_interval > 1576800000:
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server)['interval']['invalid_interval']))
             return
 
