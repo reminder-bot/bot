@@ -276,8 +276,6 @@ class BotClient(discord.AutoShardedClient):
             else:
                 continue
 
-        print('done')
-
 
     async def cleanup(self, *args):
         all_ids = [g.id for g in self.guilds]
@@ -1097,7 +1095,7 @@ try:
     client.run(client.config.get('DEFAULT', 'token'), max_messages=350)
 except Exception as e:
     print('Error detected. Restarting in 15 seconds.')
-    print(sys.exc_info()[0])
+    print(sys.exc_info())
     time.sleep(15)
 
     os.execl(sys.executable, sys.executable, *sys.argv)
