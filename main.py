@@ -260,7 +260,7 @@ class BotClient(discord.AutoShardedClient):
                 for path in pathfinder:
                     strings = strings.get(path)
 
-                return '{} (no translation available)'.format(strings)
+                return '{} (no translation available, maintainer: {})'.format(strings, self.strings[server.language].get('__maintainer__'))
 
         return strings
 
