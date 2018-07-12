@@ -296,10 +296,10 @@ class BotClient(discord.AutoShardedClient):
         ping = m.created_at.timestamp() - message_ts
 
         await m.edit(content='''
-Uptime: {}s
-Loop Time: {}ms (Ideal: 2500ms)
-Ping: {}ms
-'''.format(round(uptime), round(loop_time*1000), round(ping*1000)))
+        Uptime: {}s
+        Loop Time: {}ms (Ideal: 2500ms)
+        Ping: {}ms
+        '''.format(round(uptime), round(loop_time*1000), round(ping*1000)))
 
 
     async def on_ready(self):
@@ -329,7 +329,7 @@ Ping: {}ms
         if not self.dbl_token:
             return
 
-        session = aiohttp.ClientSession()
+        csession = aiohttp.ClientSession()
         dump = json.dumps({
             'server_count': len(client.guilds)
         })
@@ -340,14 +340,10 @@ Ping: {}ms
         }
 
         url = 'https://discordbots.org/api/bots/stats'
-        async with session.post(url, data=dump, headers=head) as resp:
+        async with csession.post(url, data=dump, headers=head) as resp:
             print('returned {0.status} for {1}'.format(resp, dump))
 
-        session.close()
-
-        async with aiohttp.ClientSession() as session:
-            async with session.post('https://api.fusiondiscordbots.com/{}/'.format(self.user.id), data={'token' : 'WxxjHtXWk0-JphXi', 'guilds' : guild_count, 'members' : member_count}) as resp:
-                print('returned {0.status} from api.fusiondiscordbots.com'.format(resp))
+        csession.close()
 
 
     async def on_message(self, message):
