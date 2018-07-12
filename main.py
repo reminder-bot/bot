@@ -252,7 +252,15 @@ class BotClient(discord.AutoShardedClient):
 
         pathfinder = string.split('/')
         for path in pathfinder:
-            strings = strings[path]
+            strings = strings.get(path)
+
+            if strings is None:
+                strings = self.strings['EN']
+
+                for path in pathfinder:
+                    strings = strings.get(path)
+
+                return '{} (no translation available)'.format(strings)
 
         return strings
 
