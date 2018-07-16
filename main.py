@@ -1,6 +1,7 @@
 from models import Reminder, Server, session
 
 import discord
+from discord.ext import commands
 import msgpack
 import pytz
 import asyncio
@@ -930,11 +931,74 @@ class BotClient(discord.AutoShardedClient):
         s = ''
         for rem in reminders:
             s_temp = '**' + str(n) + '**: \'' + rem.message + '\' (' + datetime.fromtimestamp(rem.time, pytz.timezone('UTC' if server is None else server.timezone)).strftime('%Y-%m-%d %H:%M:%S') + ') ' + ('' if self.get_channel(rem.channel) is None else self.get_channel(rem.channel).mention) + '\n'
-            if len(s) + len(s_temp) > 2000:
+
+            in_chevron = False
+            in_mention = False
+            id = ''
+            cut = ''
+            end_string = ''
+
+            for char in s_temp:
+                if in_mention:
+                    if char == '!':
+                        cut += char
+                        continue
+
+                    elif char in '0123456789':
+                        id += char
+                        cut += char
+                        continue
+
+                    elif char == '>':
+                        cut += char
+                        a = self.get_user(int(id))
+                        if a is None:
+                            end_string += cut
+
+                        else:
+                            end_string += str(a)
+
+                        in_chevron = False
+                        in_mention = False
+                        cut = ''
+                        id = ''
+                        continue
+
+                    else:
+                        end_string += cut
+                        in_chevron = False
+                        in_mention = False
+                        cut = ''
+                        id = ''
+
+                elif in_chevron:
+                    if char == '@':
+                        in_mention = True
+                        cut += char
+                        continue
+
+                elif char == '<':
+                    in_chevron = True
+                    cut += char
+                    continue
+
+                elif char == '>':
+                    in_chevron = False
+
+                    end_string += cut
+                    in_chevron = False
+                    in_mention = False
+                    cut = ''
+                    id = ''
+
+                end_string += char
+
+
+            if len(s) + len(end_string) > 2000:
                 await message.channel.send(s)
-                s = s_temp
+                s = end_string
             else:
-                s += s_temp
+                s += end_string
 
             n += 1
 
