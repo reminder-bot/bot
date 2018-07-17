@@ -70,8 +70,12 @@ class BotClient(discord.AutoShardedClient):
             if fn.startswith('strings_'):
                 with open('languages/' + fn, 'r') as f:
                     a = f.read()
-                    self.strings[fn[8:10]] = eval(a)
-                    self.languages[a.split('\n')[0].strip('#:\n ')] = fn[8:10]
+                    try:
+                        self.strings[fn[8:10]] = eval(a)
+                    except:
+                        print('String file {} will not be loaded'.format(fn))
+                    else:
+                        self.languages[a.split('\n')[0].strip('#:\n ')] = fn[8:10]
 
         print('Languages enabled: ' + str(self.languages))
 
@@ -579,7 +583,7 @@ class BotClient(discord.AutoShardedClient):
 
     async def natural(self, message, stripped, server):
         if len(stripped.split('send')) < 2:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/no_argument').format(prefix=server.prefix)))
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/no_argument_new').format(prefix=server.prefix)))
             return
 
         scope = message.channel
@@ -587,7 +591,7 @@ class BotClient(discord.AutoShardedClient):
         cal = parsedatetime.Calendar()
 
         time_crop = stripped.split('send')[0].replace('the', '').replace('of', '')
-        message_crop = stripped.split('send', 1)[1].strip()
+        message_crop = stripped.split('send', 1)[1]
         datetime_obj, success = cal.parseDT(datetimeString=time_crop, tzinfo=pytz.timezone(server.timezone))
 
         chan_split = message_crop.split('to')
@@ -613,7 +617,20 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/no_perms').format(prefix=server.prefix)))
                 return
 
-        reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop, channel=scope.id)
+        if self.count_reminders(scope.id) > 5 and not self.get_patrons(message.author.id):
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_count').format(prefix=server.prefix)))
+            return
+
+        if self.length_check(message, message_crop) is not True:
+            if self.length_check(message, message_crop) == '150':
+                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_chars').format(len(msg_text), prefix=server.prefix)))
+
+            elif self.length_check(message, msg_text) == '2000':
+                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_chars_2000')))
+
+            return
+
+        reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id)
 
         await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/success_new').format(scope.mention, round(datetime_obj.timestamp() - time.time()))))
 
