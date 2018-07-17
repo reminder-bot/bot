@@ -578,15 +578,38 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def natural(self, message, stripped, server):
+        if len(stripped.split('send')) < 2:
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/no_argument').format(prefix=server.prefix)))
+            return
+
+        scope = message.channel
+
         cal = parsedatetime.Calendar()
 
-        time_crop = stripped.split('say')[0].replace('the', '').replace('of', '')
-        message_crop = stripped.split('say', 1)[1].strip()
+        time_crop = stripped.split('send')[0].replace('the', '').replace('of', '')
+        message_crop = stripped.split('send', 1)[1].strip()
         datetime_obj, _ = cal.parseDT(datetimeString=time_crop, tzinfo=pytz.timezone(server.timezone))
 
-        reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop, channel=message.channel.id)
+        chan_split = stripped.split('to')
+        if len(chan_split) > 1 \
+            and chan_split[-1].strip()[0] == '<' \
+            and chan_split[-1].strip()[-1] == '>' \
+            and all([x not in '< >' for x in chan_split[-1].strip()[1:-1]]):
 
-        await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/success').format('#', message.channel.id, round(datetime_obj.timestamp() - time.time()))))
+            id = int( ''.join([x for x in chan_split[-1] if x in '0123456789']) )
+            scope = message.guild.get_member(id)
+            if scope is None:
+                scope = message.guild.get_channel(id)
+
+                if scope is None:
+                    await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_tag')))
+                    return
+
+            message_crop = message_crop.rsplit('to', 1)[0]
+
+        reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop, channel=scope.id)
+
+        await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/success').format('#', scope.id, round(datetime_obj.timestamp() - time.time()))))
 
         session.add(reminder)
         session.commit()
