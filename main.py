@@ -588,9 +588,9 @@ class BotClient(discord.AutoShardedClient):
 
         time_crop = stripped.split('send')[0].replace('the', '').replace('of', '')
         message_crop = stripped.split('send', 1)[1].strip()
-        datetime_obj, _ = cal.parseDT(datetimeString=time_crop, tzinfo=pytz.timezone(server.timezone))
+        datetime_obj, success = cal.parseDT(datetimeString=time_crop, tzinfo=pytz.timezone(server.timezone))
 
-        chan_split = stripped.split('to')
+        chan_split = message_crop.split('to')
         if len(chan_split) > 1 \
             and chan_split[-1].strip()[0] == '<' \
             and chan_split[-1].strip()[-1] == '>' \
@@ -607,9 +607,15 @@ class BotClient(discord.AutoShardedClient):
 
             message_crop = message_crop.rsplit('to', 1)[0]
 
+        if isinstance(scope, discord.TextChannel):
+            if not self.perm_check(message, server):
+
+                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/no_perms').format(prefix=server.prefix)))
+                return
+
         reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop, channel=scope.id)
 
-        await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/success').format('#', scope.id, round(datetime_obj.timestamp() - time.time()))))
+        await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/success_new').format(scope.mention, round(datetime_obj.timestamp() - time.time()))))
 
         session.add(reminder)
         session.commit()
