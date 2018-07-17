@@ -1,11 +1,11 @@
 from models import Reminder, Server, session
 
 import discord
-from discord.ext import commands
 import msgpack
 import pytz
 import asyncio
 import aiohttp
+import parsedatetime
 
 from datetime import datetime
 import time
@@ -40,6 +40,7 @@ class BotClient(discord.AutoShardedClient):
             'clock' : [self.clock, False],
             'lang' : [self.language, False],
 
+            'natural' : [self.natural, False],
             'remind' : [self.remind, False],
             'interval' : [self.interval, False],
             'del' : [self.delete, True],
@@ -574,6 +575,21 @@ class BotClient(discord.AutoShardedClient):
 
         else:
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'clock/time').format(t.strftime('%H:%M:%S'))))
+
+
+    async def natural(self, message, stripped, server):
+        cal = parsedatetime.Calendar()
+
+        time_crop = stripped.split('say')[0].replace('the', '').replace('of', '')
+        message_crop = stripped.split('say', 1)[1].strip()
+        datetime_obj, _ = cal.parseDT(datetimeString=time_crop, tzinfo=pytz.timezone(server.timezone))
+
+        reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop, channel=message.channel.id)
+
+        await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/success').format('#', message.channel.id, round(datetime_obj.timestamp() - time.time()))))
+
+        session.add(reminder)
+        session.commit()
 
 
     async def remind(self, message, stripped, server):
