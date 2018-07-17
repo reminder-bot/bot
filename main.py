@@ -774,6 +774,9 @@ class BotClient(discord.AutoShardedClient):
             elif args:
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'restrict/enabled')))
 
+            elif stripped:
+                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'restrict/help')))
+
             else:
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'restrict/allowed').format(' '.join(['<@&' + str(i) + '>' for i in server.restrictions['data']]))))
 
