@@ -53,7 +53,8 @@ class BotClient(discord.AutoShardedClient):
 
             'cleanup' : [self.cleanup, False],
             'welcome' : [self.welcome, False],
-            'ping' : [self.time_stats, True]
+            'ping' : [self.time_stats, True],
+            'clean' : [self.clean_string_debug, True]
         }
 
         self.strings = {
@@ -108,6 +109,80 @@ class BotClient(discord.AutoShardedClient):
         except FileNotFoundError:
             print('English strings file not present. Exiting...')
             sys.exit()
+
+    def clean_string(self, string):
+        in_chevron = False
+        in_mention = False
+        id = ''
+        cut = ''
+        end_string = ''
+
+        for char in string:
+            if in_mention:
+                if char == '!':
+                    cut += char
+                    continue
+
+                elif char in '0123456789':
+                    id += char
+                    cut += char
+                    continue
+
+                elif char == '>':
+                    cut += char
+                    a = self.get_user(int(id))
+                    if a is None:
+                        end_string += cut
+
+                    else:
+                        end_string += str(a)
+
+                    in_chevron = False
+                    in_mention = False
+                    cut = ''
+                    id = ''
+                    continue
+
+                else:
+                    end_string += cut
+                    in_chevron = False
+                    in_mention = False
+                    cut = ''
+                    id = ''
+
+            elif in_chevron:
+                if char == '@':
+                    in_mention = True
+                    cut += char
+                    continue
+                else:
+                    in_chevron = False
+                    end_string += cut
+                    cut = ''
+
+            elif char == '<':
+                in_chevron = True
+                cut += char
+                continue
+
+            elif char == '>':
+                in_chevron = False
+
+                end_string += cut
+                in_chevron = False
+                in_mention = False
+                cut = ''
+                id = ''
+
+            end_string += char
+
+        end_string += cut
+
+        return end_string
+
+
+    async def clean_string_debug(self, message, stripped, server):
+        await message.channel.send(self.clean_string(stripped))
 
 
     def count_reminders(self, loc):
@@ -935,73 +1010,13 @@ class BotClient(discord.AutoShardedClient):
         for rem in reminders:
             s_temp = '**' + str(n) + '**: \'' + rem.message + '\' (' + datetime.fromtimestamp(rem.time, pytz.timezone('UTC' if server is None else server.timezone)).strftime('%Y-%m-%d %H:%M:%S') + ') ' + ('' if self.get_channel(rem.channel) is None else self.get_channel(rem.channel).mention) + '\n'
 
-            in_chevron = False
-            in_mention = False
-            id = ''
-            cut = ''
-            end_string = ''
+            string = self.clean_string(s_temp)
 
-            for char in s_temp:
-                if in_mention:
-                    if char == '!':
-                        cut += char
-                        continue
-
-                    elif char in '0123456789':
-                        id += char
-                        cut += char
-                        continue
-
-                    elif char == '>':
-                        cut += char
-                        a = self.get_user(int(id))
-                        if a is None:
-                            end_string += cut
-
-                        else:
-                            end_string += str(a)
-
-                        in_chevron = False
-                        in_mention = False
-                        cut = ''
-                        id = ''
-                        continue
-
-                    else:
-                        end_string += cut
-                        in_chevron = False
-                        in_mention = False
-                        cut = ''
-                        id = ''
-
-                elif in_chevron:
-                    if char == '@':
-                        in_mention = True
-                        cut += char
-                        continue
-
-                elif char == '<':
-                    in_chevron = True
-                    cut += char
-                    continue
-
-                elif char == '>':
-                    in_chevron = False
-
-                    end_string += cut
-                    in_chevron = False
-                    in_mention = False
-                    cut = ''
-                    id = ''
-
-                end_string += char
-
-
-            if len(s) + len(end_string) > 2000:
+            if len(s) + len(string) > 2000:
                 await message.channel.send(s)
-                s = end_string
+                s = string
             else:
-                s += end_string
+                s += string
 
             n += 1
 
