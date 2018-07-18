@@ -13,6 +13,7 @@ import sys
 import os
 import configparser
 import json
+import traceback
 
 
 class BotClient(discord.AutoShardedClient):
@@ -73,7 +74,10 @@ class BotClient(discord.AutoShardedClient):
                     try:
                         self.strings[fn[8:10]] = eval(a)
                     except:
+                        exc_info = sys.exc_info()
                         print('String file {} will not be loaded'.format(fn))
+
+                        traceback.print_exception(*exc_info)
                     else:
                         self.languages[a.split('\n')[0].strip('#:\n ')] = fn[8:10]
 
@@ -109,10 +113,8 @@ class BotClient(discord.AutoShardedClient):
             print('No deletes file found')
             self.process_deletes = {}
 
-        try:
-            open('languages/strings_EN.py', 'r').close()
-        except FileNotFoundError:
-            print('English strings file not present. Exiting...')
+        if 'EN' not in self.strings.keys():
+            print('English strings file not present or broken. Exiting...')
             sys.exit()
 
     def clean_string(self, string):
@@ -644,10 +646,10 @@ class BotClient(discord.AutoShardedClient):
 
         if recurring:
             reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, interval=interval)
-            print('Interval')
         else:
             reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id)
 
+        print('{}: New: {}'.format(datetime.utcnow().strftime('%H:%M:%S'), reminder))
         await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/success_new').format(scope.mention, round(datetime_obj.timestamp() - time.time()))))
 
         session.add(reminder)
