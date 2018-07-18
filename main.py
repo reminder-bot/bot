@@ -595,7 +595,7 @@ class BotClient(discord.AutoShardedClient):
 
     async def natural(self, message, stripped, server):
         if len(stripped.split('send')) < 2:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/no_argument_new').format(prefix=server.prefix)))
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/no_argument').format(prefix=server.prefix)))
             return
 
         scope = message.channel
@@ -603,6 +603,9 @@ class BotClient(discord.AutoShardedClient):
         time_crop = stripped.split('send')[0]
         message_crop = stripped.split('send', 1)[1]
         datetime_obj = await self.do_blocking( partial(dateparser.parse, time_crop, settings={'TIMEZONE': server.timezone}) )
+
+        if datetime_obj is None:
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/')))
 
         chan_split = message_crop.split(' to ')
         if len(chan_split) > 1 \
@@ -660,7 +663,7 @@ class BotClient(discord.AutoShardedClient):
             reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id)
 
         print('{}: New: {}'.format(datetime.utcnow().strftime('%H:%M:%S'), reminder))
-        await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/success_new').format(scope.mention, round(datetime_obj.timestamp() - time.time()))))
+        await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/success').format(scope.mention, round(datetime_obj.timestamp() - time.time()))))
 
         session.add(reminder)
         session.commit()
