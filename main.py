@@ -14,6 +14,8 @@ import os
 import configparser
 import json
 import traceback
+import concurrent.futures
+from functools import partial
 
 
 class BotClient(discord.AutoShardedClient):
@@ -116,6 +118,14 @@ class BotClient(discord.AutoShardedClient):
         if 'EN' not in self.strings.keys():
             print('English strings file not present or broken. Exiting...')
             sys.exit()
+
+        self.executor = concurrent.futures.ThreadPoolExecutor()
+
+
+    async def do_blocking(self, method):
+        a, _ = await asyncio.wait([self.loop.run_in_executor(self.executor, method)])
+        return [x.result() for x in a][0]
+
 
     def clean_string(self, string):
         in_chevron = False
@@ -590,9 +600,9 @@ class BotClient(discord.AutoShardedClient):
 
         scope = message.channel
 
-        time_crop = stripped.split('send')[0].replace('the', '').replace('of', '')
+        time_crop = stripped.split('send')[0]
         message_crop = stripped.split('send', 1)[1]
-        datetime_obj = dateparser.parse(time_crop, settings={'TIMEZONE': server.timezone})
+        datetime_obj = await self.do_blocking( partial(dateparser.parse, time_crop, settings={'TIMEZONE': server.timezone}) )
 
         chan_split = message_crop.split(' to ')
         if len(chan_split) > 1 \
@@ -616,7 +626,7 @@ class BotClient(discord.AutoShardedClient):
         interval = 0
 
         if len(interval_split) > 1:
-            interval = dateparser.parse('in a {}'.format(interval_split[-1]), settings={'TO_TIMEZONE' : 'UTC'})
+            interval = await self.do_blocking( partial(dateparser.parse, 'in a {}'.format(interval_split[-1]), settings={'TO_TIMEZONE' : 'UTC'}) )
 
             if interval is None:
                 pass
