@@ -594,6 +594,7 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def natural(self, message, stripped, server):
+        err = False
         if len(stripped.split('send')) < 2:
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/no_argument').format(prefix=server.prefix)))
             return
@@ -605,7 +606,12 @@ class BotClient(discord.AutoShardedClient):
         datetime_obj = await self.do_blocking( partial(dateparser.parse, time_crop, settings={'TIMEZONE': server.timezone}) )
 
         if datetime_obj is None:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/')))
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/bad_time')))
+            err = True
+
+        elif datetime.now() - datetime_obj > datetime.timedelta(years=50):
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/long_time')))
+            err = True
 
         chan_split = message_crop.split(' to ')
         if len(chan_split) > 1 \
@@ -620,7 +626,7 @@ class BotClient(discord.AutoShardedClient):
 
                 if scope is None:
                     await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_tag')))
-                    return
+                    err = True
 
             message_crop = message_crop.rsplit(' to ', 1)[0]
 
@@ -633,40 +639,47 @@ class BotClient(discord.AutoShardedClient):
 
             if interval is None:
                 pass
-            else:
+            elif self.get_patrons(message.author.id, level=1):
                 recurring = True
                 interval = (interval - datetime.utcnow()).total_seconds()
+                if interval < 8:
+                    await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/8_seconds')))
+                    err = True
+
                 message_crop = message_crop.rsplit(' every ', 1)[0]
+            else:
+                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/donor')))
 
         if isinstance(scope, discord.TextChannel):
             if not self.perm_check(message, server):
 
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/no_perms').format(prefix=server.prefix)))
-                return
+                err = True
 
         if self.count_reminders(scope.id) > 5 and not self.get_patrons(message.author.id):
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_count').format(prefix=server.prefix)))
-            return
+            err = True
 
         if self.length_check(message, message_crop) is not True:
             if self.length_check(message, message_crop) == '150':
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_chars').format(len(msg_text), prefix=server.prefix)))
+                err = True
 
             elif self.length_check(message, msg_text) == '2000':
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_chars_2000')))
+                err = True
 
-            return
+        if not err:
+            if recurring:
+                reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, interval=interval)
+            else:
+                reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id)
 
-        if recurring:
-            reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, interval=interval)
-        else:
-            reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id)
+            print('{}: New: {}'.format(datetime.utcnow().strftime('%H:%M:%S'), reminder))
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/success').format(scope.mention, round(datetime_obj.timestamp() - time.time()))))
 
-        print('{}: New: {}'.format(datetime.utcnow().strftime('%H:%M:%S'), reminder))
-        await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/success').format(scope.mention, round(datetime_obj.timestamp() - time.time()))))
-
-        session.add(reminder)
-        session.commit()
+            session.add(reminder)
+            session.commit()
 
 
     async def remind(self, message, stripped, server):
