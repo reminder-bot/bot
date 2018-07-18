@@ -5,7 +5,7 @@ import msgpack
 import pytz
 import asyncio
 import aiohttp
-import parsedatetime
+import dateparser
 
 from datetime import datetime
 import time
@@ -588,13 +588,11 @@ class BotClient(discord.AutoShardedClient):
 
         scope = message.channel
 
-        cal = parsedatetime.Calendar()
-
         time_crop = stripped.split('send')[0].replace('the', '').replace('of', '')
         message_crop = stripped.split('send', 1)[1]
-        datetime_obj, success = cal.parseDT(datetimeString=time_crop, tzinfo=pytz.timezone(server.timezone))
+        datetime_obj = dateparser.parse(time_crop, settings={'TIMEZONE': server.timezone})
 
-        chan_split = message_crop.split('to')
+        chan_split = message_crop.split(' to ')
         if len(chan_split) > 1 \
             and chan_split[-1].strip()[0] == '<' \
             and chan_split[-1].strip()[-1] == '>' \
@@ -609,7 +607,21 @@ class BotClient(discord.AutoShardedClient):
                     await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_tag')))
                     return
 
-            message_crop = message_crop.rsplit('to', 1)[0]
+            message_crop = message_crop.rsplit(' to ', 1)[0]
+
+        interval_split = message_crop.split(' every ')
+        recurring = False
+        interval = 0
+
+        if len(interval_split) > 1:
+            interval = dateparser.parse('in a {}'.format(interval_split[-1]), settings={'TO_TIMEZONE' : 'UTC'})
+
+            if interval is None:
+                pass
+            else:
+                recurring = True
+                interval = (interval - datetime.utcnow()).total_seconds()
+                message_crop = message_crop.rsplit(' every ', 1)[0]
 
         if isinstance(scope, discord.TextChannel):
             if not self.perm_check(message, server):
@@ -630,7 +642,11 @@ class BotClient(discord.AutoShardedClient):
 
             return
 
-        reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id)
+        if recurring:
+            reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, interval=interval)
+            print('Interval')
+        else:
+            reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id)
 
         await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/success_new').format(scope.mention, round(datetime_obj.timestamp() - time.time()))))
 
