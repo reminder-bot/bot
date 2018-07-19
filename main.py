@@ -609,7 +609,7 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/bad_time')))
             err = True
 
-        elif datetime.now() - datetime_obj > datetime.timedelta(years=50):
+        elif datetime_obj.timestamp() - time.time() > 1576800000:
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/long_time')))
             err = True
 
