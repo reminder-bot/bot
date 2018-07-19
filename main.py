@@ -589,6 +589,8 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def natural(self, message, stripped, server):
+        t = datetime.now(pytz.timezone(server.timezone))
+
         err = False
         if len(stripped.split(self.get_strings(server, 'natural/send'))) < 2:
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/no_argument').format(prefix=server.prefix)))
@@ -598,7 +600,7 @@ class BotClient(discord.AutoShardedClient):
 
         time_crop = stripped.split(self.get_strings(server, 'natural/send'))[0]
         message_crop = stripped.split(self.get_strings(server, 'natural/send'), 1)[1]
-        datetime_obj = await self.do_blocking( partial(dateparser.parse, time_crop, settings={'TIMEZONE': server.timezone}) )
+        datetime_obj = await self.do_blocking( partial(dateparser.parse, time_crop, settings={'TIMEZONE': server.timezone, 'RELATIVE_BASE': t, 'TO_TIMEZONE': 'UTC'}) )
 
         if datetime_obj is None:
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/bad_time')))
