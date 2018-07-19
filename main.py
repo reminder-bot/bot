@@ -57,8 +57,7 @@ class BotClient(discord.AutoShardedClient):
 
             'cleanup' : [self.cleanup, False],
             'welcome' : [self.welcome, False],
-            'ping' : [self.time_stats, True],
-            'clean' : [self.clean_string_debug, True]
+            'ping' : [self.time_stats, True]
         }
 
         self.strings = {
@@ -196,10 +195,6 @@ class BotClient(discord.AutoShardedClient):
         end_string += cut
 
         return end_string
-
-
-    async def clean_string_debug(self, message, stripped, server):
-        await message.channel.send(self.clean_string(stripped))
 
 
     def count_reminders(self, loc):
@@ -595,14 +590,14 @@ class BotClient(discord.AutoShardedClient):
 
     async def natural(self, message, stripped, server):
         err = False
-        if len(stripped.split('send')) < 2:
+        if len(stripped.split(self.get_strings(server, 'natural/send'))) < 2:
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/no_argument').format(prefix=server.prefix)))
             return
 
         scope = message.channel
 
-        time_crop = stripped.split('send')[0]
-        message_crop = stripped.split('send', 1)[1]
+        time_crop = stripped.split(self.get_strings(server, 'natural/send'))[0]
+        message_crop = stripped.split(self.get_strings(server, 'natural/send'), 1)[1]
         datetime_obj = await self.do_blocking( partial(dateparser.parse, time_crop, settings={'TIMEZONE': server.timezone}) )
 
         if datetime_obj is None:
@@ -628,9 +623,9 @@ class BotClient(discord.AutoShardedClient):
                     await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_tag')))
                     err = True
 
-            message_crop = message_crop.rsplit(' to ', 1)[0]
+            message_crop = message_crop.rsplit(self.get_strings(server, 'natural/to'), 1)[0]
 
-        interval_split = message_crop.split(' every ')
+        interval_split = message_crop.split(self.get_strings(server, 'natural/every'))
         recurring = False
         interval = 0
 
@@ -646,7 +641,7 @@ class BotClient(discord.AutoShardedClient):
                     await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/8_seconds')))
                     err = True
 
-                message_crop = message_crop.rsplit(' every ', 1)[0]
+                message_crop = message_crop.rsplit(self.get_strings(server, 'natural/every'), 1)[0]
             else:
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/donor')))
 
@@ -1269,7 +1264,7 @@ class BotClient(discord.AutoShardedClient):
                 msgpack.dump(self.process_deletes, f)
 
             session.commit()
-            await asyncio.sleep(2.5)
+            await asyncio.sleep(1)
 
 client = BotClient()
 
