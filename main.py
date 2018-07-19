@@ -608,7 +608,7 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/long_time')))
             err = True
 
-        chan_split = message_crop.split(' to ')
+        chan_split = message_crop.split(self.get_strings(server, 'natural/to'))
         if len(chan_split) > 1 \
             and chan_split[-1].strip()[0] == '<' \
             and chan_split[-1].strip()[-1] == '>' \
@@ -630,13 +630,13 @@ class BotClient(discord.AutoShardedClient):
         interval = 0
 
         if len(interval_split) > 1:
-            interval = await self.do_blocking( partial(dateparser.parse, 'in a {}'.format(interval_split[-1]), settings={'TO_TIMEZONE' : 'UTC'}) )
+            interval = await self.do_blocking( partial(dateparser.parse, interval_split[-1], settings={'TO_TIMEZONE' : 'UTC'}) )
 
             if interval is None:
                 pass
             elif self.get_patrons(message.author.id, level=1):
                 recurring = True
-                interval = (interval - datetime.utcnow()).total_seconds()
+                interval = abs((interval - datetime.utcnow()).total_seconds())
                 if interval < 8:
                     await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/8_seconds')))
                     err = True
