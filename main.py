@@ -57,7 +57,8 @@ class BotClient(discord.AutoShardedClient):
 
             'cleanup' : [self.cleanup, False],
             'welcome' : [self.welcome, False],
-            'ping' : [self.time_stats, True]
+            'ping' : [self.time_stats, True],
+            'update' : [self.update, True]
         }
 
         self.strings = {
@@ -389,6 +390,22 @@ class BotClient(discord.AutoShardedClient):
         Loop Time: {}ms (Ideal: 2500ms)
         Ping: {}ms
         '''.format(round(uptime), round(loop_time*1000), round(ping*1000)))
+
+
+    async def update(self, *):
+        for fn in os.listdir(self.config.get('DEFAULT', 'strings_location')):
+            if fn.startswith('strings_'):
+                with open(self.config.get('DEFAULT', 'strings_location') + fn, 'r') as f:
+                    a = f.read()
+                    try:
+                        self.strings[fn[8:10]] = eval(a)
+                    except:
+                        exc_info = sys.exc_info()
+                        print('String file {} will not be loaded'.format(fn))
+
+                        traceback.print_exception(*exc_info)
+                    else:
+                        self.languages[a.split('\n')[0].strip('#:\n ')] = fn[8:10]
 
 
     async def on_ready(self):
