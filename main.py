@@ -392,7 +392,7 @@ class BotClient(discord.AutoShardedClient):
         '''.format(round(uptime), round(loop_time*1000), round(ping*1000)))
 
 
-    async def update(self, *):
+    async def update(self, message, stripped, server):
         for fn in os.listdir(self.config.get('DEFAULT', 'strings_location')):
             if fn.startswith('strings_'):
                 with open(self.config.get('DEFAULT', 'strings_location') + fn, 'r') as f:
