@@ -68,22 +68,6 @@ class BotClient(discord.AutoShardedClient):
 
         }
 
-        for fn in os.listdir('languages'):
-            if fn.startswith('strings_'):
-                with open('languages/' + fn, 'r') as f:
-                    a = f.read()
-                    try:
-                        self.strings[fn[8:10]] = eval(a)
-                    except:
-                        exc_info = sys.exc_info()
-                        print('String file {} will not be loaded'.format(fn))
-
-                        traceback.print_exception(*exc_info)
-                    else:
-                        self.languages[a.split('\n')[0].strip('#:\n ')] = fn[8:10]
-
-        print('Languages enabled: ' + str(self.languages))
-
         self.donor_roles = {
             1 : [353630811561394206],
             2 : [353226278435946496],
@@ -113,6 +97,23 @@ class BotClient(discord.AutoShardedClient):
         except FileNotFoundError:
             print('No deletes file found')
             self.process_deletes = {}
+
+        for fn in os.listdir(self.config.get('DEFAULT', 'strings_location')):
+            if fn.startswith('strings_'):
+                with open(self.config.get('DEFAULT', 'strings_location') + fn, 'r') as f:
+                    a = f.read()
+                    try:
+                        self.strings[fn[8:10]] = eval(a)
+                    except:
+                        exc_info = sys.exc_info()
+                        print('String file {} will not be loaded'.format(fn))
+
+                        traceback.print_exception(*exc_info)
+                    else:
+                        self.languages[a.split('\n')[0].strip('#:\n ')] = fn[8:10]
+
+        print('Languages enabled: ' + str(self.languages))
+
 
         if 'EN' not in self.strings.keys():
             print('English strings file not present or broken. Exiting...')
