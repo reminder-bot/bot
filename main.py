@@ -58,7 +58,7 @@ class BotClient(discord.AutoShardedClient):
             'cleanup' : [self.cleanup, False],
             'welcome' : [self.welcome, False],
             'ping' : [self.time_stats, True],
-            'update' : [self.update, True]
+            'update' : [self.update_c, True]
         }
 
         self.strings = {
@@ -99,22 +99,7 @@ class BotClient(discord.AutoShardedClient):
             print('No deletes file found')
             self.process_deletes = {}
 
-        for fn in os.listdir(self.config.get('DEFAULT', 'strings_location')):
-            if fn.startswith('strings_'):
-                with open(self.config.get('DEFAULT', 'strings_location') + fn, 'r') as f:
-                    a = f.read()
-                    try:
-                        self.strings[fn[8:10]] = eval(a)
-                    except:
-                        exc_info = sys.exc_info()
-                        print('String file {} will not be loaded'.format(fn))
-
-                        traceback.print_exception(*exc_info)
-                    else:
-                        self.languages[a.split('\n')[0].strip('#:\n ')] = fn[8:10]
-
-        print('Languages enabled: ' + str(self.languages))
-
+        self.update()
 
         if 'EN' not in self.strings.keys():
             print('English strings file not present or broken. Exiting...')
@@ -392,7 +377,10 @@ class BotClient(discord.AutoShardedClient):
         '''.format(round(uptime), round(loop_time*1000), round(ping*1000)))
 
 
-    async def update(self, message, stripped, server):
+    async def update_c(self, *args):
+        self.update()
+
+    def update(self, *args):
         for fn in os.listdir(self.config.get('DEFAULT', 'strings_location')):
             if fn.startswith('strings_'):
                 with open(self.config.get('DEFAULT', 'strings_location') + fn, 'r') as f:
@@ -406,6 +394,8 @@ class BotClient(discord.AutoShardedClient):
                         traceback.print_exception(*exc_info)
                     else:
                         self.languages[a.split('\n')[0].strip('#:\n ')] = fn[8:10]
+
+        print('Languages enabled: ' + str(self.languages))
 
 
     async def on_ready(self):
@@ -429,11 +419,10 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def send(self):
-        guild_count = len(self.guilds)
-        member_count = len([x for x in self.get_all_members()])
-
         if not self.dbl_token:
             return
+
+        guild_count = len(self.guilds)
 
         csession = aiohttp.ClientSession()
         dump = json.dumps({
@@ -522,18 +511,15 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def help(self, message, stripped, server):
-        embed = discord.Embed(description=self.get_strings(server, 'help'))
-        await message.channel.send(embed=embed)
+        await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'help')))
 
 
     async def info(self, message, stripped, server):
-        embed = discord.Embed(description=self.get_strings(server, 'info').format(prefix=server.prefix, user=self.user.name))
-        await message.channel.send(embed=embed)
+        await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'info').format(prefix=server.prefix, user=self.user.name)))
 
 
     async def donate(self, message, stripped, server):
-        embed = discord.Embed(description=self.get_strings(server, 'donate'))
-        await message.channel.send(embed=embed)
+        await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'donate')))
 
 
     async def change_prefix(self, message, stripped, server):
