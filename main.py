@@ -635,7 +635,7 @@ class BotClient(discord.AutoShardedClient):
         interval = 0
 
         if len(interval_split) > 1:
-            interval = await self.do_blocking( partial(dateparser.parse, interval_split[-1], settings={'TO_TIMEZONE' : 'UTC'}) )
+            interval = await self.do_blocking( partial(dateparser.parse, '1 ' + interval_split[-1], settings={'TO_TIMEZONE' : 'UTC'}) )
 
             if interval is None:
                 pass
