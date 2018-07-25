@@ -426,7 +426,7 @@ class BotClient(discord.AutoShardedClient):
 
         csession = aiohttp.ClientSession()
         dump = json.dumps({
-            'server_count': len(client.guilds)
+            'server_count': guild_count
         })
 
         head = {
