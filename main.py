@@ -438,7 +438,7 @@ class BotClient(discord.AutoShardedClient):
         async with csession.post(url, data=dump, headers=head) as resp:
             print('returned {0.status} for {1}'.format(resp, dump))
 
-        csession.close()
+        await csession.close()
 
 
     async def on_message(self, message):
