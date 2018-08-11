@@ -1059,11 +1059,7 @@ class BotClient(discord.AutoShardedClient):
         elif len(splits) >= 2:
             if splits[0] in ['add', 'a']:
                 a = ' '.join(splits[1:])
-                if len(a) > 80:
-                    await message.channel.send(self.get_strings(server, 'todo/too_long'))
-                    return
-
-                elif len(''.join(todo)) > 800:
+                if len(''.join(todo)) > 1600:
                     await message.channel.send(self.get_strings(server, 'todo/too_long2'))
                     return
 
