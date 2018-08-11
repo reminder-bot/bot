@@ -8,7 +8,10 @@ import configparser
 config = configparser.SafeConfigParser()
 config.read('config.ini')
 user = config.get('MYSQL', 'USER')
-passwd = config.get('MYSQL', 'PASSWD')
+try:
+    passwd = config.get('MYSQL', 'PASSWD')
+except:
+    passwd = None
 host = config.get('MYSQL', 'HOST')
 database = config.get('MYSQL', 'DATABASE')
 
@@ -46,7 +49,10 @@ class Server(Base):
         return '<Server {}>'.format(self.id)
 
 
-engine = create_engine('mysql+pymysql://{user}:{passwd}@{host}/{db}?charset=utf8mb4'.format(user=user, passwd=passwd, host=host, db=database))
+if passwd:
+    engine = create_engine('mysql+pymysql://{user}:{passwd}@{host}/{db}?charset=utf8mb4'.format(user=user, passwd=passwd, host=host, db=database))
+else:
+    engine = create_engine('mysql+pymysql://{user}@{host}/{db}?charset=utf8mb4'.format(user=user, host=host, db=database))
 Base.metadata.create_all(bind=engine)
 
 Session = sessionmaker(bind=engine)

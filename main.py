@@ -16,6 +16,25 @@ import json
 import traceback
 import concurrent.futures
 from functools import partial
+import logging
+
+class OneLineExceptionFormatter(logging.Formatter):
+    def formatException(self, exc_info):
+        result = super().formatException(exc_info)
+        return repr(result)
+
+    def format(self, record):
+        result = super().format(record)
+        if record.exc_text:
+            result = result.replace("n", "")
+        return result
+
+handler = logging.StreamHandler()
+formatter = OneLineExceptionFormatter(logging.BASIC_FORMAT)
+handler.setFormatter(formatter)
+logger = logging.getLogger()
+logger.setLevel(os.environ.get("LOGLEVEL", "INFO"))
+logger.addHandler(handler)
 
 
 class BotClient(discord.AutoShardedClient):
@@ -82,27 +101,27 @@ class BotClient(discord.AutoShardedClient):
         self.patreon_servers = [int(x.strip()) for x in self.config.get('DEFAULT', 'patreon_server').split(',')]
 
         if self.patreon:
-            print('Patreon is enabled. Will look for servers {}'.format(self.patreon_servers))
+            logger.info('Patreon is enabled. Will look for servers {}'.format(self.patreon_servers))
 
         try:
             with open('DATA/todos.json', 'r') as f:
                 self.todos = json.load(f)
                 self.todos = {int(x) : y for x, y in self.todos.items()}
         except FileNotFoundError:
-            print('No todos file found')
+            logger.warn('No todos file found')
             self.todos = {}
 
         try:
             with open('DATA/process_deletes.mp', 'rb') as f:
                 self.process_deletes = msgpack.unpack(f, encoding='utf8')
         except FileNotFoundError:
-            print('No deletes file found')
+            logger.warning('No deletes file found')
             self.process_deletes = {}
 
         self.update()
 
         if 'EN' not in self.strings.keys():
-            print('English strings file not present or broken. Exiting...')
+            logger.critical('English strings file not present or broken. Exiting...')
             sys.exit()
 
         self.executor = concurrent.futures.ThreadPoolExecutor()
@@ -389,20 +408,20 @@ class BotClient(discord.AutoShardedClient):
                         self.strings[fn[8:10]] = eval(a)
                     except:
                         exc_info = sys.exc_info()
-                        print('String file {} will not be loaded'.format(fn))
+                        logger.error('String file {} will not be loaded'.format(fn))
 
                         traceback.print_exception(*exc_info)
                     else:
                         self.languages[a.split('\n')[0].strip('#:\n ')] = fn[8:10]
 
-        print('Languages enabled: ' + str(self.languages))
+        logger.info('Languages enabled: ' + str(self.languages))
 
 
     async def on_ready(self):
-        print('Logged in as')
-        print(self.user.name)
-        print(self.user.id)
-        print('------------')
+        logger.info('Logged in as')
+        logger.info(self.user.name)
+        logger.info(self.user.id)
+        logger.info('------------')
         await client.change_presence(activity=discord.Game(name='@{} help'.format(self.user.name)))
 
 
@@ -436,7 +455,7 @@ class BotClient(discord.AutoShardedClient):
 
         url = 'https://discordbots.org/api/bots/stats'
         async with csession.post(url, data=dump, headers=head) as resp:
-            print('returned {0.status} for {1}'.format(resp, dump))
+            logger.info('returned {0.status} for {1}'.format(resp, dump))
 
         await csession.close()
 
@@ -458,13 +477,13 @@ class BotClient(discord.AutoShardedClient):
 
         try:
             if await self.get_cmd(message):
-                print('Command: ' + message.content)
+                logger.info('Command: ' + message.content)
 
         except discord.errors.Forbidden:
             try:
                 await message.channel.send('Action forbidden. Please ensure I have the correct permissions.')
             except discord.errors.Forbidden:
-                print('Twice Forbidden')
+                logger.info('Twice Forbidden')
 
 
     async def get_cmd(self, message):
@@ -675,7 +694,7 @@ class BotClient(discord.AutoShardedClient):
             else:
                 reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id)
 
-            print('{}: New: {}'.format(datetime.utcnow().strftime('%H:%M:%S'), reminder))
+            logger.info('{}: New: {}'.format(datetime.utcnow().strftime('%H:%M:%S'), reminder))
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/success').format(scope.mention, round(datetime_obj.timestamp() - time.time()))))
 
             session.add(reminder)
@@ -744,7 +763,7 @@ class BotClient(discord.AutoShardedClient):
         session.add(reminder)
         session.commit()
 
-        print('Registered a new reminder for {}'.format(message.guild.name))
+        logger.info('Registered a new reminder for {}'.format(message.guild.name))
 
 
     async def interval(self, message, stripped, server):
@@ -825,7 +844,7 @@ class BotClient(discord.AutoShardedClient):
         session.add(reminder)
         session.commit()
 
-        print('Registered a new interval for {}'.format(message.guild.name))
+        logger.info('Registered a new interval for {}'.format(message.guild.name))
 
 
     async def autoclear(self, message, stripped, server):
@@ -1016,7 +1035,6 @@ class BotClient(discord.AutoShardedClient):
                 not_done = False
 
         if not_done:
-            print('running past')
             name = ' '.join(splits).strip()
 
             if name not in server.tags.keys():
@@ -1139,7 +1157,7 @@ class BotClient(discord.AutoShardedClient):
 
                 session.query(Reminder).filter(Reminder.id == reminders[i].id).delete()
 
-                print('Deleted reminder')
+                logger.info('Deleted reminder')
                 dels += 1
 
             except ValueError:
@@ -1161,7 +1179,7 @@ class BotClient(discord.AutoShardedClient):
             reminders = session.query(Reminder).filter(Reminder.time <= time.time()).all()
 
             for reminder in reminders:
-                print('Looping for reminder {}'.format(reminder))
+                logger.info('Looping for reminder {}'.format(reminder))
 
                 if reminder.interval is not None and reminder.interval < 8:
                     session.query(Reminder).filter(Reminder.id == reminder.id).delete()
@@ -1171,12 +1189,12 @@ class BotClient(discord.AutoShardedClient):
                 recipient = self.get_channel(reminder.channel)
 
                 if recipient is None:
-                    print('{}: No channel found. Looking up user'.format(datetime.utcnow().strftime('%H:%M:%S')))
+                    logger.warning('{}: No channel found. Looking up user'.format(datetime.utcnow().strftime('%H:%M:%S')))
                     recipient = self.get_user(reminder.channel)
                     is_user = True
 
                 if recipient is None:
-                    print('{}: Failed to locate channel'.format(datetime.utcnow().strftime('%H:%M:%S')))
+                    logger.warning('{}: Failed to locate channel'.format(datetime.utcnow().strftime('%H:%M:%S')))
                     session.query(Reminder).filter(Reminder.id == reminder.id).delete()
                     continue
 
@@ -1184,7 +1202,7 @@ class BotClient(discord.AutoShardedClient):
                     if reminder.interval == None:
                         await recipient.send(reminder.message)
                         session.query(Reminder).filter(Reminder.id == reminder.id).delete()
-                        print('{}: Administered reminder to {}'.format(datetime.utcnow().strftime('%H:%M:%S'), recipient.name))
+                        logger.info('{}: Administered reminder to {}'.format(datetime.utcnow().strftime('%H:%M:%S'), recipient.name))
 
                     else:
                         if is_user:
@@ -1197,7 +1215,7 @@ class BotClient(discord.AutoShardedClient):
                                 try:
                                     await recipient.purge(check=lambda m: m.content == reminder.message[len('-del_on_send'):].strip() and time.time() - m.created_at.timestamp() < 1209600 and m.author == client.user)
                                 except Exception as e:
-                                    print(e)
+                                    logger.error(e)
 
                                 await recipient.send(reminder.message[len('-del_on_send'):])
 
@@ -1220,7 +1238,7 @@ class BotClient(discord.AutoShardedClient):
                             else:
                                 await recipient.send(reminder.message)
 
-                            print('{}: Administered interval to {} (Reset for {} seconds)'.format(datetime.utcnow().strftime('%H:%M:%S'), recipient.name, reminder.interval))
+                            logger.info('{}: Administered interval to {} (Reset for {} seconds)'.format(datetime.utcnow().strftime('%H:%M:%S'), recipient.name, reminder.interval))
                         else:
                             await recipient.send(self.get_strings( session.query(Server).filter_by(id=recipient.guild.id).first(), 'interval/removed'))
                             session.query(Reminder).filter(Reminder.id == reminder.id).delete()
@@ -1240,7 +1258,7 @@ class BotClient(discord.AutoShardedClient):
                             except:
                                 pass
                     session.query(Reminder).filter(Reminder.id == reminder.id).delete()
-                    print('Ln 1033: {}'.format(e))
+                    logger.error('Ln 1033: {}'.format(e))
 
             try:
                 for message, info in self.process_deletes.copy().items():
@@ -1252,14 +1270,14 @@ class BotClient(discord.AutoShardedClient):
                         if message is None or message.pinned:
                             pass
                         else:
-                            print('{}: Attempting to auto-delete a message...'.format(datetime.utcnow().strftime('%H:%M:%S')))
+                            logger.info('{}: Attempting to auto-delete a message...'.format(datetime.utcnow().strftime('%H:%M:%S')))
                             try:
                                 await message.delete()
                             except Exception as e:
-                                print('Ln 1049: {}'.format(e))
+                                logger.error('Ln 1049: {}'.format(e))
 
             except Exception as e:
-                print('Ln 1052: {}'.format(e))
+                logger.error('Ln 1052: {}'.format(e))
 
             with open('DATA/process_deletes.mp', 'wb') as f:
                 msgpack.dump(self.process_deletes, f)
@@ -1274,8 +1292,8 @@ try:
 
     client.run(client.config.get('DEFAULT', 'token'), max_messages=350)
 except Exception as e:
-    print('Error detected. Restarting in 15 seconds.')
-    print(sys.exc_info())
+    logger.error('Error detected. Restarting in 15 seconds.')
+    logger.error(sys.exc_info())
     time.sleep(15)
 
     os.execl(sys.executable, sys.executable, *sys.argv)
