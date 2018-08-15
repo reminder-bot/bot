@@ -1204,7 +1204,13 @@ class BotClient(discord.AutoShardedClient):
 
                 for guild in channels:
 
-                    channel = self.get_channel(guild.tz_channel)
+                    guild = self.get_guild(guild.id)
+
+                    if guild is not None:
+                        channel = guild.get_channel(guild.tz_channel)
+
+                    else:
+                        continue
 
                     if channel is None:
                         guild.tz_channel = None
