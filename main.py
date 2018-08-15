@@ -616,7 +616,7 @@ class BotClient(discord.AutoShardedClient):
                         message.guild.default_role: discord.PermissionOverwrite(connect=False)
                     })
 
-                    await message.channel.send(self.get_strings('clock/enabled'))
+                    await message.channel.send(self.get_strings(server, 'clock/enabled'))
                     server.tz_channel = c.id
                     return
 
