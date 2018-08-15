@@ -1212,7 +1212,10 @@ class BotClient(discord.AutoShardedClient):
 
                     t = datetime.now(pytz.timezone(guild.timezone))
 
-                    await channel.edit(name='Time in {}: {}'.format(guild.timezone, t.strftime('%H:%M')))
+                    try:
+                        await channel.edit(name='Time in {}: {}'.format(guild.timezone, t.strftime('%H:%M')))
+                    except:
+                        pass
 
 
                 self.last_minute = datetime.now().minute
