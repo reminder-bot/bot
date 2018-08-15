@@ -77,7 +77,7 @@ class BotClient(discord.AutoShardedClient):
             'cleanup' : [self.cleanup, False],
             'welcome' : [self.welcome, False],
             'ping' : [self.time_stats, True],
-            'update' : [self.update_c, True]
+            'update' : [self.update_c, True],
         }
 
         self.strings = {
@@ -604,11 +604,28 @@ class BotClient(discord.AutoShardedClient):
 
         t = datetime.now(pytz.timezone(server.timezone))
 
-        if stripped == '12':
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'clock/time').format(t.strftime('%I:%M:%S %p'))))
+        if not self.perm_check(message, server) or stripped == 'show':
+            await message.channel.send(self.get_strings(server, 'clock/time').format(t.strftime('%H:%M:%S')))
 
         else:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'clock/time').format(t.strftime('%H:%M:%S'))))
+            for channel in message.guild.voice_channels:
+                if channel.name.startswith('Time in '):
+                    await channel.delete()
+
+                    await message.channel.send(self.get_strings('clock/disabled'))
+
+                    break
+
+                else:
+                    continue
+
+            else:
+
+                await message.guild.create_voice_channel('Time in {}: {}'.format(server.timezone, t.strftime('%H:%M')), overwrites= {
+                    message.guild.default_role: discord.PermissionOverwrite(connect=False)
+                })
+
+                await message.channel.send(self.get_strings('clock/enabled'))
 
 
     async def natural(self, message, stripped, server):
@@ -1172,7 +1189,26 @@ class BotClient(discord.AutoShardedClient):
         await self.wait_until_ready()
 
         self.times['start'] = time.time()
+        self.last_minute = 0
+
         while not self.is_closed():
+
+            if self.last_minute != datetime.now().minute:
+                for guild in self.guilds:
+                    for channel in guild.voice_channels:
+
+                        if channel.name.startswith('Time in '):
+
+                            tz = channel.name[8:channel.name.find(':')]
+                            t = datetime.now(pytz.timezone(tz))
+
+                            await channel.edit(name='Time in {}: {}'.format(tz, t.strftime('%H:%M')))
+
+                            break
+
+                self.last_minute = datetime.now().minute
+
+
             self.times['last_loop'] = time.time()
             self.times['loops'] += 1
 
