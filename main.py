@@ -612,7 +612,7 @@ class BotClient(discord.AutoShardedClient):
 
                 if channel is None:
 
-                    c = await message.guild.create_voice_channel('Time in {}: {}'.format(server.timezone, t.strftime('%H:%M')), overwrites= {
+                    c = await message.guild.create_voice_channel('🕒 {} ({})'.format(t.strftime('%H:%M'), server.timezone), overwrites= {
                         message.guild.default_role: discord.PermissionOverwrite(connect=False)
                     })
 
@@ -627,7 +627,7 @@ class BotClient(discord.AutoShardedClient):
 
             else:
 
-                c = await message.guild.create_voice_channel('Time in {}: {}'.format(server.timezone, t.strftime('%H:%M')), overwrites= {
+                c = await message.guild.create_voice_channel('🕒 {} ({})'.format(t.strftime('%H:%M'), server.timezone), overwrites= {
                     message.guild.default_role: discord.PermissionOverwrite(connect=False)
                 })
 
@@ -1213,7 +1213,7 @@ class BotClient(discord.AutoShardedClient):
                     t = datetime.now(pytz.timezone(guild.timezone))
 
                     try:
-                        await channel.edit(name='Time in {}: {}'.format(guild.timezone, t.strftime('%H:%M')))
+                        await channel.edit(name='🕒 {} ({})'.format(t.strftime('%H:%M'), guild.timezone))
                     except:
                         pass
 
