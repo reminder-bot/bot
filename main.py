@@ -608,25 +608,32 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(self.get_strings(server, 'clock/time').format(t.strftime('%H:%M:%S')))
 
         else:
-            for channel in message.guild.voice_channels:
-                if channel.name.startswith('Time in '):
-                    await channel.delete()
+            if server.tz_channel is not None:
+                channel = message.guild.get_channel(server.tz_channel)
 
-                    await message.channel.send(self.get_strings('clock/disabled'))
+                if channel is None:
 
-                    break
+                    c = await message.guild.create_voice_channel('Time in {}: {}'.format(server.timezone, t.strftime('%H:%M')), overwrites= {
+                        message.guild.default_role: discord.PermissionOverwrite(connect=False)
+                    })
 
-                else:
-                    continue
+                    await message.channel.send(self.get_strings('clock/enabled'))
+                    server.tz_channel = c.id
+                    return
+
+                await channel.delete()
+                server.tz_channel = None
+
+                await message.channel.send(self.get_strings(server, 'clock/disabled'))
 
             else:
 
-                await message.guild.create_voice_channel('Time in {}: {}'.format(server.timezone, t.strftime('%H:%M')), overwrites= {
+                c = await message.guild.create_voice_channel('Time in {}: {}'.format(server.timezone, t.strftime('%H:%M')), overwrites= {
                     message.guild.default_role: discord.PermissionOverwrite(connect=False)
                 })
 
-                await message.channel.send(self.get_strings('clock/enabled'))
-
+                await message.channel.send(self.get_strings(server, 'clock/enabled'))
+                server.tz_channel = c.id
 
     async def natural(self, message, stripped, server):
 
@@ -1193,18 +1200,21 @@ class BotClient(discord.AutoShardedClient):
 
         while not self.is_closed():
 
-            if self.last_minute != datetime.now().minute and False:
-                for guild in self.guilds:
-                    for channel in guild.voice_channels:
+            if self.last_minute != datetime.now().minute:
+                channels = session.query(Server).filter(Server.tz_channel is not None)
 
-                        if channel.name.startswith('Time in '):
+                for guild in channels:
 
-                            tz = channel.name[8:channel.name.find(':')]
-                            t = datetime.now(pytz.timezone(tz))
+                    channel = self.get_channel(guild.tz_channel)
 
-                            await channel.edit(name='Time in {}: {}'.format(tz, t.strftime('%H:%M')))
+                    if channel is None:
+                        guild.tz_channel = None
+                        continue
 
-                            break
+                    t = datetime.now(pytz.timezone(guild.timezone))
+
+                    await channel.edit(name='Time in {}: {}'.format(guild.timezone, t.strftime('%H:%M')))
+
 
                 self.last_minute = datetime.now().minute
 

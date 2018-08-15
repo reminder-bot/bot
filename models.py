@@ -44,6 +44,7 @@ class Server(Base):
     restrictions = Column( NestedMutableJson )
     tags = Column( MutableJson )
     autoclears = Column( MutableJson )
+    tz_channel = Column( BigInteger )
 
     def __repr__(self):
         return '<Server {}>'.format(self.id)
