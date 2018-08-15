@@ -1193,7 +1193,7 @@ class BotClient(discord.AutoShardedClient):
 
         while not self.is_closed():
 
-            if self.last_minute != datetime.now().minute:
+            if self.last_minute != datetime.now().minute and False:
                 for guild in self.guilds:
                     for channel in guild.voice_channels:
 
