@@ -422,7 +422,6 @@ class BotClient(discord.AutoShardedClient):
         logger.info(self.user.name)
         logger.info(self.user.id)
         logger.info('------------')
-        await client.change_presence(activity=discord.Game(name='@{} help'.format(self.user.name)))
 
 
     async def on_guild_remove(self, guild):
