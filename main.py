@@ -26,7 +26,7 @@ class OneLineExceptionFormatter(logging.Formatter):
     def format(self, record):
         result = super().format(record)
         if record.exc_text:
-            result = result.replace("n", "")
+            result = result.replace("\n", "")
         return result
 
 handler = logging.StreamHandler()
@@ -1199,21 +1199,29 @@ class BotClient(discord.AutoShardedClient):
 
         while not self.is_closed():
 
+            self.times['last_loop'] = time.time()
+            self.times['loops'] += 1
+
             if self.last_minute != datetime.now().minute:
                 channels = session.query(Server).filter(Server.tz_channel is not None)
 
                 for guild in channels:
 
-                    guildd = self.get_guild(guild.id)
+                    guild_obj = self.get_guild(guild.id)
+                    channel = None
 
-                    if guildd is not None:
-                        channel = guildd.get_channel(guild.tz_channel)
+                    if guild_obj is not None:
+                        channel = guild_obj.get_channel(guild.tz_channel)
 
                     else:
                         continue
 
                     if channel is None:
-                        guild.tz_channel = None
+                        for chan in guild_obj.voice_channels:
+                            if chan.id == guild.tz_channel:
+                                channel = chan
+
+                    if channel is None:
                         continue
 
                     t = datetime.now(pytz.timezone(guild.timezone))
@@ -1225,10 +1233,6 @@ class BotClient(discord.AutoShardedClient):
 
 
                 self.last_minute = datetime.now().minute
-
-
-            self.times['last_loop'] = time.time()
-            self.times['loops'] += 1
 
             reminders = session.query(Reminder).filter(Reminder.time <= time.time()).all()
 
