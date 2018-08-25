@@ -704,10 +704,10 @@ class BotClient(discord.AutoShardedClient):
 
         if self.length_check(message, message_crop) is not True:
             if self.length_check(message, message_crop) == '150':
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_chars').format(len(msg_text), prefix=server.prefix)))
+                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_chars').format(len(message_crop), prefix=server.prefix)))
                 err = True
 
-            elif self.length_check(message, msg_text) == '2000':
+            elif self.length_check(message, message_crop) == '2000':
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_chars_2000')))
                 err = True
 
