@@ -844,7 +844,7 @@ class BotClient(discord.AutoShardedClient):
                 return
 
 
-        reminder = Reminder(time=msg_time, interval=msg_interval, channel=scope, message=msg_text)
+        reminder = Reminder(time=msg_time, interval=msg_interval, channel=scope, message=msg_text, webhook='')
 
         await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/success').format(pref, scope, round(msg_time - time.time()))))
 
@@ -1191,13 +1191,15 @@ class BotClient(discord.AutoShardedClient):
             self.times['last_loop'] = time.time()
             self.times['loops'] += 1
 
+            rems = []
             reminders = session.query(Reminder).filter(Reminder.time <= time.time()).filter(Reminder.webhook == '').all()
 
             for reminder in reminders:
+
+                rems.append(reminder.id)
                 logger.info('Looping for reminder {}'.format(reminder))
 
                 if reminder.interval is not None and reminder.interval < 8:
-                    session.query(Reminder).filter(Reminder.id == reminder.id).delete()
                     continue
 
                 is_user = False
@@ -1210,31 +1212,23 @@ class BotClient(discord.AutoShardedClient):
 
                 if recipient is None:
                     logger.warning('{}: Failed to locate channel'.format(datetime.utcnow().strftime('%H:%M:%S')))
-                    session.query(Reminder).filter(Reminder.id == reminder.id).delete()
                     continue
 
                 try:
-                    if reminder.interval == None:
+                    if reminder.interval is None:
                         await recipient.send(reminder.message)
-                        session.query(Reminder).filter(Reminder.id == reminder.id).delete()
                         logger.info('{}: Administered reminder to {}'.format(datetime.utcnow().strftime('%H:%M:%S'), recipient.name))
 
                     else:
+                        rems.remove(reminder.id)
+
                         if is_user:
                             server_members = [recipient]
                         else:
                             server_members = recipient.guild.members
 
                         if any([self.get_patrons(m.id, level=1) for m in server_members]):
-                            if reminder.message.startswith('-del_on_send'):
-                                try:
-                                    await recipient.purge(check=lambda m: m.content == reminder.message[len('-del_on_send'):].strip() and time.time() - m.created_at.timestamp() < 1209600 and m.author == client.user)
-                                except Exception as e:
-                                    logger.error(e)
-
-                                await recipient.send(reminder.message[len('-del_on_send'):])
-
-                            elif reminder.message.startswith('-del_after_'):
+                            if reminder.message.startswith('-del_after_'):
 
                                 chars = ''
 
@@ -1256,13 +1250,10 @@ class BotClient(discord.AutoShardedClient):
                             logger.info('{}: Administered interval to {} (Reset for {} seconds)'.format(datetime.utcnow().strftime('%H:%M:%S'), recipient.name, reminder.interval))
                         else:
                             await recipient.send(self.get_strings( session.query(Server).filter_by(id=recipient.guild.id).first(), 'interval/removed'))
-                            session.query(Reminder).filter(Reminder.id == reminder.id).delete()
                             continue
 
                         while reminder.time <= time.time():
                             reminder.time += reminder.interval ## change the time for the next interval
-
-                        session.commit()
 
                 except Exception as e:
                     if not is_user:
@@ -1298,8 +1289,12 @@ class BotClient(discord.AutoShardedClient):
             if len(dels) > 0:
                 session.query(Deletes).filter(Deletes.map_id.in_(dels)).delete(synchronize_session='fetch')
 
+            if len(rems) > 0:
+                session.query(Reminder).filter(Reminder.id.in_(rems)).delete(synchronize_session='fetch')
+
+
             session.commit()
-            await asyncio.sleep(1)
+            await asyncio.sleep(5)
 
 client = BotClient()
 

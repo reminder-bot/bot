@@ -1,5 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, BigInteger, String, Unicode, Text
+from sqlalchemy import Column, Integer, BigInteger, String, Unicode, Text, Boolean
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy_json import NestedMutableJson, MutableJson
