@@ -18,6 +18,7 @@ import concurrent.futures
 from functools import partial
 import logging
 
+
 class OneLineExceptionFormatter(logging.Formatter):
     def formatException(self, exc_info):
         result = super().formatException(exc_info)
@@ -78,6 +79,7 @@ class BotClient(discord.AutoShardedClient):
             'welcome' : [self.welcome, False],
             'ping' : [self.time_stats, True],
             'update' : [self.update_c, True],
+            'hook' : [self.create_hook, False],
         }
 
         self.strings = {
@@ -421,6 +423,7 @@ class BotClient(discord.AutoShardedClient):
         logger.info('Logged in as')
         logger.info(self.user.name)
         logger.info(self.user.id)
+        logger.info(self.user.avatar)
         logger.info('------------')
 
 
@@ -603,36 +606,8 @@ class BotClient(discord.AutoShardedClient):
 
         t = datetime.now(pytz.timezone(server.timezone))
 
-        if not self.perm_check(message, server) or stripped == 'show':
-            await message.channel.send(self.get_strings(server, 'clock/time').format(t.strftime('%H:%M:%S')))
+        await message.channel.send(self.get_strings(server, 'clock/time').format(t.strftime('%H:%M:%S')))
 
-        else:
-            if server.tz_channel is not None:
-                channel = message.guild.get_channel(server.tz_channel)
-
-                if channel is None:
-
-                    c = await message.guild.create_voice_channel('🕒 {} ({})'.format(t.strftime('%H:%M'), server.timezone), overwrites= {
-                        message.guild.default_role: discord.PermissionOverwrite(connect=False)
-                    })
-
-                    await message.channel.send(self.get_strings(server, 'clock/enabled'))
-                    server.tz_channel = c.id
-                    return
-
-                await channel.delete()
-                server.tz_channel = None
-
-                await message.channel.send(self.get_strings(server, 'clock/disabled'))
-
-            else:
-
-                c = await message.guild.create_voice_channel('🕒 {} ({})'.format(t.strftime('%H:%M'), server.timezone), overwrites= {
-                    message.guild.default_role: discord.PermissionOverwrite(connect=False)
-                })
-
-                await message.channel.send(self.get_strings(server, 'clock/enabled'))
-                server.tz_channel = c.id
 
     async def natural(self, message, stripped, server):
 
@@ -1195,44 +1170,11 @@ class BotClient(discord.AutoShardedClient):
         await self.wait_until_ready()
 
         self.times['start'] = time.time()
-        self.last_minute = 0
 
         while not self.is_closed():
 
             self.times['last_loop'] = time.time()
             self.times['loops'] += 1
-
-            if self.last_minute != datetime.now().minute:
-                channels = session.query(Server).filter(Server.tz_channel is not None)
-
-                for guild in channels:
-
-                    guild_obj = self.get_guild(guild.id)
-                    channel = None
-
-                    if guild_obj is not None:
-                        channel = guild_obj.get_channel(guild.tz_channel)
-
-                    else:
-                        continue
-
-                    if channel is None:
-                        for chan in guild_obj.voice_channels:
-                            if chan.id == guild.tz_channel:
-                                channel = chan
-
-                    if channel is None:
-                        continue
-
-                    t = datetime.now(pytz.timezone(guild.timezone))
-
-                    try:
-                        await channel.edit(name='🕒 {} ({})'.format(t.strftime('%H:%M'), guild.timezone))
-                    except:
-                        pass
-
-
-                self.last_minute = datetime.now().minute
 
             reminders = session.query(Reminder).filter(Reminder.time <= time.time()).all()
 
