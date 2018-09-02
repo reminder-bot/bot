@@ -79,7 +79,7 @@ class BotClient(discord.AutoShardedClient):
             'welcome' : [self.welcome, False],
             'ping' : [self.time_stats, True],
             'update' : [self.update_c, True],
-            'hook' : [self.create_hook, False],
+#            'hook' : [self.create_hook, False],
         }
 
         self.strings = {
