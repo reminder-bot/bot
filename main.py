@@ -78,8 +78,6 @@ class BotClient(discord.AutoShardedClient):
             'cleanup' : [self.cleanup, False],
             'welcome' : [self.welcome, False],
             'ping' : [self.time_stats, True],
-            'update' : [self.update_c, True],
-            'hook' : [self.create_hook, False],
         }
 
         self.strings = {
@@ -390,9 +388,6 @@ class BotClient(discord.AutoShardedClient):
         Ping: {}ms
         '''.format(round(uptime), round(loop_time*1000), round(ping*1000)))
 
-
-    async def update_c(self, *args):
-        self.update()
 
     def update(self, *args):
         for fn in os.listdir(self.config.get('DEFAULT', 'strings_location')):
@@ -934,12 +929,6 @@ class BotClient(discord.AutoShardedClient):
         session.commit()
 
 
-    async def create_hook(self, message, stripped, server):
-        w = await message.channel.create_webhook(name='Reminders #{}'.format(message.channel.name))
-
-        print(w.url)
-
-
     async def clear(self, message, stripped, server):
 
         if not message.author.guild_permissions.manage_messages:
@@ -1256,14 +1245,6 @@ class BotClient(discord.AutoShardedClient):
                             reminder.time += reminder.interval ## change the time for the next interval
 
                 except Exception as e:
-                    if not is_user:
-                        for channel in recipient.guild.channels:
-                            try:
-                                await channel.send('Not enough permissions to send reminders to designated channels.')
-                                break
-                            except:
-                                pass
-                    session.query(Reminder).filter(Reminder.id == reminder.id).delete()
                     logger.error('Ln 1033: {}'.format(e))
 
             try:
@@ -1298,13 +1279,5 @@ class BotClient(discord.AutoShardedClient):
 
 client = BotClient()
 
-try:
-    client.loop.create_task(client.check_reminders())
-
-    client.run(client.config.get('DEFAULT', 'token'), max_messages=350)
-except Exception as e:
-    logger.error('Error detected. Restarting in 15 seconds.')
-    logger.error(sys.exc_info())
-    time.sleep(15)
-
-    os.execl(sys.executable, sys.executable, *sys.argv)
+client.loop.create_task(client.check_reminders())
+client.run(client.config.get('DEFAULT', 'token'), max_messages=50)
