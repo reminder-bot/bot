@@ -17,10 +17,10 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column('reminders', sa.Column('webhook', sa.String(120)))
+    op.add_column('reminders', sa.Column('webhook', sa.String(200)))
     op.drop_column('servers', 'tz_channel')
 
 
 def downgrade():
-    op.drop_column('servers', 'webhook')
+    op.drop_column('reminders', 'webhook')
     op.add_column('servers', sa.Column('tz_channel', sa.BigInteger))

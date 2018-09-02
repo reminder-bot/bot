@@ -22,7 +22,7 @@ class Reminder(Base):
 
     id = Column(Integer, primary_key=True, unique=True)
     message = Column(Unicode(2000))
-    webhook = Column(Unicode(120))
+    webhook = Column(String(200))
     channel = Column(BigInteger)
     time = Column(BigInteger)
     interval = Column(Integer)
