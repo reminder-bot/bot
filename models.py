@@ -1,5 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, BigInteger, String, Unicode
+from sqlalchemy import Column, Integer, BigInteger, String, Unicode, Text
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy_json import NestedMutableJson, MutableJson
@@ -22,10 +22,12 @@ class Reminder(Base):
 
     id = Column(Integer, primary_key=True, unique=True)
     message = Column(Unicode(2000))
-    webhook = Column(String(200))
     channel = Column(BigInteger)
     time = Column(BigInteger)
     interval = Column(Integer)
+
+    webhook = Column(String(200))
+    avatar = Column(Text)
 
     mysql_charset = 'utf8mb4'
 
@@ -48,6 +50,15 @@ class Server(Base):
 
     def __repr__(self):
         return '<Server {}>'.format(self.id)
+
+
+class Deletes(Base):
+    __tablename__ = 'deletes'
+
+    map_id = Column(Integer, primary_key=True)
+    message = Column(BigInteger)
+    channel = Column(BigInteger)
+    time = Column(BigInteger)
 
 
 if passwd:

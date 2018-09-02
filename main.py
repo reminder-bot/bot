@@ -1,4 +1,4 @@
-from models import Reminder, Server, session
+from models import Reminder, Server, Deletes, session
 
 import discord
 import msgpack
@@ -112,13 +112,6 @@ class BotClient(discord.AutoShardedClient):
         except FileNotFoundError:
             logger.warn('No todos file found')
             self.todos = {}
-
-        try:
-            with open('DATA/process_deletes.mp', 'rb') as f:
-                self.process_deletes = msgpack.unpack(f, encoding='utf8')
-        except FileNotFoundError:
-            logger.warning('No deletes file found')
-            self.process_deletes = {}
 
         self.update()
 
@@ -472,7 +465,10 @@ class BotClient(discord.AutoShardedClient):
 
         server = None if message.guild is None else session.query(Server).filter_by(id=message.guild.id).first()
         if server is not None and message.channel.id in map(int, server.autoclears.keys()):
-            self.process_deletes[message.id] = {'time' : time.time() + server.autoclears[str(message.channel.id)], 'channel' : message.channel.id}
+            d = Deletes(time=time.time() + server.autoclears[str(message.channel.id)], channel=message.channel.id, message=message.id)
+
+            session.add(d)
+            session.commit()
 
         if message.author.bot or message.content == None:
             return
@@ -1252,7 +1248,7 @@ class BotClient(discord.AutoShardedClient):
 
                                 message = await recipient.send(reminder.message[len('-del_after_{}'.format(chars)):])
 
-                                self.process_deletes[message.id] = {'time' : time.time() + wait_time, 'channel' : message.channel.id}
+                                d = Deletes(time=time.time() + wait_time, channel=message.channel.id, message=message.id)
 
                             else:
                                 await recipient.send(reminder.message)
@@ -1280,26 +1276,27 @@ class BotClient(discord.AutoShardedClient):
                     logger.error('Ln 1033: {}'.format(e))
 
             try:
-                for message, info in self.process_deletes.copy().items():
-                    if info['time'] <= time.time():
-                        del self.process_deletes[message]
+                dels = []
 
-                        message = await self.get_channel(info['channel']).get_message(message)
+                for d in session.query(Deletes).filter(Deletes.time <= time.time()):
+                    dels.append(d.map_id)
 
-                        if message is None or message.pinned:
-                            pass
-                        else:
-                            logger.info('{}: Attempting to auto-delete a message...'.format(datetime.utcnow().strftime('%H:%M:%S')))
-                            try:
-                                await message.delete()
-                            except Exception as e:
-                                logger.error('Ln 1049: {}'.format(e))
+                    message = await self.get_channel(d.channel).get_message(d.message)
+
+                    if message is None or message.pinned:
+                        pass
+                    else:
+                        logger.info('{}: Attempting to auto-delete a message...'.format(datetime.utcnow().strftime('%H:%M:%S')))
+                        try:
+                            await message.delete()
+                        except Exception as e:
+                            logger.error('Ln 1049: {}'.format(e))
 
             except Exception as e:
                 logger.error('Ln 1052: {}'.format(e))
 
-            with open('DATA/process_deletes.mp', 'wb') as f:
-                msgpack.dump(self.process_deletes, f)
+            if len(dels) > 0:
+                session.query(Deletes).filter(Deletes.map_id.in_(dels)).delete(synchronize_session='fetch')
 
             session.commit()
             await asyncio.sleep(1)
