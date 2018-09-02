@@ -22,6 +22,7 @@ class Reminder(Base):
 
     id = Column(Integer, primary_key=True, unique=True)
     message = Column(Unicode(2000))
+    webhook = Column(Unicode(120))
     channel = Column(BigInteger)
     time = Column(BigInteger)
     interval = Column(Integer)
@@ -44,7 +45,6 @@ class Server(Base):
     restrictions = Column( NestedMutableJson )
     tags = Column( MutableJson )
     autoclears = Column( MutableJson )
-    tz_channel = Column( BigInteger )
 
     def __repr__(self):
         return '<Server {}>'.format(self.id)
