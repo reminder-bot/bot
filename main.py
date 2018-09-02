@@ -79,7 +79,7 @@ class BotClient(discord.AutoShardedClient):
             'welcome' : [self.welcome, False],
             'ping' : [self.time_stats, True],
             'update' : [self.update_c, True],
-#            'hook' : [self.create_hook, False],
+            'hook' : [self.create_hook, False],
         }
 
         self.strings = {
@@ -923,6 +923,12 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'blacklist/added')))
 
         session.commit()
+
+
+    async def create_hook(self, message, stripped, server):
+        w = await message.channel.create_webhook(name='Reminders #{}'.format(message.channel.name))
+
+        print(w.url)
 
 
     async def clear(self, message, stripped, server):
