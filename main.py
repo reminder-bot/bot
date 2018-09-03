@@ -1294,7 +1294,6 @@ class BotClient(discord.AutoShardedClient):
 
             try:
                 for interval in session.query(Reminder).filter(Reminder.interval is not None):
-                    print(interval)
 
                     if interval.guild is None:
                         user = self.get_user(interval.channel)
