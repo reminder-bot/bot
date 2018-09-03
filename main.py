@@ -678,10 +678,22 @@ class BotClient(discord.AutoShardedClient):
                 err = True
 
         if not err:
+            webhook = ''
+
+            if isinstance(scope, discord.TextChannel):
+                for hook in await scope.webhooks():
+                    if hook.user.id == self.user.id:
+                        webhook = hook.url
+                        break
+
+                if webhook == '':
+                    w = await scope.create_webhook(name='Reminders #{}'.format(c.name))
+                    webhook = w.url
+
             if recurring:
-                reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, interval=interval, webhook='')
+                reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, guild=None if scope.guild is None else scope.guild.id, interval=interval, webhook=webhook)
             else:
-                reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, webhook='')
+                reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, guild=None if scope.guild is None else scope.guild.id, webhook=webhook)
 
             logger.info('{}: New: {}'.format(datetime.utcnow().strftime('%H:%M:%S'), reminder))
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/success').format(scope.mention, round(datetime_obj.timestamp() - time.time()))))
@@ -747,18 +759,18 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/no_perms').format(prefix=server.prefix)))
                 return
 
-            message.guild.get_channel(scope)
+            c = message.guild.get_channel(scope)
 
-            for hook in await message.guild.get_channel(scope).webhooks():
+            for hook in await c.webhooks():
                 if hook.user.id == self.user.id:
                     webhook = hook.url
                     break
 
             if webhook == '':
-                w = await message.channel.create_webhook(name='Reminders #{}'.format(message.channel.name))
+                w = await c.create_webhook(name='Reminders #{}'.format(c.name))
                 webhook = w.url
 
-        reminder = Reminder(time=msg_time, channel=scope, message=msg_text, webhook=webhook)
+        reminder = Reminder(time=msg_time, channel=scope, message=msg_text, guild=c.guild.id if webhook else None, webhook=webhook)
 
         await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/success').format(pref, scope, round(msg_time - time.time()))))
 
@@ -833,13 +845,26 @@ class BotClient(discord.AutoShardedClient):
 
             return
 
+        webhook = ''
+
         if pref == '#':
             if not self.perm_check(message, server):
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/no_perms')))
                 return
 
+            c = message.guild.get_channel(scope)
 
-        reminder = Reminder(time=msg_time, interval=msg_interval, channel=scope, message=msg_text, webhook='')
+            for hook in await c.webhooks():
+                if hook.user.id == self.user.id:
+                    webhook = hook.url
+                    break
+
+            if webhook == '':
+                w = await c.create_webhook(name='Reminders #{}'.format(c.name))
+                webhook = w.url
+
+
+        reminder = Reminder(time=msg_time, interval=msg_interval, channel=scope, guild=c.guild.id if webhook else None, message=msg_text, webhook=webhook)
 
         await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/success').format(pref, scope, round(msg_time - time.time()))))
 
@@ -1181,7 +1206,7 @@ class BotClient(discord.AutoShardedClient):
             self.times['loops'] += 1
 
             rems = []
-            reminders = session.query(Reminder).filter(Reminder.time <= time.time()).filter(Reminder.webhook == '').all()
+            reminders = session.query(Reminder).filter(Reminder.time <= time.time()).filter(Reminder.webhook.in_([None, ''])).all()
 
             for reminder in reminders:
 
@@ -1266,6 +1291,30 @@ class BotClient(discord.AutoShardedClient):
 
             except Exception as e:
                 logger.error('Ln 1052: {}'.format(e))
+
+            try:
+                for interval in session.query(Reminder).filter(Reminder.interval is not None):
+                    print(interval)
+
+                    if interval.guild is None:
+                        user = self.get_user(interval.channel)
+
+                        if user is not None:
+                            if not self.get_patrons(user.id, level=1):
+                                session.query(Reminder).filter(Reminder.id == interval.id).delete(synchronize_session='fetch')
+
+                    else:
+                        guild = self.get_guild(interval.guild)
+
+                        if guild is not None:
+                            members = guild.members
+
+                            if not any([self.get_patrons(m.id, level=1) for m in members]):
+                                rems.append(interval.id)
+
+            except Exception as e:
+                logger.error('Ln 1316'.format(e))
+
 
             if len(dels) > 0:
                 session.query(Deletes).filter(Deletes.map_id.in_(dels)).delete(synchronize_session='fetch')

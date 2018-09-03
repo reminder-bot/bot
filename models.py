@@ -23,6 +23,7 @@ class Reminder(Base):
     id = Column(Integer, primary_key=True, unique=True)
     message = Column(Unicode(2000))
     channel = Column(BigInteger)
+    guild = Column(BigInteger)
     time = Column(BigInteger)
     interval = Column(Integer)
 
