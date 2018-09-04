@@ -17,7 +17,6 @@ import traceback
 import concurrent.futures
 from functools import partial
 import logging
-from sqlalchemy import or_, and_
 
 
 class OneLineExceptionFormatter(logging.Formatter):
@@ -470,19 +469,18 @@ class BotClient(discord.AutoShardedClient):
             return
 
         try:
-            if await self.get_cmd(message):
+            if await self.get_cmd(message, server):
                 logger.info('Command: ' + message.content)
 
         except discord.errors.Forbidden:
             try:
-                await message.channel.send('Action forbidden. Please ensure I have the correct permissions.')
+                await message.channel.send(self.get_strings(server, 'no_perms_general'))
             except discord.errors.Forbidden:
                 logger.info('Twice Forbidden')
 
 
-    async def get_cmd(self, message):
+    async def get_cmd(self, message, server):
 
-        server = None if message.guild is None else session.query(Server).filter_by(id=message.guild.id).first()
         prefix = '$' if server is None else server.prefix
 
         if message.content.startswith('mbprefix'):
@@ -513,6 +511,9 @@ class BotClient(discord.AutoShardedClient):
             command_form = self.commands[command]
 
             if command_form[1] or server is not None:
+                if not message.guild.me.guild_permissions.manage_webhooks:
+                    await message.channel.send(self.get_strings(server, 'no_perms_webhook'))
+                    
                 await command_form[0](message, stripped, server)
                 return True
 
