@@ -696,7 +696,7 @@ class BotClient(discord.AutoShardedClient):
                         break
 
                 if webhook == '':
-                    w = await scope.create_webhook(name='Reminders #{}'.format(c.name))
+                    w = await scope.create_webhook(name='Reminders #{}'.format(scope.name))
                     webhook = w.url
 
             if recurring:
