@@ -540,16 +540,21 @@ class BotClient(discord.AutoShardedClient):
             return
 
         if stripped:
-            stripped += ' '
-            new = stripped[:stripped.find(' ')]
+            if message.author.guild_permissions.manage_guild:
 
-            if len(new) > 5:
-                await message.channel.send(self.get_strings(server, 'prefix/too_long'))
+                stripped += ' '
+                new = stripped[:stripped.find(' ')]
+
+                if len(new) > 5:
+                    await message.channel.send(self.get_strings(server, 'prefix/too_long'))
+
+                else:
+                    server.prefix = new
+
+                    await message.channel.send(self.get_strings(server, 'prefix/success').format(prefix=server.prefix))
 
             else:
-                server.prefix = new
-
-                await message.channel.send(self.get_strings(server, 'prefix/success').format(prefix=server.prefix))
+                await message.channel.send(self.get_strings(server, 'admin_required'))
 
         else:
             await message.channel.send(self.get_strings(server, 'prefix/no_argument').format(prefix=server.prefix))
@@ -579,7 +584,10 @@ class BotClient(discord.AutoShardedClient):
 
     async def language(self, message, stripped, server):
 
-        if stripped.lower() in self.languages.keys():
+        if not message.author.guild_permissions.manage_guild:
+            await message.channel.send(self.get_strings(server, 'admin_required'))
+
+        elif stripped.lower() in self.languages.keys():
             server.language = self.languages[stripped.lower()]
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'lang/set')))
 
