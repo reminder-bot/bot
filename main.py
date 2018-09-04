@@ -17,6 +17,7 @@ import traceback
 import concurrent.futures
 from functools import partial
 import logging
+from sqlalchemy import or_, and_
 
 
 class OneLineExceptionFormatter(logging.Formatter):
@@ -1206,7 +1207,7 @@ class BotClient(discord.AutoShardedClient):
             self.times['loops'] += 1
 
             rems = []
-            reminders = session.query(Reminder).filter(Reminder.time <= time.time()).filter(Reminder.webhook.in_([None, ''])).all()
+            reminders = session.query(Reminder).filter(Reminder.time <= time.time()).filter( (Reminder.webhook.in_([None, ''])) | (Reminder.time <= time.time() - 20) ).all()
 
             for reminder in reminders:
 
