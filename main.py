@@ -513,7 +513,7 @@ class BotClient(discord.AutoShardedClient):
             if command_form[1] or server is not None:
                 if not message.guild.me.guild_permissions.manage_webhooks:
                     await message.channel.send(self.get_strings(server, 'no_perms_webhook'))
-                    
+
                 await command_form[0](message, stripped, server)
                 return True
 
@@ -1216,7 +1216,7 @@ class BotClient(discord.AutoShardedClient):
             self.times['loops'] += 1
 
             rems = []
-            reminders = session.query(Reminder).filter(Reminder.time <= time.time()).filter( (Reminder.webhook.in_([None, ''])) | (Reminder.time <= time.time() - 20) ).all()
+            reminders = session.query(Reminder).filter(Reminder.time <= time.time()).filter( (Reminder.webhook.in_([None, ''])) | (Reminder.time <= time.time() - 10) ).all()
 
             for reminder in reminders:
 
