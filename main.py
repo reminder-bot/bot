@@ -1216,7 +1216,7 @@ class BotClient(discord.AutoShardedClient):
             self.times['loops'] += 1
 
             rems = []
-            reminders = session.query(Reminder).filter(Reminder.time <= time.time()).filter( (Reminder.webhook.in_([None, ''])) | (Reminder.time <= time.time() - 10) ).all()
+            reminders = session.query(Reminder).filter(Reminder.time <= time.time()).all()
 
             for reminder in reminders:
 
