@@ -474,10 +474,6 @@ class BotClient(discord.AutoShardedClient):
 
         prefix = '$' if server is None else server.prefix
 
-        if message.content.startswith('mbprefix'):
-            await self.change_prefix(message, ' '.join(message.content.split(' ')[1:]), server)
-            return True
-
         command = ''
         stripped = ''
 
@@ -528,8 +524,6 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def change_prefix(self, message, stripped, server):
-        if server is None:
-            return
 
         if stripped:
             if message.author.guild_permissions.manage_guild:
@@ -1148,8 +1142,6 @@ class BotClient(discord.AutoShardedClient):
 
             try:
                 for interval in session.query(Reminder).filter(Reminder.interval):
-
-                    print(interval)
 
                     guild = self.get_channel(interval.channel).guild
 
