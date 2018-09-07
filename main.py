@@ -1,4 +1,4 @@
-from models import Reminder, Server, Deletes, session
+from models import Reminder, Server, session
 
 import discord
 import msgpack

@@ -50,15 +50,6 @@ class Server(Base):
         return '<Server {}>'.format(self.id)
 
 
-class Deletes(Base):
-    __tablename__ = 'deletes'
-
-    map_id = Column(Integer, primary_key=True)
-    message = Column(BigInteger)
-    channel = Column(BigInteger)
-    time = Column(BigInteger)
-
-
 if passwd:
     engine = create_engine('mysql+pymysql://{user}:{passwd}@{host}/{db}?charset=utf8mb4'.format(user=user, passwd=passwd, host=host, db=database))
 else:
