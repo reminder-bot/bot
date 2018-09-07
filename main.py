@@ -1303,7 +1303,7 @@ class BotClient(discord.AutoShardedClient):
                 logger.error('Ln 1052: {}'.format(e))
 
             try:
-                for interval in session.query(Reminder).filter(Reminder.interval is not None):
+                for interval in session.query(Reminder).filter(Reminder.interval):
 
                     if interval.guild is None:
                         user = self.get_user(interval.channel)
