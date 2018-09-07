@@ -23,7 +23,6 @@ class Reminder(Base):
     id = Column(Integer, primary_key=True, unique=True)
     message = Column(Unicode(2000))
     channel = Column(BigInteger)
-    guild = Column(BigInteger)
     time = Column(BigInteger)
     interval = Column(Integer)
 
@@ -46,8 +45,6 @@ class Server(Base):
     timezone = Column( String(30) )
     blacklist = Column( NestedMutableJson )
     restrictions = Column( NestedMutableJson )
-    tags = Column( MutableJson )
-    autoclears = Column( MutableJson )
 
     def __repr__(self):
         return '<Server {}>'.format(self.id)
