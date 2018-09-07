@@ -1110,24 +1110,7 @@ class BotClient(discord.AutoShardedClient):
                             server_members = recipient.guild.members
 
                         if any([self.get_patrons(m.id, level=1) for m in server_members]):
-                            if reminder.message.startswith('-del_after_'):
-
-                                chars = ''
-
-                                for char in reminder.message[len('-del_after_'):]:
-                                    if char in '0123456789':
-                                        chars += char
-                                    else:
-                                        break
-
-                                wait_time = int(chars)
-
-                                message = await recipient.send(reminder.message[len('-del_after_{}'.format(chars)):])
-
-                                d = Deletes(time=time.time() + wait_time, channel=message.channel.id, message=message.id)
-
-                            else:
-                                await recipient.send(reminder.message)
+                            await recipient.send(reminder.message)
 
                             logger.info('{}: Administered interval to {} (Reset for {} seconds)'.format(datetime.utcnow().strftime('%H:%M:%S'), recipient.name, reminder.interval))
                         else:
