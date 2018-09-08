@@ -682,7 +682,7 @@ class BotClient(discord.AutoShardedClient):
                         break
 
                 if webhook == '':
-                    w = await scope.create_webhook(name='Reminders #{}'.format(scope.name))
+                    w = await scope.create_webhook(name='Reminders')
                     webhook = w.url
 
             if recurring:
@@ -762,7 +762,7 @@ class BotClient(discord.AutoShardedClient):
                     break
 
             if webhook == '':
-                w = await c.create_webhook(name='Reminders #{}'.format(c.name))
+                w = await c.create_webhook(name='Reminders')
                 webhook = w.url
 
         reminder = Reminder(time=msg_time, channel=scope, message=msg_text, webhook=webhook)
@@ -855,7 +855,7 @@ class BotClient(discord.AutoShardedClient):
                     break
 
             if webhook == '':
-                w = await c.create_webhook(name='Reminders #{}'.format(c.name))
+                w = await c.create_webhook(name='Reminders')
                 webhook = w.url
 
 
