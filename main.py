@@ -1115,6 +1115,7 @@ class BotClient(discord.AutoShardedClient):
                             logger.info('{}: Administered interval to {} (Reset for {} seconds)'.format(datetime.utcnow().strftime('%H:%M:%S'), recipient.name, reminder.interval))
                         else:
                             await recipient.send(self.get_strings( session.query(Server).filter_by(id=recipient.guild.id).first(), 'interval/removed'))
+                            rems.append(reminder.id)
                             continue
 
                         while reminder.time <= time.time():
@@ -1122,37 +1123,6 @@ class BotClient(discord.AutoShardedClient):
 
                 except Exception as e:
                     logger.error('Ln 1033: {}'.format(e))
-
-            try:
-                for interval in session.query(Reminder).filter(Reminder.interval):
-
-                    chan = self.get_channel(interval.channel)
-
-                    if chan is None:
-                        continue
-                    else:
-                        guild = chan.guild
-
-                    if guild is None:
-                        user = self.get_user(interval.channel)
-
-                        if user is not None:
-                            if not self.get_patrons(user.id, level=1):
-                                logger.info('Removing interval due to expired donorship')
-
-                                rems.append(interval.id)
-
-                    else:
-                        members = guild.members
-
-                        if not any([self.get_patrons(m.id, level=1) for m in members]):
-                            logger.info('Removing interval due to expired donorship')
-                            
-                            rems.append(interval.id)
-
-            except Exception as e:
-                logger.error('Ln 1316: {}'.format(e))
-
 
             if len(rems) > 0:
                 session.query(Reminder).filter(Reminder.id.in_(rems)).delete(synchronize_session='fetch')
