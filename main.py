@@ -1131,30 +1131,14 @@ class BotClient(discord.AutoShardedClient):
                     if chan is None:
                         continue
                     else:
-<<<<<<< HEAD
                         guild = chan.guild
-                    
+
                     if guild is None:
-=======
-                        logger.info('{}: Attempting to auto-delete a message...'.format(datetime.utcnow().strftime('%H:%M:%S')))
-                        try:
-                            await message.delete()
-                        except Exception as e:
-                            logger.error('Ln 1049: {}'.format(e))
-
-            except Exception as e:
-                logger.error('Ln 1052: {}'.format(e))
-
-            try:
-                for interval in session.query(Reminder).filter(Reminder.interval):
-
-                    if interval.guild is None:
->>>>>>> master
                         user = self.get_user(interval.channel)
 
                         if user is not None:
                             if not self.get_patrons(user.id, level=1):
-                                session.query(Reminder).filter(Reminder.id == interval.id).delete(synchronize_session='fetch')
+                                rems.append(interval.id)
 
                     else:
                         members = guild.members
