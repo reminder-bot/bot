@@ -498,7 +498,8 @@ class BotClient(discord.AutoShardedClient):
             command_form = self.commands[command]
 
             if command_form[1] or server is not None:
-                if not message.guild.me.guild_permissions.manage_webhooks:
+
+                if server is not None and not message.guild.me.guild_permissions.manage_webhooks:
                     await message.channel.send(self.get_strings(server, 'no_perms_webhook'))
 
                 await command_form[0](message, stripped, server)
