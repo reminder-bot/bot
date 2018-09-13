@@ -449,7 +449,7 @@ class BotClient(discord.AutoShardedClient):
     async def on_message(self, message):
         if message.guild is not None and session.query(Server).filter_by(id=message.guild.id).first() is None:
 
-            server = Server(id=message.guild.id, prefix='$', timezone='UTC', language='EN', blacklist={'data': []}, restrictions={'data': []}, tags={}, autoclears={})
+            server = Server(id=message.guild.id, prefix='$', timezone='UTC', language='EN', blacklist={'data': []}, restrictions={'data': []})
 
             session.add(server)
             session.commit()
