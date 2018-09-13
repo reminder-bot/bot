@@ -1,4 +1,4 @@
-from models import Reminder, Server, Deletes, session
+from models import Reminder, Server, session
 
 import discord
 import msgpack
@@ -70,10 +70,6 @@ class BotClient(discord.AutoShardedClient):
 
             'todo' : [self.todo, True],
             'todos' : [self.todo, False],
-            'tag' : [self.tag, False],
-
-            'autoclear' : [self.autoclear, False],
-            'clear' : [self.clear, False],
 
             'cleanup' : [self.cleanup, False],
             'welcome' : [self.welcome, False],
@@ -459,11 +455,6 @@ class BotClient(discord.AutoShardedClient):
             session.commit()
 
         server = None if message.guild is None else session.query(Server).filter_by(id=message.guild.id).first()
-        if server is not None and message.channel.id in map(int, server.autoclears.keys()):
-            d = Deletes(time=time.time() + server.autoclears[str(message.channel.id)], channel=message.channel.id, message=message.id)
-
-            session.add(d)
-            session.commit()
 
         if message.author.bot or message.content == None:
             return
@@ -482,10 +473,6 @@ class BotClient(discord.AutoShardedClient):
     async def get_cmd(self, message, server):
 
         prefix = '$' if server is None else server.prefix
-
-        if message.content.startswith('mbprefix'):
-            await self.change_prefix(message, ' '.join(message.content.split(' ')[1:]), server)
-            return True
 
         command = ''
         stripped = ''
@@ -537,8 +524,6 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def change_prefix(self, message, stripped, server):
-        if server is None:
-            return
 
         if stripped:
             if message.author.guild_permissions.manage_guild:
@@ -697,13 +682,13 @@ class BotClient(discord.AutoShardedClient):
                         break
 
                 if webhook == '':
-                    w = await scope.create_webhook(name='Reminders #{}'.format(scope.name))
+                    w = await scope.create_webhook(name='Reminders')
                     webhook = w.url
 
             if recurring:
-                reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, guild=None if scope.guild is None else scope.guild.id, interval=interval, webhook=webhook)
+                reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, interval=interval, webhook=webhook)
             else:
-                reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, guild=None if scope.guild is None else scope.guild.id, webhook=webhook)
+                reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, webhook=webhook)
 
             logger.info('{}: New: {}'.format(datetime.utcnow().strftime('%H:%M:%S'), reminder))
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/success').format(scope.mention, round(datetime_obj.timestamp() - time.time()))))
@@ -777,10 +762,10 @@ class BotClient(discord.AutoShardedClient):
                     break
 
             if webhook == '':
-                w = await c.create_webhook(name='Reminders #{}'.format(c.name))
+                w = await c.create_webhook(name='Reminders')
                 webhook = w.url
 
-        reminder = Reminder(time=msg_time, channel=scope, message=msg_text, guild=c.guild.id if webhook else None, webhook=webhook)
+        reminder = Reminder(time=msg_time, channel=scope, message=msg_text, webhook=webhook)
 
         await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/success').format(pref, scope, round(msg_time - time.time()))))
 
@@ -870,11 +855,11 @@ class BotClient(discord.AutoShardedClient):
                     break
 
             if webhook == '':
-                w = await c.create_webhook(name='Reminders #{}'.format(c.name))
+                w = await c.create_webhook(name='Reminders')
                 webhook = w.url
 
 
-        reminder = Reminder(time=msg_time, interval=msg_interval, channel=scope, guild=c.guild.id if webhook else None, message=msg_text, webhook=webhook)
+        reminder = Reminder(time=msg_time, interval=msg_interval, channel=scope, message=msg_text, webhook=webhook)
 
         await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/success').format(pref, scope, round(msg_time - time.time()))))
 
@@ -882,48 +867,6 @@ class BotClient(discord.AutoShardedClient):
         session.commit()
 
         logger.info('Registered a new interval for {}'.format(message.guild.name))
-
-
-    async def autoclear(self, message, stripped, server):
-
-        if not message.author.guild_permissions.manage_guild:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'admin_required')))
-            return
-
-        seconds = 10
-
-        for item in stripped.split(' '): # determin a seconds argument
-            try:
-                seconds = float(item)
-                break
-            except ValueError:
-                continue
-
-        if len(message.channel_mentions) == 0:
-            if message.channel.id in map(int, server.autoclears.keys()):
-                del server.autoclears[str(message.channel.id)]
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'autoclear/disable').format(message.channel.mention)))
-            else:
-                server.autoclears[str(message.channel.id)] = seconds
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'autoclear/enable').format(seconds, message.channel.mention)))
-
-        else:
-            disable_all = True
-            for i in message.channel_mentions:
-                if i.id not in map(int, server.autoclears.keys()):
-                    disable_all = False
-                server.autoclears[str(i.id)] = seconds
-
-
-            if disable_all:
-                for i in message.channel_mentions:
-                    del server.autoclears[str(i.id)]
-
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'autoclear/disable').format(', '.join(map(lambda x: x.name, message.channel_mentions)))))
-            else:
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'autoclear/enable').format(seconds)))
-
-        session.commit()
 
 
     async def blacklist(self, message, stripped, server):
@@ -964,28 +907,6 @@ class BotClient(discord.AutoShardedClient):
         session.commit()
 
 
-    async def clear(self, message, stripped, server):
-
-        if not message.author.guild_permissions.manage_messages:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'admin_required')))
-            return
-
-        if len(message.mentions) == 0:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'clear/no_argument')))
-            return
-
-        delete_list = []
-
-        async for m in message.channel.history(limit=1000):
-            if time.time() - m.created_at.timestamp() >= 1209600 or len(delete_list) > 99:
-                break
-
-            if m.author in message.mentions:
-                delete_list.append(m)
-
-        await message.channel.delete_messages(delete_list)
-
-
     async def restrict(self, message, stripped, server):
 
         if not message.author.guild_permissions.manage_guild:
@@ -1016,69 +937,6 @@ class BotClient(discord.AutoShardedClient):
 
             else:
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'restrict/allowed').format(' '.join(['<@&' + str(i) + '>' for i in server.restrictions['data']]))))
-
-        session.commit()
-
-
-    async def tag(self, message, stripped, server):
-
-        not_done = True
-
-        splits = stripped.split(' ')
-
-        if stripped == '':
-            if len(server.tags) == 0:
-                await message.channel.send(embed=discord.Embed(title='No Tags!', description=self.get_strings(server, 'tags/help').format(prefix=server.prefix)))
-            else:
-                await message.channel.send(embed=discord.Embed(title='Tags', description='\n'.join(server.tags.keys())))
-
-            not_done = False
-
-        elif len(splits) > 1:
-            content = ' '.join(splits[1:])
-
-            if splits[0] in ['add', 'new']:
-                if len(server.tags) > 5 and not self.get_patrons(message.author.id):
-                    await message.channel.send(self.get_strings(server, 'tags/invalid_count').format(prefix=server.prefix))
-                    return
-
-                elif len(content) > 80 and not self.get_patrons(message.author.id):
-                    await message.channel.send(self.get_strings(server, 'tags/invalid_chars'))
-                    return
-
-                content = content.split(':')
-                if len(content) == 1:
-                    await message.channel.send(self.get_strings(server, 'tags/colon'))
-
-                else:
-                    if content[0].startswith(('add', 'new', 'remove', 'del')):
-                        await message.channel.send(self.get_strings(server, 'tags/illegal'))
-                        return
-
-                    server.tags[content[0]] = ':'.join(content[1:]).strip()
-                    await message.channel.send(self.get_strings(server, 'tags/added').format(content[0]))
-
-                not_done = False
-
-            elif splits[0] in ['remove', 'del']:
-                name = ' '.join(splits[1:])
-                if name not in server.tags.keys():
-                    await message.channel.send(self.get_strings(server, 'tags/unfound'))
-                    return
-
-                del server.tags[name]
-                await message.channel.send(self.get_strings(server, 'tags/deleted').format(name))
-
-                not_done = False
-
-        if not_done:
-            name = ' '.join(splits).strip()
-
-            if name not in server.tags.keys():
-                await message.channel.send(self.get_strings(server, 'tags/help').format(prefix=server.prefix))
-                return
-
-            await message.channel.send(server.tags[name])
 
         session.commit()
 
@@ -1252,24 +1110,7 @@ class BotClient(discord.AutoShardedClient):
                             server_members = recipient.guild.members
 
                         if any([self.get_patrons(m.id, level=1) for m in server_members]):
-                            if reminder.message.startswith('-del_after_'):
-
-                                chars = ''
-
-                                for char in reminder.message[len('-del_after_'):]:
-                                    if char in '0123456789':
-                                        chars += char
-                                    else:
-                                        break
-
-                                wait_time = int(chars)
-
-                                message = await recipient.send(reminder.message[len('-del_after_{}'.format(chars)):])
-
-                                d = Deletes(time=time.time() + wait_time, channel=message.channel.id, message=message.id)
-
-                            else:
-                                await recipient.send(reminder.message)
+                            await recipient.send(reminder.message)
 
                             logger.info('{}: Administered interval to {} (Reset for {} seconds)'.format(datetime.utcnow().strftime('%H:%M:%S'), recipient.name, reminder.interval))
                         else:
@@ -1283,16 +1124,18 @@ class BotClient(discord.AutoShardedClient):
                     logger.error('Ln 1033: {}'.format(e))
 
             try:
-                dels = []
+                for interval in session.query(Reminder).filter(Reminder.interval):
 
-                for d in session.query(Deletes).filter(Deletes.time <= time.time()):
-                    dels.append(d.map_id)
+                    chan = self.get_channel(interval.channel)
 
-                    message = await self.get_channel(d.channel).get_message(d.message)
-
-                    if message is None or message.pinned:
-                        pass
+                    if chan is None:
+                        continue
                     else:
+<<<<<<< HEAD
+                        guild = chan.guild
+                    
+                    if guild is None:
+=======
                         logger.info('{}: Attempting to auto-delete a message...'.format(datetime.utcnow().strftime('%H:%M:%S')))
                         try:
                             await message.delete()
@@ -1306,6 +1149,7 @@ class BotClient(discord.AutoShardedClient):
                 for interval in session.query(Reminder).filter(Reminder.interval):
 
                     if interval.guild is None:
+>>>>>>> master
                         user = self.get_user(interval.channel)
 
                         if user is not None:
@@ -1313,20 +1157,14 @@ class BotClient(discord.AutoShardedClient):
                                 session.query(Reminder).filter(Reminder.id == interval.id).delete(synchronize_session='fetch')
 
                     else:
-                        guild = self.get_guild(interval.guild)
+                        members = guild.members
 
-                        if guild is not None:
-                            members = guild.members
-
-                            if not any([self.get_patrons(m.id, level=1) for m in members]):
-                                rems.append(interval.id)
+                        if not any([self.get_patrons(m.id, level=1) for m in members]):
+                            rems.append(interval.id)
 
             except Exception as e:
-                logger.error('Ln 1316'.format(e))
+                logger.error('Ln 1316: {}'.format(e))
 
-
-            if len(dels) > 0:
-                session.query(Deletes).filter(Deletes.map_id.in_(dels)).delete(synchronize_session='fetch')
 
             if len(rems) > 0:
                 session.query(Reminder).filter(Reminder.id.in_(rems)).delete(synchronize_session='fetch')
