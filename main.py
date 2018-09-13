@@ -1138,12 +1138,16 @@ class BotClient(discord.AutoShardedClient):
 
                         if user is not None:
                             if not self.get_patrons(user.id, level=1):
+                                logger.info('Removing interval due to expired donorship')
+
                                 rems.append(interval.id)
 
                     else:
                         members = guild.members
 
                         if not any([self.get_patrons(m.id, level=1) for m in members]):
+                            logger.info('Removing interval due to expired donorship')
+                            
                             rems.append(interval.id)
 
             except Exception as e:
