@@ -191,10 +191,6 @@ class BotClient(discord.AutoShardedClient):
         return end_string
 
 
-    def count_reminders(self, loc):
-        return session.query(Reminder).filter_by(channel=loc).count()
-
-
     def get_patrons(self, memberid, level=2):
         if self.patreon:
             p_servers = [client.get_guild(x) for x in self.patreon_servers]
@@ -659,10 +655,6 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/no_perms').format(prefix=server.prefix)))
                 err = True
 
-        if self.count_reminders(scope.id) > 5 and not self.get_patrons(message.author.id):
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_count').format(prefix=server.prefix)))
-            err = True
-
         if self.length_check(message, message_crop) is not True:
             if self.length_check(message, message_crop) == '150':
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_chars').format(len(message_crop), prefix=server.prefix)))
@@ -735,10 +727,6 @@ class BotClient(discord.AutoShardedClient):
         args.pop(0)
 
         msg_text = ' '.join(args)
-
-        if self.count_reminders(scope) > 5 and not self.get_patrons(message.author.id):
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_count').format(prefix=server.prefix)))
-            return
 
         if self.length_check(message, msg_text) is not True:
             if self.length_check(message, msg_text) == '150':
