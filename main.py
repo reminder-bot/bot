@@ -1,7 +1,6 @@
 from models import Reminder, Server, session
 
 import discord
-import msgpack
 import pytz
 import asyncio
 import aiohttp
