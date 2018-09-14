@@ -41,6 +41,8 @@ class BotClient(discord.AutoShardedClient):
     def __init__(self, *args, **kwargs):
         super(BotClient, self).__init__(*args, **kwargs)
 
+        self.running = False
+
         self.times = {
             'last_loop' : time.time(),
             'start' : 0,
@@ -349,7 +351,7 @@ class BotClient(discord.AutoShardedClient):
 
         for channel in guild.text_channels:
             if channel.permissions_for(guild.me).send_messages and not channel.is_nsfw():
-                await channel.send('Thank you for adding reminder-bot! To begin, type `$help`, `mbprefix`, `$lang` or `$timezone` to set your timezone.')
+                await channel.send('Thank you for adding reminder-bot! To begin, type `$help`!')
                 break
             else:
                 continue
@@ -399,10 +401,12 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def on_ready(self):
+
+        self.running = True
+
         logger.info('Logged in as')
         logger.info(self.user.name)
         logger.info(self.user.id)
-        logger.info(self.user.avatar)
         logger.info('------------')
 
 
@@ -1054,9 +1058,14 @@ class BotClient(discord.AutoShardedClient):
     async def check_reminders(self):
         await self.wait_until_ready()
 
+        while not self.running:
+            await asyncio.sleep(1)
+
         self.times['start'] = time.time()
 
         while not self.is_closed():
+
+            print('Loop opening')
 
             self.times['last_loop'] = time.time()
             self.times['loops'] += 1
