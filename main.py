@@ -1085,7 +1085,6 @@ class BotClient(discord.AutoShardedClient):
                 recipient = self.get_channel(reminder.channel)
 
                 if recipient is None:
-                    logger.warning('{}: No channel found. Looking up user'.format(datetime.utcnow().strftime('%H:%M:%S')))
                     recipient = self.get_user(reminder.channel)
                     is_user = True
 
@@ -1120,6 +1119,7 @@ class BotClient(discord.AutoShardedClient):
 
                 except Exception as e:
                     logger.error('Ln 1033: {}'.format(e))
+                    rems.append(reminder.id)
 
             if len(rems) > 0:
                 session.query(Reminder).filter(Reminder.id.in_(rems)).delete(synchronize_session='fetch')
