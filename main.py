@@ -1061,11 +1061,10 @@ class BotClient(discord.AutoShardedClient):
         while not self.running:
             await asyncio.sleep(1)
 
+        print('Loop opening')
         self.times['start'] = time.time()
 
         while not self.is_closed():
-
-            print('Loop opening')
 
             self.times['last_loop'] = time.time()
             self.times['loops'] += 1
