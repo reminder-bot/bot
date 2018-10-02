@@ -1070,7 +1070,7 @@ class BotClient(discord.AutoShardedClient):
             self.times['loops'] += 1
 
             rems = []
-            reminders = session.query(Reminder).filter(Reminder.time <= time.time()).all()
+            reminders = session.query(Reminder).filter(Reminder.time + 10 <= time.time()).all()
 
             for reminder in reminders:
 
