@@ -652,6 +652,7 @@ class BotClient(discord.AutoShardedClient):
                 message_crop = message_crop.rsplit(self.get_strings(server, 'natural/every'), 1)[0]
             else:
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/donor')))
+                return
 
         if isinstance(scope, discord.TextChannel):
             if not self.perm_check(message, server):
