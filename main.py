@@ -68,6 +68,7 @@ class BotClient(discord.AutoShardedClient):
             'remind' : [self.remind, False],
             'interval' : [self.interval, False],
             'del' : [self.delete, True],
+            'look' : [self.look, True],
 
             'todo' : [self.todo, True],
             'todos' : [self.todo, False],
@@ -1054,6 +1055,32 @@ class BotClient(discord.AutoShardedClient):
                 continue
 
         await message.channel.send(self.get_strings(server, 'del/count').format(dels))
+
+
+    async def look(self, message, stripped, server):
+
+        await message.channel.send(self.get_strings(server, 'look/listing'))
+
+        n = 1
+
+        reminders = session.query(Reminder).filter(Reminder.channel == message.channel.id).all()
+
+        s = ''
+        for rem in reminders:
+            s_temp = '\'' + rem.message + '\' goes off at ' + datetime.fromtimestamp(rem.time, pytz.timezone('UTC' if server is None else server.timezone)).strftime('%Y-%m-%d %H:%M:%S')
+
+            string = self.clean_string(s_temp)
+
+            if len(s) + len(string) > 2000:
+                await message.channel.send(s)
+                s = string
+            else:
+                s += string
+
+            n += 1
+
+        if s:
+            await message.channel.send(s)
 
 
     async def check_reminders(self):
