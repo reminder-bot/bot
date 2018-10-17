@@ -1067,7 +1067,7 @@ class BotClient(discord.AutoShardedClient):
 
         s = ''
         for rem in reminders:
-            s_temp = '\'' + rem.message + '\' goes off at ' + datetime.fromtimestamp(rem.time, pytz.timezone('UTC' if server is None else server.timezone)).strftime('%Y-%m-%d %H:%M:%S')
+            s_temp = '\'{}\' goes off at {}\n'.format(rem.message, datetime.fromtimestamp(rem.time, pytz.timezone('UTC' if server is None else server.timezone)).strftime('%Y-%m-%d %H:%M:%S'))
 
             string = self.clean_string(s_temp)
 
