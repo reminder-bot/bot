@@ -649,6 +649,9 @@ class BotClient(discord.AutoShardedClient):
                 if interval < 8:
                     await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/8_seconds')))
                     err = True
+                elif interval > 1576800000:
+                    await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/long_time')))
+                    err = True
 
                 message_crop = message_crop.rsplit(self.get_strings(server, 'natural/every'), 1)[0]
             else:
