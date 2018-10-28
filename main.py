@@ -5,6 +5,7 @@ import pytz
 import asyncio
 import aiohttp
 import dateparser
+import sqlalchemy
 
 from datetime import datetime
 import time
@@ -1155,7 +1156,10 @@ class BotClient(discord.AutoShardedClient):
                 session.query(Reminder).filter(Reminder.id.in_(rems)).delete(synchronize_session='fetch')
 
 
-            session.commit()
+            try:
+                session.commit()
+            except sqlalchemy.exc.InvalidRequestError:
+                session.rollback()
             await asyncio.sleep(5)
 
 client = BotClient()
