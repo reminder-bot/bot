@@ -387,7 +387,7 @@ class BotClient(discord.AutoShardedClient):
     def update(self, *args):
         for fn in os.listdir(self.config.get('DEFAULT', 'strings_location')):
             if fn.startswith('strings_'):
-                with open(self.config.get('DEFAULT', 'strings_location') + fn, 'r') as f:
+                with open(self.config.get('DEFAULT', 'strings_location') + fn, 'r', encoding='utf-8') as f:
                     a = f.read()
                     try:
                         self.strings[fn[8:10]] = eval(a)
