@@ -265,6 +265,11 @@ class BotClient(discord.AutoShardedClient):
 
 
     def format_time(self, text, server):
+        invert = False
+        if text[0] == '-':
+            invert = True
+            text = text[1:]
+
         if '/' in text or ':' in text:
             date = datetime.now(pytz.timezone(server.timezone))
 
@@ -322,7 +327,11 @@ class BotClient(discord.AutoShardedClient):
                     except ValueError:
                         return None
 
-            time_sec = round(time.time() + seconds + (minutes * 60) + (hours * 3600) + (days * 86400) + int(current_buffer))
+            full = seconds + (minutes * 60) + (hours * 3600) + (days * 86400) + int(current_buffer)
+            if invert:
+                time_sec = round(time.time() - full)
+            else:
+                time_sec = round(time.time() + full)
             return time_sec
 
 
