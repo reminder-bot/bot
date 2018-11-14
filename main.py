@@ -64,6 +64,7 @@ class BotClient(discord.AutoShardedClient):
             'timezone' : [self.timezone, False],
             'clock' : [self.clock, False],
             'lang' : [self.language, False],
+            'offset' : [self.offset_reminders, False],
 
             'natural' : [self.natural, False],
             'remind' : [self.remind, False],
@@ -1098,7 +1099,8 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'offset/invalid_time')))
 
             else:
-                reminders = session.query(Reminder).filter(Reminder.channel._in([x.id for x in message.guild.channels]))
+                t -= time.time()
+                reminders = session.query(Reminder).filter(Reminder.channel.in_([x.id for x in message.guild.channels]))
 
                 for r in reminders:
                     r.time += t
