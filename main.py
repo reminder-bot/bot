@@ -1087,6 +1087,25 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(s)
 
 
+    async def offset_reminders(self, message, stripped, server):
+        if not self.perm_check(message, server):
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/no_perms').format(prefix=server.prefix)))
+
+        else:
+            t = self.format_time(stripped, server)
+
+            if t is None:
+                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'offset/invalid_time')))
+
+            else:
+                reminders = session.query(Reminder).filter(Reminder.channel._in([x.id for x in message.guild.channels]))
+
+                for r in reminders:
+                    r.time += t
+
+                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'offset/success').format(t)))
+
+
     async def check_reminders(self):
         await self.wait_until_ready()
 
