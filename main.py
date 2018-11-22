@@ -75,7 +75,6 @@ class BotClient(discord.AutoShardedClient):
             'todo' : [self.todo, True],
             'todos' : [self.todo, False],
 
-            'cleanup' : [self.cleanup, False],
             'welcome' : [self.welcome, False],
             'ping' : [self.time_stats, True],
         }
