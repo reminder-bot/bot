@@ -369,14 +369,6 @@ class BotClient(discord.AutoShardedClient):
                 continue
 
 
-    async def cleanup(self, *args):
-        all_ids = [g.id for g in self.guilds]
-
-        session.query(Server).filter(Server.id.notin_(all_ids)).delete(synchronize_session='fetch')
-
-        session.commit()
-
-
     async def time_stats(self, message, *args):
         uptime = self.times['last_loop'] - self.times['start']
         loop_time = uptime / self.times['loops']
@@ -424,8 +416,6 @@ class BotClient(discord.AutoShardedClient):
 
     async def on_guild_remove(self, guild):
         await self.send()
-
-        await self.cleanup()
 
 
     async def on_guild_join(self, guild):
