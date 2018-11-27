@@ -29,6 +29,9 @@ class Reminder(Base):
     webhook = Column(String(200))
     avatar = Column(Text)
 
+    method = Column(Text)
+    embed = Column(Integer, nullable=True)
+
     mysql_charset = 'utf8mb4'
 
     def __repr__(self):

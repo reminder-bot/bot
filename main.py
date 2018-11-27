@@ -664,6 +664,14 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/no_perms').format(prefix=server.prefix)))
                 err = True
 
+        else:
+            s = scope.dm_channel
+            if s is None:
+                s = await scope.create_dm()
+                s = scope.dm_channel
+
+            scope = s
+
         if self.length_check(message, message_crop) is not True:
             if self.length_check(message, message_crop) == '150':
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_chars').format(len(message_crop), prefix=server.prefix)))
@@ -674,7 +682,7 @@ class BotClient(discord.AutoShardedClient):
                 err = True
 
         if not err:
-            webhook = ''
+            webhook = None
 
             if isinstance(scope, discord.TextChannel):
                 for hook in await scope.webhooks():
@@ -682,14 +690,14 @@ class BotClient(discord.AutoShardedClient):
                         webhook = hook.url
                         break
 
-                if webhook == '':
+                if webhook is None:
                     w = await scope.create_webhook(name='Reminders')
                     webhook = w.url
 
             if recurring:
-                reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, interval=interval, webhook=webhook)
+                reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, interval=interval, webhook=webhook, method='natural')
             else:
-                reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, webhook=webhook)
+                reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, webhook=webhook, method='natural')
 
             logger.info('{}: New: {}'.format(datetime.utcnow().strftime('%H:%M:%S'), reminder))
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/success').format(scope.mention, round(datetime_obj.timestamp() - time.time()))))
@@ -700,7 +708,7 @@ class BotClient(discord.AutoShardedClient):
 
     async def remind(self, message, stripped, server):
 
-        webhook = ''
+        webhook = None
 
         args = stripped.split(' ')
 
@@ -758,9 +766,14 @@ class BotClient(discord.AutoShardedClient):
                     webhook = hook.url
                     break
 
-            if webhook == '':
+            if webhook is None:
                 w = await c.create_webhook(name='Reminders')
                 webhook = w.url
+
+        else:
+            m = message.guild.get_member(scope)
+            pass # TODO
+
 
         reminder = Reminder(time=msg_time, channel=scope, message=msg_text, webhook=webhook)
 
@@ -837,7 +850,7 @@ class BotClient(discord.AutoShardedClient):
 
             return
 
-        webhook = ''
+        webhook = None
 
         if pref == '#':
             if not self.perm_check(message, server):
@@ -851,7 +864,7 @@ class BotClient(discord.AutoShardedClient):
                     webhook = hook.url
                     break
 
-            if webhook == '':
+            if webhook is None:
                 w = await c.create_webhook(name='Reminders')
                 webhook = w.url
 
