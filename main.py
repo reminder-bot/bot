@@ -667,7 +667,7 @@ class BotClient(discord.AutoShardedClient):
         else:
             s = scope.dm_channel
             if s is None:
-                s = await scope.create_dm()
+                await scope.create_dm()
                 s = scope.dm_channel
 
             scope = s
@@ -772,10 +772,14 @@ class BotClient(discord.AutoShardedClient):
 
         else:
             m = message.guild.get_member(scope)
-            pass # TODO
+            s = m.dm_channel
+            if s is None:
+                await m.create_dm()
+                s = m.dm_channel
 
+            scope = s.id
 
-        reminder = Reminder(time=msg_time, channel=scope, message=msg_text, webhook=webhook)
+        reminder = Reminder(time=msg_time, channel=scope, message=msg_text, webhook=webhook, method='remind')
 
         await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/success').format(pref, scope, round(msg_time - time.time()))))
 
@@ -868,8 +872,16 @@ class BotClient(discord.AutoShardedClient):
                 w = await c.create_webhook(name='Reminders')
                 webhook = w.url
 
+        else:
+            m = message.guild.get_member(scope)
+            s = m.dm_channel
+            if s is None:
+                await m.create_dm()
+                s = m.dm_channel
 
-        reminder = Reminder(time=msg_time, interval=msg_interval, channel=scope, message=msg_text, webhook=webhook)
+            scope = s.id
+
+        reminder = Reminder(time=msg_time, interval=msg_interval, channel=scope, message=msg_text, webhook=webhook, method='interval')
 
         await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/success').format(pref, scope, round(msg_time - time.time()))))
 
