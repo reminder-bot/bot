@@ -700,7 +700,11 @@ class BotClient(discord.AutoShardedClient):
                 reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, webhook=webhook, method='natural')
 
             logger.info('{}: New: {}'.format(datetime.utcnow().strftime('%H:%M:%S'), reminder))
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/success').format(scope.mention, round(datetime_obj.timestamp() - time.time()))))
+            if isinstance(scope, discord.TextChannel):
+                tag = scope.mention
+            else:
+                tag = scope.recipient.mention
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'natural/success').format(tag, round(datetime_obj.timestamp() - time.time()))))
 
             session.add(reminder)
             session.commit()
@@ -1169,8 +1173,11 @@ class BotClient(discord.AutoShardedClient):
 
                 try:
                     if reminder.interval is None:
-                        await recipient.send(reminder.message)
-                        logger.info('{}: Administered reminder to {}'.format(datetime.utcnow().strftime('%H:%M:%S'), recipient.name))
+                        if reminder.embed is None:
+                            await recipient.send(reminder.message)
+                        else:
+                            await recipient.send(embed=discord.Embed(description=reminder.message, color=reminder.embed))
+                        logger.info('{}: Administered reminder to {}'.format(datetime.utcnow().strftime('%H:%M:%S'), recipient))
 
                     else:
                         rems.remove(reminder.id)
@@ -1181,7 +1188,11 @@ class BotClient(discord.AutoShardedClient):
                             server_members = recipient.guild.members
 
                         if any([self.get_patrons(m.id, level=1) for m in server_members]):
-                            await recipient.send(reminder.message)
+
+                            if reminder.embed is None:
+                                await recipient.send(reminder.message)
+                            else:
+                                await recipient.send(embed=discord.Embed(description=reminder.message, color=reminder.embed))
 
                             logger.info('{}: Administered interval to {} (Reset for {} seconds)'.format(datetime.utcnow().strftime('%H:%M:%S'), recipient.name, reminder.interval))
                         else:
