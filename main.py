@@ -664,7 +664,7 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/no_perms').format(prefix=server.prefix)))
                 err = True
 
-        else:
+        elif scope is not None:
             s = scope.dm_channel
             if s is None:
                 await scope.create_dm()
