@@ -1039,7 +1039,7 @@ class BotClient(discord.AutoShardedClient):
 
             li = [ch.id for ch in message.guild.channels] ## get all channels and their ids in the current server
         else:
-            li = [message.author.id]
+            li = [message.channel.id]
 
         await message.channel.send(self.get_strings(server, 'del/listing'))
 
@@ -1049,7 +1049,7 @@ class BotClient(discord.AutoShardedClient):
 
         s = ''
         for rem in reminders:
-            s_temp = '**' + str(n) + '**: \'' + rem.message + '\' (' + datetime.fromtimestamp(rem.time, pytz.timezone('UTC' if server is None else server.timezone)).strftime('%Y-%m-%d %H:%M:%S') + ') ' + ('' if self.get_channel(rem.channel) is None else self.get_channel(rem.channel).mention) + '\n'
+            s_temp = '**' + str(n) + '**: \'' + rem.message + '\' (' + datetime.fromtimestamp(rem.time, pytz.timezone('UTC' if server is None else server.timezone)).strftime('%Y-%m-%d %H:%M:%S') + ') ' + ('' if self.get_channel(rem.channel) is None else self.get_channel(rem.channel).__str__()) + '\n'
 
             string = self.clean_string(s_temp)
 
