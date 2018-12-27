@@ -42,13 +42,7 @@ class BotClient(discord.AutoShardedClient):
     def __init__(self, *args, **kwargs):
         super(BotClient, self).__init__(*args, **kwargs)
 
-        self.running = False
-
-        self.times = {
-            'last_loop' : time.time(),
-            'start' : 0,
-            'loops' : 0
-        }
+        self.start_time = time.time()
 
         self.commands = {
         ## format: 'command' : [<function>, <works in DMs?>]
@@ -369,8 +363,7 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def time_stats(self, message, *args):
-        uptime = self.times['last_loop'] - self.times['start']
-        loop_time = uptime / self.times['loops']
+        uptime = time.time() - self.start_time
 
         message_ts = message.created_at.timestamp()
 
@@ -380,9 +373,8 @@ class BotClient(discord.AutoShardedClient):
 
         await m.edit(content='''
         Uptime: {}s
-        Loop Time: {}ms (Ideal: 2500ms)
         Ping: {}ms
-        '''.format(round(uptime), round(loop_time*1000), round(ping*1000)))
+        '''.format(round(uptime), round(ping*1000)))
 
 
     def update(self, *args):
@@ -404,8 +396,6 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def on_ready(self):
-
-        self.running = True
 
         logger.info('Logged in as')
         logger.info(self.user.name)
@@ -1135,89 +1125,6 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'offset/success').format(t)))
 
 
-    async def check_reminders(self):
-        await self.wait_until_ready()
-
-        while not self.running:
-            await asyncio.sleep(1)
-
-        print('Loop opening')
-        self.times['start'] = time.time()
-
-        while not self.is_closed():
-
-            self.times['last_loop'] = time.time()
-            self.times['loops'] += 1
-
-            rems = []
-            reminders = session.query(Reminder).filter(Reminder.time + 10 <= time.time()).all()
-
-            for reminder in reminders:
-
-                rems.append(reminder.id)
-                logger.info('Looping for reminder {}'.format(reminder))
-
-                if reminder.interval is not None and reminder.interval < 8:
-                    continue
-
-                is_user = False
-                recipient = self.get_channel(reminder.channel)
-
-                if recipient is None:
-                    recipient = self.get_user(reminder.channel)
-                    is_user = True
-
-                if recipient is None:
-                    logger.warning('{}: Failed to locate channel'.format(datetime.utcnow().strftime('%H:%M:%S')))
-                    continue
-
-                try:
-                    if reminder.interval is None:
-                        if reminder.embed is None:
-                            await recipient.send(reminder.message)
-                        else:
-                            await recipient.send(embed=discord.Embed(description=reminder.message, color=reminder.embed))
-                        logger.info('{}: Administered reminder to {}'.format(datetime.utcnow().strftime('%H:%M:%S'), recipient))
-
-                    else:
-                        rems.remove(reminder.id)
-
-                        if is_user:
-                            server_members = [recipient]
-                        else:
-                            server_members = recipient.guild.members
-
-                        if any([self.get_patrons(m.id, level=1) for m in server_members]):
-
-                            if reminder.embed is None:
-                                await recipient.send(reminder.message)
-                            else:
-                                await recipient.send(embed=discord.Embed(description=reminder.message, color=reminder.embed))
-
-                            logger.info('{}: Administered interval to {} (Reset for {} seconds)'.format(datetime.utcnow().strftime('%H:%M:%S'), recipient.name, reminder.interval))
-                        else:
-                            await recipient.send(self.get_strings( session.query(Server).filter_by(id=recipient.guild.id).first(), 'interval/removed'))
-                            rems.append(reminder.id)
-                            continue
-
-                        while reminder.time <= time.time():
-                            reminder.time += reminder.interval ## change the time for the next interval
-
-                except Exception as e:
-                    logger.error('Ln 1033: {}'.format(e))
-                    rems.append(reminder.id)
-
-            if len(rems) > 0:
-                session.query(Reminder).filter(Reminder.id.in_(rems)).delete(synchronize_session='fetch')
-
-
-            try:
-                session.commit()
-            except sqlalchemy.exc.InvalidRequestError:
-                session.rollback()
-            await asyncio.sleep(5)
-
 client = BotClient()
 
-client.loop.create_task(client.check_reminders())
 client.run(client.config.get('DEFAULT', 'token'), max_messages=50)

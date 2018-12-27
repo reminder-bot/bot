@@ -28,6 +28,7 @@ class Reminder(Base):
 
     webhook = Column(String(200))
     avatar = Column(Text)
+    username = Column(String(32))
 
     method = Column(Text)
     embed = Column(Integer, nullable=True)
