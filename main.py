@@ -118,75 +118,34 @@ class BotClient(discord.AutoShardedClient):
         return [x.result() for x in a][0]
 
 
-    def clean_string(self, string):
-        in_chevron = False
-        in_mention = False
-        id = ''
-        cut = ''
-        end_string = ''
-
-        for char in string:
-            if in_mention:
-                if char == '!':
-                    cut += char
-                    continue
-
-                elif char in '0123456789':
-                    id += char
-                    cut += char
-                    continue
-
-                elif char == '>':
-                    cut += char
-                    a = self.get_user(int(id))
-                    if a is None:
-                        end_string += cut
-
-                    else:
-                        end_string += str(a)
-
-                    in_chevron = False
-                    in_mention = False
-                    cut = ''
-                    id = ''
-                    continue
-
+    def clean_string(self, string, guild):
+        if guild is None:
+            return string
+        else:
+            parts = ['']
+            for char in string:
+                if char in '<>':
+                    parts.append(char)
                 else:
-                    end_string += cut
-                    in_chevron = False
-                    in_mention = False
-                    cut = ''
-                    id = ''
+                    parts[-1] += char
 
-            elif in_chevron:
-                if char == '@':
-                    in_mention = True
-                    cut += char
-                    continue
-                else:
-                    in_chevron = False
-                    end_string += cut
-                    cut = ''
+            new = []
+            for piece in parts:
+                new_piece = piece
+                if len(piece) > 3 and piece[1] == '@' and all(x in '0123456789' for x in piece[3:]):
+                    if piece[2] in '0123456789!':
+                        uid = int(''.join(x for x in piece if x in '0123456789'))
+                        user = guild.get_member(uid)
+                        new_piece = '`@{}`'.format(user)
 
-            elif char == '<':
-                in_chevron = True
-                cut += char
-                continue
+                    elif piece[2] == '&':
+                        rid = int(''.join(x for x in piece if x in '0123456789'))
+                        role = guild.get_role(rid)
+                        new_piece = '`@@{}`'.format(role)
 
-            elif char == '>':
-                in_chevron = False
+                new.append(new_piece)
 
-                end_string += cut
-                in_chevron = False
-                in_mention = False
-                cut = ''
-                id = ''
-
-            end_string += char
-
-        end_string += cut
-
-        return end_string
+            return ''.join(new)
 
 
     def get_patrons(self, memberid, level=2):
@@ -1039,9 +998,10 @@ class BotClient(discord.AutoShardedClient):
 
         s = ''
         for rem in reminders:
-            s_temp = '**' + str(n) + '**: \'' + rem.message + '\' (' + datetime.fromtimestamp(rem.time, pytz.timezone('UTC' if server is None else server.timezone)).strftime('%Y-%m-%d %H:%M:%S') + ') ' + ('' if self.get_channel(rem.channel) is None else self.get_channel(rem.channel).__str__()) + '\n'
-
-            string = self.clean_string(s_temp)
+            string = '''**{}**: '{}' *<#{}>*\n'''.format(
+                n,
+                self.clean_string(rem.message, message.guild),
+                rem.channel)
 
             if len(s) + len(string) > 2000:
                 await message.channel.send(s)
@@ -1081,28 +1041,28 @@ class BotClient(discord.AutoShardedClient):
 
     async def look(self, message, stripped, server):
 
-        await message.channel.send(self.get_strings(server, 'look/listing'))
-
-        n = 1
-
         reminders = session.query(Reminder).filter(Reminder.channel == message.channel.id).all()
 
-        s = ''
-        for rem in reminders:
-            s_temp = '\'{}\' goes off at {}\n'.format(rem.message, datetime.fromtimestamp(rem.time, pytz.timezone('UTC' if server is None else server.timezone)).strftime('%Y-%m-%d %H:%M:%S'))
+        if len(reminders) > 0:
+            await message.channel.send(self.get_strings(server, 'look/listing'))
 
-            string = self.clean_string(s_temp)
+            s = ''
+            for rem in reminders:
+                string = '\'{}\' *{}* **{}**\n'.format(
+                    self.clean_string(rem.message, message.guild),
+                    self.get_strings(server, 'look/inter'),
+                    datetime.fromtimestamp(rem.time, pytz.timezone('UTC' if server is None else server.timezone)).strftime('%Y-%m-%d %H:%M:%S'))
 
-            if len(s) + len(string) > 2000:
-                await message.channel.send(s)
-                s = string
-            else:
-                s += string
+                if len(s) + len(string) > 2000:
+                    await message.channel.send(s)
+                    s = string
+                else:
+                    s += string
 
-            n += 1
-
-        if s:
             await message.channel.send(s)
+
+        else:
+            await message.channel.send(self.get_strings(server, 'look/no_reminders'))
 
 
     async def offset_reminders(self, message, stripped, server):
