@@ -62,7 +62,7 @@ class BotClient(discord.AutoShardedClient):
 
             'natural' : [self.natural, False],
             'remind' : [self.remind, False],
-            'interval' : [self.interval, False],
+            'interval' : [self.remind, False],
             'del' : [self.delete, True],
             'look' : [self.look, True],
 
@@ -84,7 +84,6 @@ class BotClient(discord.AutoShardedClient):
         self.donor_roles = {
             1 : [353630811561394206],
             2 : [353226278435946496],
-            3 : [353639034473676802, 404224194641920011]
         }
 
         self.config = configparser.SafeConfigParser()
@@ -661,187 +660,93 @@ class BotClient(discord.AutoShardedClient):
 
     async def remind(self, message, stripped, server):
 
-        webhook = None
-
         args = stripped.split(' ')
+        is_interval = message.content[1] == 'i'
 
         if len(args) < 2:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/no_argument').format(prefix=server.prefix)))
-            return
+            if is_interval:            
+                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/no_argument').format(prefix=server.prefix)))
 
-        scope = message.channel.id
-        pref = '#'
-
-        if args[0].startswith('<'): # if a scope is provided
-
-            scope, pref = self.parse_mention(message, args[0], server)
-            if scope is None:
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_tag')))
-                return
-
-            args.pop(0)
-
-        try:
-            while args[0] == '':
-                args.pop(0)
-
-            msg_time = self.format_time(args[0], server)
-        except ValueError:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_time')))
-            return
-
-        if msg_time is None or msg_time - time.time() > 1576800000:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_time')))
-            return
-
-        args.pop(0)
-
-        msg_text = ' '.join(args)
-
-        if self.length_check(message, msg_text) is not True:
-            if self.length_check(message, msg_text) == '150':
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_chars').format(len(msg_text), prefix=server.prefix)))
-
-            elif self.length_check(message, msg_text) == '2000':
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_chars_2000')))
-
-            return
-
-        if pref == '#':
-            if not self.perm_check(message, server):
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/no_perms').format(prefix=server.prefix)))
-                return
-
-            c = message.guild.get_channel(scope)
-
-            for hook in await c.webhooks():
-                if hook.user.id == self.user.id:
-                    webhook = hook.url
-                    break
-
-            if webhook is None:
-                w = await c.create_webhook(name='Reminders')
-                webhook = w.url
+            else:
+                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/no_argument').format(prefix=server.prefix)))
 
         else:
-            m = message.guild.get_member(scope)
-            s = m.dm_channel
-            if s is None:
-                await m.create_dm()
-                s = m.dm_channel
+            is_patreon = self.get_patrons(message.author.id, level=1)
 
-            scope = s.id
+            if is_interval and not is_patreon:
+                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/donor')))
 
-        reminder = Reminder(time=msg_time, channel=scope, message=msg_text, webhook=webhook, method='remind')
+            else:
 
-        await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/success').format(pref, scope, round(msg_time - time.time()))))
+                channel = message.channel
+                url = None
+                interval = None
+                scope_id = message.channel.id
+                pref = '#'
 
-        session.add(reminder)
-        session.commit()
+                if args[0][0] == '<':
+                    arg = args.pop(0)
+                    if arg[1] == '@' and arg[2] in '0123456789!':
+                        pref = '@'
+                        
+                        scope_id = int(''.join(x for x in arg if x in '0123456789'))
+                        member = message.guild.get_member(scope_id) or message.author
+                        await member.create_dm()
+                        channel = member.dm_channel
+                        url = None
 
-        logger.info('Registered a new reminder for {}'.format(message.guild.name))
+                    elif arg[1] == '#':
+                        pref = '#'
 
+                        scope_id = int(''.join(x for x in arg if x in '0123456789'))
+                        channel = message.guild.get_channel(scope_id) or message.channel
+                        hooks = [x for x in await channel.webhooks() if x.user.id == self.user.id]
+                        hook = hooks[0] if len(hooks) > 0 else await channel.create_webhook(name='Reminders')
+                        url = hook.url
 
-    async def interval(self, message, stripped, server):
+                    else:
+                        await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_tag')))
 
-        if not self.get_patrons(message.author.id, level=1):
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/donor').format(prefix=server.prefix)))
-            return
+                if not self.perm_check(message, server):
+                    await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/no_perms')))
 
-        args = message.content.split(' ')
-        args.pop(0) # remove the command item
+                else:
+                    t = args.pop(0)
+                    mtime = self.format_time(t, server)
 
-        if len(args) < 3:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/no_argument').format(prefix=server.prefix)))
-            return
+                    if mtime is None or mtime - time.time() > 1576800000:
+                        await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_time')))
+            
+                    else:
+                        if is_interval:
+                            i = args.pop(0)
+                            interval = self.format_time(i, server) - time.time()
 
-        scope = message.channel.id
-        pref = '#'
+                            if interval < 8:
+                                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/8_seconds')))
+                                return
 
-        if args[0].startswith('<'): # if a scope is provided
+                            elif interval is None or interval > 1576800000:
+                                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/invalid_interval')))
+                                return
 
-            scope, pref = self.parse_mention(message, args[0], server)
-            if scope is None:
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_tag')))
-                return
+                        text = ' '.join(args)
 
-            args.pop(0)
+                        if len(text) > 200 and not self.get_patrons(message.author.id, level=2):
+                            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_chars')))
 
-        while args[0] == '':
-            args.pop(0)
+                        else:
+                            reminder = Reminder(time=mtime, channel=channel.id, message=text, interval=interval, webhook=url, method='remind')
 
-        msg_time = self.format_time(args[0], server)
+                            if is_interval:
+                                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/success').format(pref, scope_id, round(mtime - time.time()))))
+                            else:
+                                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/success').format(pref, scope_id, round(mtime - time.time()))))
 
-        if msg_time is None or msg_time - time.time() > 1576800000:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_time')))
-            return
+                            session.add(reminder)
+                            session.commit()
 
-        args.pop(0)
-
-        while args[0] == '':
-            args.pop(0)
-
-        msg_interval = self.format_time(args[0], message.guild.id)
-
-        if msg_interval == None or msg_interval > 1576800000:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/invalid_interval')))
-            return
-
-        msg_interval -= time.time()
-        msg_interval = round(msg_interval)
-
-        if msg_interval < 8:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/8_seconds')))
-            return
-
-        args.pop(0)
-
-        msg_text = ' '.join(args)
-
-        if self.length_check(message, msg_text) is not True:
-            if self.length_check(message, msg_text) == '150':
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_chars').format(len(msg_text))))
-
-            elif self.length_check(message, msg_text) == '2000':
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/invalid_chars_2000')))
-
-            return
-
-        webhook = None
-
-        if pref == '#':
-            if not self.perm_check(message, server):
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'remind/no_perms')))
-                return
-
-            c = message.guild.get_channel(scope)
-
-            for hook in await c.webhooks():
-                if hook.user.id == self.user.id:
-                    webhook = hook.url
-                    break
-
-            if webhook is None:
-                w = await c.create_webhook(name='Reminders')
-                webhook = w.url
-
-        else:
-            m = message.guild.get_member(scope)
-            s = m.dm_channel
-            if s is None:
-                await m.create_dm()
-                s = m.dm_channel
-
-            scope = s.id
-
-        reminder = Reminder(time=msg_time, interval=msg_interval, channel=scope, message=msg_text, webhook=webhook, method='interval')
-
-        await message.channel.send(embed=discord.Embed(description=self.get_strings(server, 'interval/success').format(pref, scope, round(msg_time - time.time()))))
-
-        session.add(reminder)
-        session.commit()
-
-        logger.info('Registered a new interval for {}'.format(message.guild.name))
+                            logger.info('Registered a new reminder for {}'.format(message.guild.name))
 
 
     async def blacklist(self, message, stripped, server):
