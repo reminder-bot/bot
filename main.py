@@ -1041,9 +1041,12 @@ class BotClient(discord.AutoShardedClient):
 
     async def look(self, message, stripped, server):
 
-        reminders = session.query(Reminder).filter(Reminder.channel == message.channel.id).all()
+        channel = message.channel_mentions[0] if len(message.channel_mentions) > 0 else message.channel
+        channel = channel.id
 
-        if len(reminders) > 0:
+        reminders = session.query(Reminder).filter(Reminder.channel == channel)
+
+        if reminders.count() > 0:
             await message.channel.send(self.get_strings(server, 'look/listing'))
 
             s = ''
