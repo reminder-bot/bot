@@ -1,9 +1,11 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, BigInteger, String, Unicode, Text, Boolean
+from sqlalchemy import Column, Integer, BigInteger, String, Unicode, Text, Boolean, Table
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy_json import NestedMutableJson, MutableJson
 import configparser
+import os
+
 
 config = configparser.SafeConfigParser()
 config.read('config.ini')
@@ -52,6 +54,22 @@ class Server(Base):
 
     def __repr__(self):
         return '<Server {}>'.format(self.id)
+
+
+languages = []
+
+for fn in os.listdir(config.get('DEFAULT', 'strings_location')):
+    if fn.startswith('strings_'):
+        languages.append(fn[8:10])
+
+
+Strings = Table('strings', Base.metadata,
+    Column('id', Integer, primary_key=True),
+    Column('name', Text),
+    *(
+        Column('value_{}'.format(lang), Text) for lang in languages
+    )
+)
 
 
 if passwd:
