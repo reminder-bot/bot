@@ -142,6 +142,17 @@ class BotClient(discord.AutoShardedClient):
             return ''.join(new)
 
 
+    def length_check(self, message, text):
+        if len(text) > 150 and not self.get_patrons(message.author.id):
+            return '150'
+
+        if len(text) >= 1900:
+            return '2000'
+
+        else:
+            return True
+
+
     def get_patrons(self, memberid, level=2):
         if self.patreon:
             p_servers = [client.get_guild(x) for x in self.patreon_servers]
