@@ -677,7 +677,7 @@ class BotClient(discord.AutoShardedClient):
                                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/8_seconds')))
                                 return
 
-                            elif interval is None or interval > 1576800000:
+                            elif interval is None or 8 > interval > 1576800000:
                                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/invalid_interval')))
                                 return
 
