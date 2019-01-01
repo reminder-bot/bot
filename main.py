@@ -299,6 +299,11 @@ class BotClient(discord.AutoShardedClient):
         logger.info('Languages enabled: ' + str(self.languages))
 
 
+    async def on_error(self, *a, *k):
+        session.rollback()
+        raise
+
+
     async def on_ready(self):
 
         logger.info('Logged in as')
@@ -660,7 +665,7 @@ class BotClient(discord.AutoShardedClient):
                     t = args.pop(0)
                     mtime = self.format_time(t, server)
 
-                    if mtime is None or mtime - time.time() > 1576800000:
+                    if mtime is None or 0 > mtime - time.time() > 1576800000:
                         await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_time')))
             
                     else:
