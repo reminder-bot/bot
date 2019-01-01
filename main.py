@@ -346,6 +346,7 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def on_message(self, message):
+
         if message.guild is not None and session.query(Server).filter_by(id=message.guild.id).first() is None:
 
             server = Server(id=message.guild.id, prefix='$', timezone='UTC', language='EN', blacklist={'data': []}, restrictions={'data': []})
@@ -884,7 +885,7 @@ class BotClient(discord.AutoShardedClient):
                 if i < 0:
                     continue
 
-                session.query(Reminder).filter(Reminder.id == reminders[i].id).delete(synchronize_session='fetch')
+                session.query(Reminder).filter(Reminder.id == reminders[i].id).delete(synchronize_session='evaluate')
 
                 logger.info('Deleted reminder')
                 dels += 1
@@ -895,6 +896,7 @@ class BotClient(discord.AutoShardedClient):
                 continue
 
         await message.channel.send(self.get_strings(server.language, 'del/count').format(dels))
+        session.commit()
 
 
     async def look(self, message, stripped, server):
