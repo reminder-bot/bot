@@ -299,7 +299,7 @@ class BotClient(discord.AutoShardedClient):
         logger.info('Languages enabled: ' + str(self.languages))
 
 
-    async def on_error(self, *a, *k):
+    async def on_error(self, *a, **k):
         session.rollback()
         raise
 
