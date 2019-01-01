@@ -650,10 +650,6 @@ class BotClient(discord.AutoShardedClient):
                         pref = '#'
 
                         scope_id = int(''.join(x for x in arg if x in '0123456789'))
-                        channel = message.guild.get_channel(scope_id) or message.channel
-                        hooks = [x for x in await channel.webhooks() if x.user.id == self.user.id]
-                        hook = hooks[0] if len(hooks) > 0 else await channel.create_webhook(name='Reminders')
-                        url = hook.url
 
                     else:
                         await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_tag')))
@@ -662,6 +658,12 @@ class BotClient(discord.AutoShardedClient):
                     await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_perms')))
 
                 else:
+                    if pref = '#':
+                        channel = message.guild.get_channel(scope_id) or message.channel
+                        hooks = [x for x in await channel.webhooks() if x.user.id == self.user.id]
+                        hook = hooks[0] if len(hooks) > 0 else await channel.create_webhook(name='Reminders')
+                        url = hook.url
+
                     t = args.pop(0)
                     mtime = self.format_time(t, server)
 
