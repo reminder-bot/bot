@@ -658,7 +658,7 @@ class BotClient(discord.AutoShardedClient):
                     await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_perms')))
 
                 else:
-                    if pref = '#':
+                    if pref == '#':
                         channel = message.guild.get_channel(scope_id) or message.channel
                         hooks = [x for x in await channel.webhooks() if x.user.id == self.user.id]
                         hook = hooks[0] if len(hooks) > 0 else await channel.create_webhook(name='Reminders')
