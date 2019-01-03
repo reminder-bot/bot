@@ -885,7 +885,7 @@ class BotClient(discord.AutoShardedClient):
                 if i < 0:
                     continue
 
-                session.query(Reminder).filter(Reminder.id == reminders[i].id).delete(synchronize_session='evaluate')
+                session.query(Reminder).filter(Reminder.id == reminders[i].id).delete(synchronize_session='fetch')
 
                 logger.info('Deleted reminder')
                 dels += 1
