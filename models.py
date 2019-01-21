@@ -1,5 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, BigInteger, String, Unicode, Text, Boolean, Table
+from sqlalchemy import Column, Integer, BigInteger, String, Text, Boolean, Table
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy_json import NestedMutableJson, MutableJson
@@ -23,7 +23,7 @@ class Reminder(Base):
     __tablename__ = 'reminders'
 
     id = Column(Integer, primary_key=True, unique=True)
-    message = Column(Unicode(2000))
+    message = Column(String(2000))
     channel = Column(BigInteger)
     time = Column(BigInteger)
     interval = Column(Integer)
@@ -34,8 +34,6 @@ class Reminder(Base):
 
     method = Column(Text)
     embed = Column(Integer, nullable=True)
-
-    mysql_charset = 'utf8mb4'
 
     def __repr__(self):
         return '<Reminder "{}" <#{}> {}s>'.format(self.message, self.channel, self.time)
@@ -54,6 +52,14 @@ class Server(Base):
 
     def __repr__(self):
         return '<Server {}>'.format(self.id)
+
+
+class Todo(Base):
+    __tablename__ = 'todos'
+
+    id = Column(Integer, primary_key=True)
+    owner = Column(BigInteger)
+    value = Column(Text)
 
 
 languages = []

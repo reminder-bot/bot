@@ -1,4 +1,4 @@
-from models import Reminder, Server, Strings, session
+from models import Reminder, Server, Strings, Todo, session
 
 import discord
 import pytz
@@ -89,14 +89,6 @@ class BotClient(discord.AutoShardedClient):
 
         if self.patreon:
             logger.info('Patreon is enabled. Will look for servers {}'.format(self.patreon_servers))
-
-        try:
-            with open('DATA/todos.json', 'r') as f:
-                self.todos = json.load(f)
-                self.todos = {int(x) : y for x, y in self.todos.items()}
-        except FileNotFoundError:
-            logger.warn('No todos file found')
-            self.todos = {}
 
         self.update()
 
@@ -789,16 +781,12 @@ class BotClient(discord.AutoShardedClient):
             name = message.author.name
             command = 'todo'
 
-
-        if location not in self.todos.keys():
-            self.todos[location] = []
+        todos = session.query(Todo).filter(Todo.owner == location).all()
 
         splits = stripped.split(' ')
 
-        todo = self.todos[location]
-
         if len(splits) == 1 and splits[0] == '':
-            msg = ['\n{}: {}'.format(i+1, todo[i]) for i in range(len(todo))]
+            msg = ['\n{}: {}'.format(i+1, todo.value) for i, todo in enumerate(todos)]
             if len(msg) == 0:
                 msg.append(self.get_strings(server.language, 'todo/add').format(prefix='$' if server is None else server.prefix, command=command))
             await message.channel.send(embed=discord.Embed(title='{}\'s TODO'.format(name), description=''.join(msg)))
@@ -806,17 +794,20 @@ class BotClient(discord.AutoShardedClient):
         elif len(splits) >= 2:
             if splits[0] in ['add', 'a']:
                 a = ' '.join(splits[1:])
-                if len(''.join(todo)) > 1600:
+                if len('   '.join(todo.value for todo in todos)) > 1800:
                     await message.channel.send(self.get_strings(server.language, 'todo/too_long2'))
                     return
 
-                self.todos[location].append(a)
+                todo = Todo(owner=location, value=a)
+                session.add(todo)
                 await message.channel.send(self.get_strings(server.language, 'todo/added').format(name=a))
 
             elif splits[0] in ['remove', 'r']:
                 try:
-                    a = self.todos[location].pop(int(splits[1])-1)
-                    await message.channel.send(self.get_strings(server.language, 'todo/removed').format(a))
+                    a = session.query(Todo).filter(Todo.id == todos[int(splits[1])-1].id).first()
+                    session.query(Todo).filter(Todo.id == todos[int(splits[1])-1].id).delete(synchronize_session='fetch')
+                    
+                    await message.channel.send(self.get_strings(server.language, 'todo/removed').format(a.value))
 
                 except ValueError:
                     await message.channel.send(self.get_strings(server.language, 'todo/error_value').format(prefix='$' if server is None else server.prefix, command=command))
@@ -829,15 +820,13 @@ class BotClient(discord.AutoShardedClient):
 
         else:
             if stripped in ['remove*', 'r*', 'clear', 'clr']:
-                self.todos[location] = []
+                session.query(Todo).filter(Todo.owner == location).delete(synchronize_session='fetch')
                 await message.channel.send(self.get_strings(server.language, 'todo/cleared'))
 
             else:
                 await message.channel.send(self.get_strings(server.language, 'todo/help').format(prefix='$' if server is None else server.prefix, command=command))
 
-        with open('DATA/todos.json', 'w') as f:
-            json.dump(self.todos, f)
-
+        session.commit()
 
     async def delete(self, message, stripped, server):
         if server is not None:
