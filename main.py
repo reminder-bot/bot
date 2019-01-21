@@ -134,17 +134,6 @@ class BotClient(discord.AutoShardedClient):
             return ''.join(new)
 
 
-    def length_check(self, message, text):
-        if len(text) > 150 and not self.get_patrons(message.author.id):
-            return '150'
-
-        if len(text) >= 1900:
-            return '2000'
-
-        else:
-            return True
-
-
     def get_patrons(self, memberid, level=2):
         if self.patreon:
             p_servers = [client.get_guild(x) for x in self.patreon_servers]
@@ -564,15 +553,6 @@ class BotClient(discord.AutoShardedClient):
 
             scope = s
 
-        if self.length_check(message, message_crop) is not True:
-            if self.length_check(message, message_crop) == '150':
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_chars').format(len(message_crop), prefix=server.prefix)))
-                err = True
-
-            elif self.length_check(message, message_crop) == '2000':
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_chars_2000')))
-                err = True
-
         if not err:
             webhook = None
 
@@ -677,9 +657,6 @@ class BotClient(discord.AutoShardedClient):
                                 return
 
                         text = ' '.join(args)
-
-                        if len(text) > 200 and not self.get_patrons(message.author.id, level=2):
-                            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_chars')))
 
                         else:
                             reminder = Reminder(time=mtime, channel=channel.id, message=text, interval=interval, webhook=url, method='remind')
