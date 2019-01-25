@@ -28,8 +28,8 @@ class Reminder(Base):
     time = Column(BigInteger)
     interval = Column(Integer)
 
-    webhook = Column(String(200))
-    avatar = Column(Text)
+    webhook = Column(String(256))
+    avatar = Column(String(512))
     username = Column(String(32))
 
     method = Column(Text)
@@ -42,13 +42,11 @@ class Reminder(Base):
 class Server(Base):
     __tablename__ = 'servers'
 
-    map_id = Column(Integer, primary_key=True)
-    id = Column(BigInteger, unique=True)
+    id = Column(Integer, primary_key=True)
+    server = Column(BigInteger, unique=True)
     prefix = Column( String(5) )
     language = Column( String(2) )
     timezone = Column( String(30) )
-    blacklist = Column( NestedMutableJson )
-    restrictions = Column( NestedMutableJson )
 
     def __repr__(self):
         return '<Server {}>'.format(self.id)
