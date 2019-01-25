@@ -1,5 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, BigInteger, String, Text, Boolean, Table
+from sqlalchemy import Column, Integer, BigInteger, String, Text, Table
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 import configparser
