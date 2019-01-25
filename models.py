@@ -28,8 +28,8 @@ class Reminder(Base):
     interval = Column(Integer)
 
     webhook = Column(String(256))
-    avatar = Column(String(512))
-    username = Column(String(32))
+    avatar = Column(String(512), default='https://raw.githubusercontent.com/reminder-bot/logos/master/Remind_Me_Bot_Logo_PPic.jpg', nullable=False)
+    username = Column(String(32), default='Reminder', nullable=False)
 
     method = Column(Text)
     embed = Column(Integer, nullable=True)
