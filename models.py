@@ -2,7 +2,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, BigInteger, String, Text, Boolean, Table
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
-from sqlalchemy_json import NestedMutableJson, MutableJson
 import configparser
 import os
 
@@ -35,29 +34,39 @@ class Reminder(Base):
     method = Column(Text)
     embed = Column(Integer, nullable=True)
 
-    def __repr__(self):
-        return '<Reminder "{}" <#{}> {}s>'.format(self.message, self.channel, self.time)
-
 
 class Server(Base):
     __tablename__ = 'servers'
 
     id = Column(Integer, primary_key=True)
     server = Column(BigInteger, unique=True)
-    prefix = Column( String(5) )
-    language = Column( String(2) )
-    timezone = Column( String(30) )
-
-    def __repr__(self):
-        return '<Server {}>'.format(self.id)
+    prefix = Column( String(5), default="$", nullable=False )
+    language = Column( String(2), default="EN", nullable=False )
+    timezone = Column( String(30), default="UTC", nullable=False )
 
 
 class Todo(Base):
     __tablename__ = 'todos'
 
     id = Column(Integer, primary_key=True)
-    owner = Column(BigInteger)
-    value = Column(Text)
+    owner = Column(BigInteger, nullable=False)
+    value = Column(Text, nullable=False)
+
+
+class Blacklist(Base):
+    __tablename__ = 'blacklists'
+
+    id = Column(Integer, primary_key=True)
+    channel = Column(BigInteger, nullable=False, unique=True)
+    server = Column(BigInteger, nullable=False)
+
+
+class RoleRestrict(Base):
+    __tablename__ = 'roles'
+
+    id = Column(Integer, primary_key=True)
+    role = Column(BigInteger, nullable=False, unique=True)
+    server = Column(BigInteger, nullable=False)
 
 
 languages = []

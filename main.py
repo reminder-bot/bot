@@ -1,4 +1,4 @@
-from models import Reminder, Server, Strings, Todo, session
+from models import Reminder, Server, Strings, Todo, RoleRestrict, Blacklist, session
 
 import discord
 import pytz
@@ -149,18 +149,6 @@ class BotClient(discord.AutoShardedClient):
                     roles.append(role.id)
 
             return bool(set(self.donor_roles[level]) & set(roles))
-
-        else:
-            return True
-
-
-    def perm_check(self, message, server):
-        if not message.author.guild_permissions.manage_messages:
-            for role in message.author.roles:
-                if role.id in server.restrictions['data']:
-                    return True
-            else:
-                return False
 
         else:
             return True
@@ -328,14 +316,14 @@ class BotClient(discord.AutoShardedClient):
 
     async def on_message(self, message):
 
-        if message.guild is not None and session.query(Server).filter_by(id=message.guild.id).first() is None:
+        if message.guild is not None and session.query(Server).filter_by(server=message.guild.id).first() is None:
 
-            server = Server(id=message.guild.id, prefix='$', timezone='UTC', language='EN', blacklist={'data': []}, restrictions={'data': []})
+            server = Server(server=message.guild.id)
 
             session.add(server)
             session.commit()
 
-        server = None if message.guild is None else session.query(Server).filter_by(id=message.guild.id).first()
+        server = None if message.guild is None else session.query(Server).filter_by(server=message.guild.id).first()
 
         if message.author.bot or message.content == None:
             return
@@ -372,9 +360,18 @@ class BotClient(discord.AutoShardedClient):
             return False
 
         if command in self.commands.keys():
-            if server is not None and message.channel.id in server.blacklist['data'] and not message.content.startswith(('{}help'.format(server.prefix), '{}blacklist'.format(server.prefix))):
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'blacklisted')))
-                return False
+            if server is not None and not message.content.startswith(('{}help'.format(server.prefix), '{}blacklist'.format(server.prefix), '{}restrict'.format(server.prefix))):
+
+                channel = session.query(Blacklist).filter(Blacklist.channel == message.channel.id)
+                restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
+
+                if channel.count() > 0:
+                    await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'blacklisted')))
+                    return False
+
+                elif restrict.count() == 0 and not message.author.guild_permissions.manage_messages:
+                    await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_perms'.format(prefix=server.prefix))))
+                    return False
 
             command_form = self.commands[command]
 
@@ -539,13 +536,7 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/donor')))
                 return
 
-        if isinstance(scope, discord.TextChannel):
-            if not self.perm_check(message, server):
-
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_perms').format(prefix=server.prefix)))
-                err = True
-
-        elif scope is not None:
+        if not isinstance(scope, discord.TextChannel) and scope is not None:
             s = scope.dm_channel
             if s is None:
                 await scope.create_dm()
@@ -627,9 +618,6 @@ class BotClient(discord.AutoShardedClient):
                     else:
                         await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_tag')))
 
-                if not self.perm_check(message, server):
-                    await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_perms')))
-
                 else:
                     if pref == '#':
                         channel = message.guild.get_channel(scope_id) or message.channel
@@ -658,18 +646,17 @@ class BotClient(discord.AutoShardedClient):
 
                         text = ' '.join(args)
 
+                        reminder = Reminder(time=mtime, channel=channel.id, message=text, interval=interval, webhook=url, method='remind')
+
+                        if is_interval:
+                            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/success').format(pref, scope_id, round(mtime - time.time()))))
                         else:
-                            reminder = Reminder(time=mtime, channel=channel.id, message=text, interval=interval, webhook=url, method='remind')
+                            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/success').format(pref, scope_id, round(mtime - time.time()))))
 
-                            if is_interval:
-                                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/success').format(pref, scope_id, round(mtime - time.time()))))
-                            else:
-                                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/success').format(pref, scope_id, round(mtime - time.time()))))
+                        session.add(reminder)
+                        session.commit()
 
-                            session.add(reminder)
-                            session.commit()
-
-                            logger.info('Registered a new reminder for {}'.format(message.guild.name))
+                        logger.info('Registered a new reminder for {}'.format(message.guild.name))
 
 
     async def blacklist(self, message, stripped, server):
@@ -681,30 +668,37 @@ class BotClient(discord.AutoShardedClient):
         if len(message.channel_mentions) > 0:
             disengage_all = True
 
+            all_channels = set([x.channel for x in session.query(Blacklist).filter(Blacklist.server == message.guild.id)])
+            c = set([x.id for x in message.channel_mentions])
+
             for mention in message.channel_mentions:
-                if mention.id not in server.blacklist['data']:
+                if mention.id not in all_channels:
                     disengage_all = False
 
             if disengage_all:
-                for mention in message.channel_mentions:
-                    server.blacklist['data'].remove(mention.id)
+                channels = c & all_channels
+                session.query(Blacklist).filter(Blacklist.channel.in_(channels)).delete(synchronize_session='fetch')
 
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'blacklist/removed_from')))
 
             else:
-                for mention in message.channel_mentions:
-                    if mention.id not in server.blacklist['data']:
-                        server.blacklist['data'].append(mention.id)
+                channels = [x for x in c if x not in all_channels]
+                for channel in channels:
+                    blacklist = Blacklist(channel=channel, server=message.guild.id)
+                    session.add(blacklist)
 
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'blacklist/added_from')))
 
         else:
-            if message.channel.id in server.blacklist['data']:
-                server.blacklist['data'].remove(message.channel.id)
+            q = session.query(Blacklist).filter(Blacklist.channel == message.channel.id)
+
+            if q.count() > 0:
+                q.delete(synchronize_session='fetch')
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'blacklist/removed')))
 
             else:
-                server.blacklist['data'].append(message.channel.id)
+                blacklist = Blacklist(channel=message.channel.id, server=message.guild.id)
+                session.add(blacklist)
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'blacklist/added')))
 
         session.commit()
@@ -719,16 +713,18 @@ class BotClient(discord.AutoShardedClient):
             disengage_all = True
             args = False
 
+            all_roles = [x.role for x in session.query(RoleRestrict).filter(RoleRestrict.server == message.guild.id)]
+
             for role in message.role_mentions:
                 args = True
-                if role.id not in server.restrictions['data']:
+                if role.id not in all_roles:
                     disengage_all = False
-                server.restrictions['data'].append(role.id)
+                    r = RoleRestrict(role=role.id, server=message.guild.id)
+                    session.add(r)
 
             if disengage_all and args:
-                for role in message.role_mentions:
-                    server.restrictions['data'].remove(role.id)
-                    server.restrictions['data'].remove(role.id)
+                roles = [x.id for x in message.role_mentions]
+                session.query(RoleRestrict).filter(RoleRestrict.role.in_(roles)).delete(synchronize_session='fetch')
 
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'restrict/disabled')))
 
@@ -739,7 +735,7 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'restrict/help')))
 
             else:
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'restrict/allowed').format(' '.join(['<@&' + str(i) + '>' for i in server.restrictions['data']]))))
+                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'restrict/allowed').format(' '.join(['<@&{}>'.format(i) for i in all_roles]))))
 
         session.commit()
 
@@ -807,10 +803,6 @@ class BotClient(discord.AutoShardedClient):
 
     async def delete(self, message, stripped, server):
         if server is not None:
-            if not self.perm_check(message, server):
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_perms').format(prefix=server.prefix)))
-                return
-
             li = [ch.id for ch in message.guild.channels] ## get all channels and their ids in the current server
         else:
             li = [message.channel.id]
@@ -895,23 +887,19 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def offset_reminders(self, message, stripped, server):
-        if not self.perm_check(message, server):
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_perms').format(prefix=server.prefix)))
+        t = self.format_time(stripped, server)
+
+        if t is None:
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'offset/invalid_time')))
 
         else:
-            t = self.format_time(stripped, server)
+            t -= time.time()
+            reminders = session.query(Reminder).filter(Reminder.channel.in_([x.id for x in message.guild.channels]))
 
-            if t is None:
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'offset/invalid_time')))
+            for r in reminders:
+                r.time += t
 
-            else:
-                t -= time.time()
-                reminders = session.query(Reminder).filter(Reminder.channel.in_([x.id for x in message.guild.channels]))
-
-                for r in reminders:
-                    r.time += t
-
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'offset/success').format(t)))
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'offset/success').format(t)))
 
 
 client = BotClient()
