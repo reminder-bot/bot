@@ -618,45 +618,44 @@ class BotClient(discord.AutoShardedClient):
                     else:
                         await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_tag')))
 
+                if pref == '#':
+                    channel = message.guild.get_channel(scope_id) or message.channel
+                    hooks = [x for x in await channel.webhooks() if x.user.id == self.user.id]
+                    hook = hooks[0] if len(hooks) > 0 else await channel.create_webhook(name='Reminders')
+                    url = hook.url
+
+                t = args.pop(0)
+                mtime = self.format_time(t, server)
+
+                if mtime is None or 0 > mtime - time.time() > 1576800000:
+                    await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_time')))
+        
                 else:
-                    if pref == '#':
-                        channel = message.guild.get_channel(scope_id) or message.channel
-                        hooks = [x for x in await channel.webhooks() if x.user.id == self.user.id]
-                        hook = hooks[0] if len(hooks) > 0 else await channel.create_webhook(name='Reminders')
-                        url = hook.url
+                    if is_interval:
+                        i = args.pop(0)
+                        interval = self.format_time(i, server) - time.time()
 
-                    t = args.pop(0)
-                    mtime = self.format_time(t, server)
+                        if interval < 8:
+                            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/8_seconds')))
+                            return
 
-                    if mtime is None or 0 > mtime - time.time() > 1576800000:
-                        await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_time')))
-            
+                        elif interval is None or 8 > interval > 1576800000:
+                            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/invalid_interval')))
+                            return
+
+                    text = ' '.join(args)
+
+                    reminder = Reminder(time=mtime, channel=channel.id, message=text, interval=interval, webhook=url, method='remind')
+
+                    if is_interval:
+                        await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/success').format(pref, scope_id, round(mtime - time.time()))))
                     else:
-                        if is_interval:
-                            i = args.pop(0)
-                            interval = self.format_time(i, server) - time.time()
+                        await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/success').format(pref, scope_id, round(mtime - time.time()))))
 
-                            if interval < 8:
-                                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/8_seconds')))
-                                return
+                    session.add(reminder)
+                    session.commit()
 
-                            elif interval is None or 8 > interval > 1576800000:
-                                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/invalid_interval')))
-                                return
-
-                        text = ' '.join(args)
-
-                        reminder = Reminder(time=mtime, channel=channel.id, message=text, interval=interval, webhook=url, method='remind')
-
-                        if is_interval:
-                            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/success').format(pref, scope_id, round(mtime - time.time()))))
-                        else:
-                            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/success').format(pref, scope_id, round(mtime - time.time()))))
-
-                        session.add(reminder)
-                        session.commit()
-
-                        logger.info('Registered a new reminder for {}'.format(message.guild.name))
+                    logger.info('Registered a new reminder for {}'.format(message.guild.name))
 
 
     async def blacklist(self, message, stripped, server):
@@ -804,10 +803,12 @@ class BotClient(discord.AutoShardedClient):
     async def delete(self, message, stripped, server):
         if server is not None:
             li = [ch.id for ch in message.guild.channels] ## get all channels and their ids in the current server
+            language = server.language
         else:
             li = [message.channel.id]
+            language = 'EN'
 
-        await message.channel.send(self.get_strings(server.language, 'del/listing'))
+        await message.channel.send(self.get_strings(language, 'del/listing'))
 
         n = 1
 
@@ -831,7 +832,7 @@ class BotClient(discord.AutoShardedClient):
         if s:
             await message.channel.send(s)
 
-        await message.channel.send(self.get_strings(server.language, 'del/listed'))
+        await message.channel.send(self.get_strings(language, 'del/listed'))
 
         num = await client.wait_for('message', check=lambda m: m.author == message.author and m.channel == message.channel)
         nums = [n.strip() for n in num.content.split(',')]
@@ -853,7 +854,7 @@ class BotClient(discord.AutoShardedClient):
             except IndexError:
                 continue
 
-        await message.channel.send(self.get_strings(server.language, 'del/count').format(dels))
+        await message.channel.send(self.get_strings(language, 'del/count').format(dels))
         session.commit()
 
 
