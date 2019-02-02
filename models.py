@@ -1,5 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, BigInteger, String, Text, Table
+from sqlalchemy import Column, Integer, BigInteger, String, Text, Table, ForeignKey
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 import configparser
@@ -25,7 +25,7 @@ class Reminder(Base):
     message = Column(String(2000))
     channel = Column(BigInteger)
     time = Column(BigInteger)
-    interval = Column(Integer)
+    position = Column(Integer)
 
     webhook = Column(String(256))
     avatar = Column(String(512), default='https://raw.githubusercontent.com/reminder-bot/logos/master/Remind_Me_Bot_Logo_PPic.jpg', nullable=False)
@@ -33,6 +33,16 @@ class Reminder(Base):
 
     method = Column(Text)
     embed = Column(Integer, nullable=True)
+
+
+class Interval(Base):
+    __tablename__ = 'intervals'
+
+    id = Column(Integer, primary_key=True, unique=True)
+
+    reminder = Column(Integer, ForeignKey('reminders.id'))
+    period = Column(Integer)
+    position = Column(Integer)
 
 
 class Server(Base):

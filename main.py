@@ -1,4 +1,4 @@
-from models import Reminder, Server, Strings, Todo, RoleRestrict, Blacklist, session
+from models import Reminder, Server, Strings, Todo, RoleRestrict, Blacklist, session, Interval
 
 import discord
 import pytz
@@ -558,9 +558,16 @@ class BotClient(discord.AutoShardedClient):
                     webhook = w.url
 
             if recurring:
-                reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, interval=interval, webhook=webhook, method='natural')
+                reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, position=0, webhook=webhook, method='natural')
+                session.add(reminder)
+                session.commit()
+
+                i = Interval(reminder=reminder.id, period=interval, position=0)
+                session.add(i)
+
             else:
                 reminder = Reminder(time=datetime_obj.timestamp(), message=message_crop.strip(), channel=scope.id, webhook=webhook, method='natural')
+                session.add(reminder)
 
             logger.info('{}: New: {}'.format(datetime.utcnow().strftime('%H:%M:%S'), reminder))
             if isinstance(scope, discord.TextChannel):
@@ -569,7 +576,6 @@ class BotClient(discord.AutoShardedClient):
                 tag = scope.recipient.mention
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/success').format(tag, round(datetime_obj.timestamp() - time.time()))))
 
-            session.add(reminder)
             session.commit()
 
 
@@ -645,14 +651,21 @@ class BotClient(discord.AutoShardedClient):
 
                     text = ' '.join(args)
 
-                    reminder = Reminder(time=mtime, channel=channel.id, message=text, interval=interval, webhook=url, method='remind')
-
                     if is_interval:
+                        reminder = Reminder(time=mtime, channel=channel.id, message=text, webhook=url, method='remind', position=0)
+                        session.add(reminder)
+                        session.commit()
+
+                        i = Interval(reminder=reminder.id, period=interval, position=0)
+                        session.add(i)
+
                         await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/success').format(pref, scope_id, round(mtime - time.time()))))
                     else:
+                        reminder = Reminder(time=mtime, channel=channel.id, message=text, webhook=url, method='remind')
+                        session.add(reminder)
+
                         await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/success').format(pref, scope_id, round(mtime - time.time()))))
 
-                    session.add(reminder)
                     session.commit()
 
                     logger.info('Registered a new reminder for {}'.format(message.guild.name))
@@ -799,6 +812,7 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(self.get_strings(server.language, 'todo/help').format(prefix='$' if server is None else server.prefix, command=command))
 
         session.commit()
+
 
     async def delete(self, message, stripped, server):
         if server is not None:

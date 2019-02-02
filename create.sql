@@ -1,9 +1,9 @@
 CREATE TABLE reminders.reminders (
-    id INT UNSIGNED AUTO_INCREMENT UNIQUE,
+    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
     message VARCHAR(2000) NOT NULL,
     channel BIGINT UNSIGNED NOT NULL,
     `time` BIGINT UNSIGNED DEFAULT 0 NOT NULL,
-    `interval` INT UNSIGNED,
+    position TINYINT UNSIGNED DEFAULT NULL,
 
     webhook VARCHAR(256),
     avatar VARCHAR(512) DEFAULT "https://raw.githubusercontent.com/reminder-bot/logos/master/Remind_Me_Bot_Logo_PPic.jpg" NOT NULL,
@@ -15,9 +15,24 @@ CREATE TABLE reminders.reminders (
     PRIMARY KEY (id)
 );
 
+CREATE TABLE reminders.intervals (
+    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
+
+    reminder INT UNSIGNED NOT NULL,
+    period INT UNSIGNED NOT NULL,
+    position TINYINT UNSIGNED NOT NULL DEFAULT 0,
+
+    CONSTRAINT reminder_period_cx
+    FOREIGN KEY reminder_period_fk (reminder)
+    REFERENCES reminders (id)
+    ON DELETE CASCADE,
+
+    PRIMARY KEY (id)
+);
+
 CREATE TABLE reminders.servers (
-    id INT UNSIGNED AUTO_INCREMENT UNIQUE,
-    server BIGINT UNSIGNED UNIQUE,
+    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
+    server BIGINT UNSIGNED UNIQUE NOT NULL,
 
     prefix VARCHAR(5) DEFAULT "$" NOT NULL,
     language VARCHAR(2) DEFAULT "EN" NOT NULL,
@@ -27,15 +42,15 @@ CREATE TABLE reminders.servers (
 );
 
 CREATE TABLE reminders.todos (
-    id INT UNSIGNED AUTO_INCREMENT UNIQUE,
-    owner BIGINT UNSIGNED,
+    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
+    owner BIGINT UNSIGNED NOT NULL,
     value TEXT,
 
     PRIMARY KEY (id)
 );
 
 CREATE TABLE reminders.blacklists (
-    id INT UNSIGNED AUTO_INCREMENT UNIQUE,
+    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
     channel BIGINT UNSIGNED UNIQUE NOT NULL,
     server BIGINT UNSIGNED NOT NULL,
 
@@ -43,7 +58,7 @@ CREATE TABLE reminders.blacklists (
 );
 
 CREATE TABLE reminders.roles (
-    id INT UNSIGNED AUTO_INCREMENT UNIQUE,
+    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
     role BIGINT UNSIGNED UNIQUE NOT NULL,
     server BIGINT UNSIGNED NOT NULL,
 
