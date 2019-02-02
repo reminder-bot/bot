@@ -1,5 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, BigInteger, String, Text
+from sqlalchemy import Column, Integer, BigInteger, String, Text, ForeignKey
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy_json import NestedMutableJson
@@ -60,7 +60,7 @@ class ReminderOld(Base):
     __tablename__ = 'reminders_old'
 
     id = Column(Integer, primary_key=True, unique=True)
-    message = Column(Unicode(2000))
+    message = Column( String(2000) )
     channel = Column(BigInteger)
     time = Column(BigInteger)
     interval = Column(Integer)
@@ -68,6 +68,23 @@ class ReminderOld(Base):
     webhook = Column(String(200))
     avatar = Column(Text)
     username = Column(String(32))
+
+    method = Column(Text)
+    embed = Column(Integer, nullable=True)
+
+
+class Reminder(Base):
+    __tablename__ = 'reminders'
+
+    id = Column(Integer, primary_key=True, unique=True)
+    message = Column(String(2000))
+    channel = Column(BigInteger)
+    time = Column(BigInteger)
+    position = Column(Integer)
+
+    webhook = Column(String(256))
+    avatar = Column(String(512), default='https://raw.githubusercontent.com/reminder-bot/logos/master/Remind_Me_Bot_Logo_PPic.jpg', nullable=False)
+    username = Column(String(32), default='Reminder', nullable=False)
 
     method = Column(Text)
     embed = Column(Integer, nullable=True)
@@ -99,6 +116,7 @@ session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
 session = Session()
 
+
 for server in session.query(ServerOld):
     blacklist = server.blacklist['data']
     for channel in set(blacklist):
@@ -114,12 +132,29 @@ for server in session.query(ServerOld):
 
 session.commit()
 
+for reminder in session.query(ReminderOld):
+    r = Reminder(
+            id=reminder.id,
+            message=reminder.message,
+            time=reminder.time,
+            channel=reminder.channel,
+            webhook=reminder.webhook,
+            avatar=reminder.avatar or 'https://raw.githubusercontent.com/reminder-bot/logos/master/Remind_Me_Bot_Logo_PPic.jpg',
+            username=reminder.username or 'Reminder',
+            embed=reminder.embed,
+            position=0 if reminder.interval is not None else None
+        )
+    session.add(r)
 
-for reminder in session.query(ReminderOld).filter(Reminder.interval != None):
+session.commit()
+
+
+for reminder in session.query(ReminderOld).filter(ReminderOld.interval != None):
     i = Interval(reminder=reminder.id, period=reminder.interval, position=0)
     session.add(i)
 
 session.commit()
+
 
 for key, value in todos.items():
     for v in value:
