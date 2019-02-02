@@ -56,6 +56,34 @@ class ServerOld(Base):
     restrictions = Column( NestedMutableJson )
 
 
+class ReminderOld(Base):
+    __tablename__ = 'reminders_old'
+
+    id = Column(Integer, primary_key=True, unique=True)
+    message = Column(Unicode(2000))
+    channel = Column(BigInteger)
+    time = Column(BigInteger)
+    interval = Column(Integer)
+
+    webhook = Column(String(200))
+    avatar = Column(Text)
+    username = Column(String(32))
+
+    method = Column(Text)
+    embed = Column(Integer, nullable=True)
+
+
+class Interval(Base):
+    __tablename__ = 'intervals'
+
+    id = Column(Integer, primary_key=True, unique=True)
+
+    reminder = Column(Integer, ForeignKey('reminders.id'))
+    period = Column(Integer)
+    position = Column(Integer)
+
+
+
 with open('todos.json', 'r') as f:
     todos = json.load(f)
     todos = {int(x) : y for x, y in todos.items()}
@@ -83,6 +111,13 @@ for server in session.query(ServerOld):
     for restriction in set(restrictions):
         r = RoleRestrict(role=restriction, server=server.id)
         session.add(r)
+
+session.commit()
+
+
+for reminder in session.query(ReminderOld).filter(Reminder.interval != None):
+    i = Interval(reminder=reminder.id, period=reminder.interval, position=0)
+    session.add(i)
 
 session.commit()
 
