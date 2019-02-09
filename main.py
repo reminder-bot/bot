@@ -363,14 +363,9 @@ class BotClient(discord.AutoShardedClient):
             if server is not None and not message.content.startswith(('{}help'.format(server.prefix), '{}blacklist'.format(server.prefix), '{}restrict'.format(server.prefix))):
 
                 channel = session.query(Blacklist).filter(Blacklist.channel == message.channel.id)
-                restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
 
                 if channel.count() > 0:
                     await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'blacklisted')))
-                    return False
-
-                elif restrict.count() == 0 and not message.author.guild_permissions.manage_messages:
-                    await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_perms'.format(prefix=server.prefix))))
                     return False
 
             command_form = self.commands[command]
@@ -563,6 +558,17 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_time')))
 
             else:
+                if isinstance(scope, discord.TextChannel):
+                    tag = scope.mention
+                    restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
+
+                    if restrict.count() == 0:
+                        await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_perms'.format(prefix=server.prefix))))
+                        return
+
+                else:
+                    tag = scope.recipient.mention
+
                 if recurring:
                     reminder = Reminder(time=mtime, message=message_crop.strip(), channel=scope.id, position=0, webhook=webhook, method='natural')
                     session.add(reminder)
@@ -576,10 +582,7 @@ class BotClient(discord.AutoShardedClient):
                     session.add(reminder)
 
                 logger.info('{}: New: {}'.format(datetime.utcnow().strftime('%H:%M:%S'), reminder))
-                if isinstance(scope, discord.TextChannel):
-                    tag = scope.mention
-                else:
-                    tag = scope.recipient.mention
+
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/success').format(tag, round(datetime_obj.timestamp() - time.time()))))
 
                 session.commit()
@@ -656,26 +659,31 @@ class BotClient(discord.AutoShardedClient):
                             return
 
                     text = ' '.join(args)
+                    restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
 
+                    if pref == '#' and restrict.count() == 0:
+                        await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_perms'.format(prefix=server.prefix))))
 
-                    if is_interval:
-                        reminder = Reminder(time=mtime, channel=channel.id, message=text, webhook=url, method='remind', position=0)
-                        session.add(reminder)
+                    else:
+                        if is_interval:
+                            reminder = Reminder(time=mtime, channel=channel.id, message=text, webhook=url, method='remind', position=0)
+                            session.add(reminder)
+                            session.commit()
+
+                            i = Interval(reminder=reminder.id, period=interval, position=0)
+                            session.add(i)
+
+                            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/success').format(pref, scope_id, round(mtime - time.time()))))
+
+                        else:
+                            reminder = Reminder(time=mtime, channel=channel.id, message=text, webhook=url, method='remind')
+                            session.add(reminder)
+
+                            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/success').format(pref, scope_id, round(mtime - time.time()))))
+
                         session.commit()
 
-                        i = Interval(reminder=reminder.id, period=interval, position=0)
-                        session.add(i)
-
-                        await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/success').format(pref, scope_id, round(mtime - time.time()))))
-                    else:
-                        reminder = Reminder(time=mtime, channel=channel.id, message=text, webhook=url, method='remind')
-                        session.add(reminder)
-
-                        await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/success').format(pref, scope_id, round(mtime - time.time()))))
-
-                    session.commit()
-
-                    logger.info('Registered a new reminder for {}'.format(message.guild.name))
+                        logger.info('Registered a new reminder for {}'.format(message.guild.name))
 
 
     async def blacklist(self, message, stripped, server):
