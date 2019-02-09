@@ -562,8 +562,8 @@ class BotClient(discord.AutoShardedClient):
                     tag = scope.mention
                     restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
 
-                    if restrict.count() == 0:
-                        await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_perms'.format(prefix=server.prefix))))
+                    if restrict.count() == 0 and not message.author.guild_permissions.manage_messages:
+                        await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_perms').format(prefix=server.prefix)))
                         return
 
                 else:
@@ -661,8 +661,8 @@ class BotClient(discord.AutoShardedClient):
                     text = ' '.join(args)
                     restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
 
-                    if pref == '#' and restrict.count() == 0:
-                        await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_perms'.format(prefix=server.prefix))))
+                    if pref == '#' and restrict.count() == 0 and not message.author.guild_permissions.manage_messages:
+                        await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_perms').format(prefix=server.prefix)))
 
                     else:
                         if is_interval:
