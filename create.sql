@@ -3,7 +3,7 @@ CREATE TABLE reminders.reminders (
     hashpack VARCHAR(64) UNIQUE NOT NULL,
     message VARCHAR(2000) NOT NULL,
     channel BIGINT UNSIGNED NOT NULL,
-    `time` BIGINT UNSIGNED DEFAULT 0 NOT NULL,
+    `time` INT UNSIGNED DEFAULT 0 NOT NULL,
     position TINYINT UNSIGNED DEFAULT NULL,
 
     webhook VARCHAR(256),

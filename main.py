@@ -106,6 +106,20 @@ class BotClient(discord.AutoShardedClient):
         return [x.result() for x in a][0]
 
 
+    def create_hashpack(self, i1, i2):
+        m = i2
+        while m > 0:
+            i1 *= 10
+            m //= 10
+        
+        bigint = i1 + i2
+        full = hex(bigint)[2:]
+        while len(full) < 64:
+            full += random.choice('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
+
+        return full
+
+
     def clean_string(self, string, guild):
         if guild is None:
             return string
@@ -571,7 +585,7 @@ class BotClient(discord.AutoShardedClient):
                 else:
                     tag = scope.recipient.mention
 
-                full = hex(int('{}{}{}'.format(channel.id, message.id, random.randint(0, 9999999))))
+                full = self.create_hashpack(scope.id, message.id)
 
                 if recurring:
                     reminder = Reminder(time=mtime, hashpack=full, message=message_crop.strip(), channel=scope.id, position=0, webhook=webhook, method='natural')
@@ -670,7 +684,7 @@ class BotClient(discord.AutoShardedClient):
 
                     else:
 
-                        full = hex(int('{}{}{}'.format(channel.id, message.id, random.randint(0, 9999999))))
+                        full = self.create_hashpack(channel.id, message.id)
 
                         if is_interval:
                             reminder = Reminder(time=mtime, hashpack=full, channel=channel.id, message=text, webhook=url, method='remind', position=0)
