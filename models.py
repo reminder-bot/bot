@@ -22,6 +22,7 @@ class Reminder(Base):
     __tablename__ = 'reminders'
 
     id = Column(Integer, primary_key=True, unique=True)
+    hashpack = Column(String(64))
     message = Column(String(2000))
     channel = Column(BigInteger)
     time = Column(BigInteger)

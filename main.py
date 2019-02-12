@@ -17,6 +17,8 @@ import traceback
 import concurrent.futures
 from functools import partial
 import logging
+import hashlib
+import random
 
 
 class OneLineExceptionFormatter(logging.Formatter):
@@ -569,8 +571,10 @@ class BotClient(discord.AutoShardedClient):
                 else:
                     tag = scope.recipient.mention
 
+                full = hex(int('{}{}{}'.format(channel.id, message.id, random.randint(0, 9999999))))
+
                 if recurring:
-                    reminder = Reminder(time=mtime, message=message_crop.strip(), channel=scope.id, position=0, webhook=webhook, method='natural')
+                    reminder = Reminder(time=mtime, hashpack=full, message=message_crop.strip(), channel=scope.id, position=0, webhook=webhook, method='natural')
                     session.add(reminder)
                     session.commit()
 
@@ -578,7 +582,7 @@ class BotClient(discord.AutoShardedClient):
                     session.add(i)
 
                 else:
-                    reminder = Reminder(time=mtime, message=message_crop.strip(), channel=scope.id, webhook=webhook, method='natural')
+                    reminder = Reminder(time=mtime, hashpack=full, message=message_crop.strip(), channel=scope.id, webhook=webhook, method='natural')
                     session.add(reminder)
 
                 logger.info('{}: New: {}'.format(datetime.utcnow().strftime('%H:%M:%S'), reminder))
@@ -665,8 +669,11 @@ class BotClient(discord.AutoShardedClient):
                         await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_perms').format(prefix=server.prefix)))
 
                     else:
+
+                        full = hex(int('{}{}{}'.format(channel.id, message.id, random.randint(0, 9999999))))
+
                         if is_interval:
-                            reminder = Reminder(time=mtime, channel=channel.id, message=text, webhook=url, method='remind', position=0)
+                            reminder = Reminder(time=mtime, hashpack=full, channel=channel.id, message=text, webhook=url, method='remind', position=0)
                             session.add(reminder)
                             session.commit()
 
@@ -676,7 +683,7 @@ class BotClient(discord.AutoShardedClient):
                             await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/success').format(pref, scope_id, round(mtime - time.time()))))
 
                         else:
-                            reminder = Reminder(time=mtime, channel=channel.id, message=text, webhook=url, method='remind')
+                            reminder = Reminder(time=mtime, hashpack=full, channel=channel.id, message=text, webhook=url, method='remind')
                             session.add(reminder)
 
                             await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/success').format(pref, scope_id, round(mtime - time.time()))))
