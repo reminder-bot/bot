@@ -4,7 +4,7 @@ CREATE TABLE reminders.reminders (
     message VARCHAR(2000) NOT NULL,
     channel BIGINT UNSIGNED NOT NULL,
     `time` INT UNSIGNED DEFAULT 0 NOT NULL,
-    position TINYINT UNSIGNED DEFAULT NULL,
+    position INT UNSIGNED DEFAULT NULL,
 
     webhook VARCHAR(256),
     avatar VARCHAR(512) DEFAULT "https://raw.githubusercontent.com/reminder-bot/logos/master/Remind_Me_Bot_Logo_PPic.jpg" NOT NULL,
