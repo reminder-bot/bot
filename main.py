@@ -171,11 +171,6 @@ class BotClient(discord.AutoShardedClient):
 
 
     def format_time(self, text, server):
-        invert = False
-        if text[0] == '-':
-            invert = True
-            text = text[1:]
-
         if '/' in text or ':' in text:
             date = datetime.now(pytz.timezone(server.timezone))
 
@@ -234,10 +229,7 @@ class BotClient(discord.AutoShardedClient):
                         return None
 
             full = seconds + (minutes * 60) + (hours * 3600) + (days * 86400) + int(current_buffer)
-            if invert:
-                time_sec = round(time.time() - full)
-            else:
-                time_sec = round(time.time() + full)
+            time_sec = round(time.time() + full)
             return time_sec
 
 
@@ -570,8 +562,8 @@ class BotClient(discord.AutoShardedClient):
 
             mtime = datetime_obj.timestamp()
 
-            if 0 > mtime - time.time() > 1576800000:
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_time')))
+            if not (0 < mtime - time.time() < 1576800000):
+                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/long_time')))
 
             else:
                 if isinstance(scope, discord.TextChannel):

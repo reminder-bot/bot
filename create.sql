@@ -65,4 +65,12 @@ CREATE TABLE reminders.roles (
 
     PRIMARY KEY (id)
 );
+
+CREATE TABLE reminders.timers (
+    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
+    start_time INT UNSIGNED NOT NULL,
+    owner BIGINT UNSIGNED NOT NULL,
+
+    PRIMARY KEY (id)
+);
 -- MUST RUN to_database.py TO FORM STRING STORES
