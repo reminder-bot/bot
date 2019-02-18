@@ -1,4 +1,4 @@
-from models import Reminder, Server, Strings, Todo, RoleRestrict, Blacklist, session, Interval
+from models import Reminder, Server, Strings, Todo, RoleRestrict, Blacklist, Interval, Timer, session
 
 import discord
 import pytz
@@ -51,6 +51,7 @@ class BotClient(discord.AutoShardedClient):
             'natural' : [self.natural, False],
             'remind' : [self.remind, False],
             'interval' : [self.remind, False],
+            'timer' : [self.timer, True],
             'del' : [self.delete, True],
             'look' : [self.look, True],
 
@@ -683,6 +684,63 @@ class BotClient(discord.AutoShardedClient):
                         session.commit()
 
                         logger.info('Registered a new reminder for {}'.format(message.guild.name))
+
+
+    async def timer(self, message, stripped, server):
+        if server is None:
+            owner = message.author.id
+        else:
+            owner = message.guild.id
+
+        if stripped == 'list':
+            timers = session.query(Timer).filter(Timer.owner == owner)
+
+            e = discord.Embed(title="Timers")
+            for timer in timers:
+                delta = int(time.time() - timer.start_time)
+                minutes, seconds = divmod(delta, 60)
+                hours, minutes = divmod(minutes, 60)
+                e.add_field(name=timer.name, value="{:02d}:{:02d}:{:02d}".format(hours, minutes, seconds))
+
+            await message.channel.send(embed=e)
+
+        elif stripped.startswith('start'):
+            timers = session.query(Timer).filter(Timer.owner == owner)
+
+            if timers.count() >= 25:
+                await message.channel.send('You already have 25 timers. Please delete some timers before creating a new one')
+
+            else:
+                n = stripped.split(' ')[1:2] or 'New timer #{}'.format(timers.count() + 1)
+
+                if len(n) > 32:
+                    await message.channel.send('Please name your timer something shorted (max. 32 characters, you used {})'.format(len(n)))
+
+                elif n in [x.name for x in timers]:
+                    await message.channel.send('Please give your timer a unique name')
+
+                else:
+                    t = Timer(name=n, owner=owner)
+                    session.add(t)
+
+                    session.commit()
+
+                    await message.channel.send('Created a new timer')
+
+        elif stripped.startswith('delete '):
+
+            n = ' '.join(stripped.split(' ')[1:])
+
+            timers = session.query(Timer).filter(Timer.owner == owner).filter(Timer.name == n)
+
+            if timers.count() < 1:
+                await message.channel.send('Could not find a timer by that name')
+
+            else:
+                timers.delete(synchronize_session='fetch')
+                await message.channel.send('Deleted a timer')
+
+                session.commit()
 
 
     async def blacklist(self, message, stripped, server):
