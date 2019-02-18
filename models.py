@@ -4,6 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 import configparser
 import os
+import time
 
 
 config = configparser.SafeConfigParser()
@@ -78,6 +79,15 @@ class RoleRestrict(Base):
     id = Column(Integer, primary_key=True)
     role = Column(BigInteger, nullable=False, unique=True)
     server = Column(BigInteger, nullable=False)
+
+
+class Timer(Base):
+    __tablename__ = 'timers'
+
+    id = Column(Integer, primary_key=True)
+    start_time = Column(Integer, default=time.time, nullable=False)
+    name = Column( String(32), nullable=False )
+    owner = Column( BigInteger, nullable=False )
 
 
 languages = []

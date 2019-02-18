@@ -17,24 +17,10 @@ import traceback
 import concurrent.futures
 from functools import partial
 import logging
-import hashlib
-import random
+import secrets
 
-
-class OneLineExceptionFormatter(logging.Formatter):
-    def formatException(self, exc_info):
-        result = super().formatException(exc_info)
-        return repr(result)
-
-    def format(self, record):
-        result = super().format(record)
-        if record.exc_text:
-            result = result.replace("\n", "")
-        return result
 
 handler = logging.StreamHandler()
-formatter = OneLineExceptionFormatter(logging.BASIC_FORMAT)
-handler.setFormatter(formatter)
 logger = logging.getLogger()
 logger.setLevel(os.environ.get("LOGLEVEL", "INFO"))
 logger.addHandler(handler)
@@ -115,7 +101,7 @@ class BotClient(discord.AutoShardedClient):
         bigint = i1 + i2
         full = hex(bigint)[2:]
         while len(full) < 64:
-            full += random.choice('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
+            full += secrets.choice('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_')
 
         return full
 
