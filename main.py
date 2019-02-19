@@ -689,8 +689,10 @@ class BotClient(discord.AutoShardedClient):
     async def timer(self, message, stripped, server):
         if server is None:
             owner = message.author.id
+            language = 'EN'
         else:
             owner = message.guild.id
+            language = server.language
 
         if stripped == 'list':
             timers = session.query(Timer).filter(Timer.owner == owner)
@@ -708,16 +710,16 @@ class BotClient(discord.AutoShardedClient):
             timers = session.query(Timer).filter(Timer.owner == owner)
 
             if timers.count() >= 25:
-                await message.channel.send('You already have 25 timers. Please delete some timers before creating a new one')
+                await message.channel.send(self.get_strings(language, 'timer/limit'))
 
             else:
                 n = stripped.split(' ')[1:2] or 'New timer #{}'.format(timers.count() + 1)
 
                 if len(n) > 32:
-                    await message.channel.send('Please name your timer something shorted (max. 32 characters, you used {})'.format(len(n)))
+                    await message.channel.send(self.get_strings(language, 'timer/name_length').format(len(n)))
 
                 elif n in [x.name for x in timers]:
-                    await message.channel.send('Please give your timer a unique name')
+                    await message.channel.send(self.get_strings(language, 'timer/unique'))
 
                 else:
                     t = Timer(name=n, owner=owner)
@@ -725,7 +727,7 @@ class BotClient(discord.AutoShardedClient):
 
                     session.commit()
 
-                    await message.channel.send('Created a new timer')
+                    await message.channel.send(self.get_strings(language, 'timer/success'))
 
         elif stripped.startswith('delete '):
 
@@ -734,13 +736,16 @@ class BotClient(discord.AutoShardedClient):
             timers = session.query(Timer).filter(Timer.owner == owner).filter(Timer.name == n)
 
             if timers.count() < 1:
-                await message.channel.send('Could not find a timer by that name')
+                await message.channel.send(self.get_strings(language, 'timer/not_found'))
 
             else:
                 timers.delete(synchronize_session='fetch')
-                await message.channel.send('Deleted a timer')
+                await message.channel.send(self.get_strings(language, 'timer/deleted'))
 
                 session.commit()
+
+        else:
+            await message.channel.send(self.get_strings(language, 'timer/help'))
 
 
     async def blacklist(self, message, stripped, server):
