@@ -1,5 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, BigInteger, String, Text, Table, ForeignKey
+from sqlalchemy import Column, Integer, BigInteger, String, Text, Boolean, Table, ForeignKey
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 import configparser
@@ -24,17 +24,19 @@ class Reminder(Base):
 
     id = Column(Integer, primary_key=True, unique=True)
     hashpack = Column(String(64))
+    
     message = Column(String(2000))
     channel = Column(BigInteger)
+    webhook = Column(String(256))
     time = Column(BigInteger)
+    
     position = Column(Integer)
 
-    webhook = Column(String(256))
     avatar = Column(String(512), default='https://raw.githubusercontent.com/reminder-bot/logos/master/Remind_Me_Bot_Logo_PPic.jpg', nullable=False)
     username = Column(String(32), default='Reminder', nullable=False)
+    embed = Column(Integer, nullable=True)
 
     method = Column(Text)
-    embed = Column(Integer, nullable=True)
 
 
 class Interval(Base):
@@ -52,10 +54,21 @@ class Server(Base):
 
     id = Column(Integer, primary_key=True)
     server = Column(BigInteger, unique=True)
+    
     prefix = Column( String(5), default="$", nullable=False )
     language = Column( String(2), default="EN", nullable=False )
-    timezone = Column( String(30), default="UTC", nullable=False )
+    timezone = Column( String(32), default="UTC", nullable=False )
 
+
+class User(Base):
+    __tablename__ = 'users'
+
+    id = Column(Integer, primary_key=True)
+    user = Column(BigInteger, unique=True, nullable=False)
+
+    language = Column( String(2), nullable=True )
+    timezone = Column( String(32), nullable=True )
+    allowed_dm = Column( Boolean, default=True, nullable=False )
 
 class Todo(Base):
     __tablename__ = 'todos'

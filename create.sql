@@ -37,7 +37,18 @@ CREATE TABLE reminders.servers (
 
     prefix VARCHAR(5) DEFAULT "$" NOT NULL,
     language VARCHAR(2) DEFAULT "EN" NOT NULL,
-    timezone VARCHAR(30) DEFAULT "UTC" NOT NULL,
+    timezone VARCHAR(32) DEFAULT "UTC" NOT NULL,
+
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE reminders.users (
+    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
+    user BIGINT UNSIGNED UNIQUE NOT NULL,
+
+    language VARCHAR(2),
+    timezone VARCHAR(32),
+    allowed_dm BOOLEAN DEFAULT 1 NOT NULL,
 
     PRIMARY KEY (id)
 );
@@ -68,7 +79,7 @@ CREATE TABLE reminders.roles (
 
 CREATE TABLE reminders.timers (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
-    start_time INT UNSIGNED NOT NULL DEFAULT UNIX_TIMESTAMP(),
+    start_time INT UNSIGNED DEFAULT (UNIX_TIMESTAMP()) NOT NULL,
     name VARCHAR(32) NOT NULL,
     owner BIGINT UNSIGNED NOT NULL,
 
