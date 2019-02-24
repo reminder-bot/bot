@@ -517,22 +517,23 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/long_time')))
             err = True
 
-        chan_split = message_crop.split(self.get_strings(server.language, 'natural/to'))
-        if len(chan_split) > 1 \
-            and chan_split[-1].strip()[0] == '<' \
-            and chan_split[-1].strip()[-1] == '>' \
-            and all([x not in '< >' for x in chan_split[-1].strip()[1:-1]]):
+        if message.guild is not None:
+            chan_split = message_crop.split(self.get_strings(server.language, 'natural/to'))
+            if len(chan_split) > 1 \
+                and chan_split[-1].strip()[0] == '<' \
+                and chan_split[-1].strip()[-1] == '>' \
+                and all([x not in '< >' for x in chan_split[-1].strip()[1:-1]]):
 
-            id = int( ''.join([x for x in chan_split[-1] if x in '0123456789']) )
-            scope = message.guild.get_member(id)
-            if scope is None:
-                scope = message.guild.get_channel(id)
-
+                id = int( ''.join([x for x in chan_split[-1] if x in '0123456789']) )
+                scope = message.guild.get_member(id)
                 if scope is None:
-                    await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_tag')))
-                    err = True
+                    scope = message.guild.get_channel(id)
 
-            message_crop = message_crop.rsplit(self.get_strings(server.language, 'natural/to'), 1)[0]
+                    if scope is None:
+                        await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_tag')))
+                        err = True
+
+                message_crop = message_crop.rsplit(self.get_strings(server.language, 'natural/to'), 1)[0]
 
         interval_split = message_crop.split(self.get_strings(server.language, 'natural/every'))
         recurring = False
@@ -545,6 +546,7 @@ class BotClient(discord.AutoShardedClient):
                 pass
             elif self.get_patrons(message.author.id, level=1):
                 recurring = True
+
                 interval = abs((interval - datetime.utcnow()).total_seconds())
                 if interval < 8:
                     await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/8_seconds')))
@@ -558,7 +560,7 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/donor')))
                 return
 
-        if not isinstance(scope, discord.TextChannel) and scope is not None:
+        if not isinstance(scope, discord.TextChannel) and scope is not None and message.guild is not None:
             s = scope.dm_channel
             if s is None:
                 await scope.create_dm()
@@ -610,11 +612,9 @@ class BotClient(discord.AutoShardedClient):
                     reminder = Reminder(time=mtime, hashpack=full, message=message_crop.strip(), channel=scope.id, webhook=webhook, method='natural')
                     session.add(reminder)
 
-                logger.info('{}: New: {}'.format(datetime.utcnow().strftime('%H:%M:%S'), reminder))
+                session.commit()
 
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/success').format(tag, round(datetime_obj.timestamp() - time.time()))))
-
-                session.commit()
 
 
     async def remind(self, message, stripped, server):
@@ -636,14 +636,13 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/donor')))
 
             else:
-
                 channel = message.channel
                 url = None
                 interval = None
                 scope_id = message.channel.id
-                pref = '#'
+                pref = '#' if message.guild is not None else '@'
 
-                if args[0][0] == '<':
+                if args[0][0] == '<' and message.guild is not None:
                     arg = args.pop(0)
                     if arg[1] == '@' and arg[2] in '0123456789!':
                         pref = '@'
@@ -688,7 +687,9 @@ class BotClient(discord.AutoShardedClient):
                             return
 
                     text = ' '.join(args)
-                    restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
+
+                    if message.guild is not None: 
+                        restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
 
                     if pref == '#' and restrict.count() == 0 and not message.author.guild_permissions.manage_messages:
                         await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_perms').format(prefix=server.prefix)))
@@ -714,8 +715,6 @@ class BotClient(discord.AutoShardedClient):
                             await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/success').format(pref, scope_id, round(mtime - time.time()))))
 
                         session.commit()
-
-                        logger.info('Registered a new reminder for {}'.format(message.guild.name))
 
 
     async def timer(self, message, stripped, prefs):
@@ -767,16 +766,16 @@ class BotClient(discord.AutoShardedClient):
             timers = session.query(Timer).filter(Timer.owner == owner).filter(Timer.name == n)
 
             if timers.count() < 1:
-                await message.channel.send(self.get_strings(language, 'timer/not_found'))
+                await message.channel.send(self.get_strings(prefs.language, 'timer/not_found'))
 
             else:
                 timers.delete(synchronize_session='fetch')
-                await message.channel.send(self.get_strings(language, 'timer/deleted'))
+                await message.channel.send(self.get_strings(prefs.language, 'timer/deleted'))
 
                 session.commit()
 
         else:
-            await message.channel.send(self.get_strings(language, 'timer/help'))
+            await message.channel.send(self.get_strings(prefs.language, 'timer/help'))
 
 
     async def blacklist(self, message, stripped, server):
