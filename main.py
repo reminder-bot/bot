@@ -441,7 +441,7 @@ class BotClient(discord.AutoShardedClient):
         session.commit()
 
 
-    async def timezone(self, message, stripped, server):
+    async def timezone(self, message, stripped, prefs):
 
         if message.guild is not None and message.author.guild_permissions.manage_guild:
             target = session.query(Server).filter(Server.server == message.guild.id).first()
