@@ -592,10 +592,13 @@ class BotClient(discord.AutoShardedClient):
 
             mtime = datetime_obj.timestamp()
 
-            if not (0 < mtime - time.time() < 1576800000):
+            if not (mtime - time.time() < 1576800000):
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/long_time')))
 
             else:
+                if mtime - time.time() < 0:
+                    mtime = 0
+
                 if isinstance(scope, discord.TextChannel):
                     tag = scope.mention
                     restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
@@ -679,10 +682,13 @@ class BotClient(discord.AutoShardedClient):
                 t = args.pop(0)
                 mtime = self.format_time(t, server)
 
-                if mtime is None or 0 > mtime - time.time() > 1576800000:
+                if mtime is None or mtime - time.time() > 1576800000:
                     await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_time')))
         
                 else:
+                    if mtime - time.time() < 0:
+                        mtime = 0
+
                     if is_interval:
                         i = args.pop(0)
                         interval = self.format_time(i, server) - time.time()
