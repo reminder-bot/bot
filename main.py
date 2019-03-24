@@ -746,6 +746,47 @@ class BotClient(discord.AutoShardedClient):
                         session.commit()
 
 
+    def add_reminder(self, message, channel, text, time, interval=None, method='natural'):
+        uid = self.create_uid(channel.id, message.id) # create a UID
+
+        nudge_channel = session.query(ChannelNudge).filter(ChannelNudge.channel == channel.id).first() # check if it's being nudged
+
+        if nudge_channel is not None:
+            time += nudge_channel.time
+
+        if time > unix_time() + FIFTY_YEARS:
+            return 
+            # return invalid time
+
+        elif time < unix_time():
+            time = int(unix_time()) + 1
+
+        hook = False
+
+        if isinstance(channel, discord.TextChannel): # if not a DM reminder
+            hook = True
+
+            channel = message.guild.get_channel(scope_id) or message.channel
+            hooks = [x for x in await channel.webhooks() if x.user.id == self.user.id]
+            hook = hooks[0] if len(hooks) > 0 else await channel.create_webhook(name='Reminders')
+            url = hook.url
+
+            restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
+
+            if restrict.count() != 0 and not message.author.guild_permissions.manage_messages:        
+                return
+                # invalid permissions
+
+        else:
+            pass
+
+        if interval is not None:
+            pass
+
+        else:
+            pass
+
+
     async def timer(self, message, stripped, prefs):
 
         if message.guild is None:
