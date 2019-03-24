@@ -169,7 +169,7 @@ class BotClient(discord.AutoShardedClient):
             return True
 
 
-    def format_time(self, text, server):
+    def format_time(self, text, as_exact, server):
         invert = False
         if text[0] == '-':
             invert = True
@@ -233,10 +233,18 @@ class BotClient(discord.AutoShardedClient):
                         return None
 
             full = seconds + (minutes * 60) + (hours * 3600) + (days * 86400) + int(current_buffer)
-            if invert:
-                time_sec = round(unix_time() - full)
+
+            if as_exact:
+                if invert:
+                    time_sec = round(unix_time() - full)
+                else:
+                    time_sec = round(unix_time() + full)
+
             else:
-                time_sec = round(unix_time() + full)
+                if invert:
+                    time_sec = -full
+                else:
+                    time_sec = full
 
             return time_sec
 
@@ -591,7 +599,7 @@ class BotClient(discord.AutoShardedClient):
 
             else:
                 if mtime - unix_time() < 0:
-                    mtime = 0
+                    mtime = unix_time()
 
                 if isinstance(scope, discord.TextChannel):
                     tag = scope.mention
@@ -605,6 +613,11 @@ class BotClient(discord.AutoShardedClient):
                     tag = scope.recipient.mention
 
                 full = self.create_uid(scope.id, message.id)
+
+                nudge_channel = session.query(ChannelNudge).filter(ChannelNudge.channel == scope.id).first()
+
+                if nudge_channel is not None:
+                    mtime += nudge_channel.time
 
                 if recurring:
                     reminder = Reminder(time=mtime, uid=full, message=message_crop.strip(), channel=scope.id, position=0, webhook=webhook, method='natural')
@@ -620,7 +633,7 @@ class BotClient(discord.AutoShardedClient):
 
                 session.commit()
 
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/success').format(tag, round(datetime_obj.timestamp() - unix_time()))))
+                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/success').format(tag, round(mtime - unix_time()))))
 
 
     async def remind(self, message, stripped, server):
@@ -674,18 +687,18 @@ class BotClient(discord.AutoShardedClient):
                     url = hook.url
 
                 t = args.pop(0)
-                mtime = self.format_time(t, server)
+                mtime = self.format_time(t, True, server)
 
                 if mtime is None or mtime - unix_time() > 1576800000:
                     await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_time')))
         
                 else:
                     if mtime - unix_time() < 0:
-                        mtime = 0
+                        mtime = unix_time()
 
                     if is_interval:
                         i = args.pop(0)
-                        interval = self.format_time(i, server) - unix_time()
+                        interval = self.format_time(i, False, server)
 
                         if interval < 8:
                             await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/8_seconds')))
@@ -706,6 +719,11 @@ class BotClient(discord.AutoShardedClient):
                     else:
 
                         full = self.create_uid(channel.id, message.id)
+
+                        nudge_channel = session.query(ChannelNudge).filter(ChannelNudge.channel == channel.id).first()
+
+                        if nudge_channel is not None:
+                            mtime += nudge_channel.time
 
                         if is_interval:
                             reminder = Reminder(time=mtime, uid=full, channel=channel.id, message=text, webhook=url, method='remind', position=0)
@@ -1017,33 +1035,30 @@ class BotClient(discord.AutoShardedClient):
         else:
             channels = [x.id for x in message.guild.channels]
 
-        t = self.format_time(stripped, prefs)
+        time = self.format_time(stripped, False, prefs)
 
-        if t is None:
+        if time is None:
             await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'offset/invalid_time')))
 
         else:
-            t -= unix_time()
             reminders = session.query(Reminder).filter(Reminder.channel.in_(channels))
 
             for r in reminders:
-                r.time += t
+                r.time += time
 
             session.commit()
 
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'offset/success').format(t)))
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'offset/success').format(time)))
 
 
     async def nudge_channel(self, message, stripped, prefs):
 
-        t = self.format_time(stripped, prefs)
+        t = self.format_time(stripped, False, prefs)
 
         if t is None:
             await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'nudge/invalid_time')))
 
         else:
-            t -= unix_time()
-
             query = session.query(ChannelNudge).filter(ChannelNudge.channel == message.channel.id)
 
             if query.count() < 1:

@@ -137,6 +137,6 @@ Strings = Table('strings', Base.metadata,
     Column('id', Integer, primary_key=True),
     Column('name', Text),
     *(
-        Column('value_{}'.format(lang), Text) for lang in languages
+        Column('value_{}'.format(lang[0]), Text) for lang in languages
     )
 )
