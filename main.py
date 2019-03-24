@@ -736,7 +736,7 @@ class BotClient(discord.AutoShardedClient):
         if stripped == 'list':
             timers = session.query(Timer).filter(Timer.owner == owner)
 
-            e = discord.Embed(title="Timers")
+            e = discord.Embed(title='Timers')
             for timer in timers:
                 delta = int(unix_time() - timer.start_time)
                 minutes, seconds = divmod(delta, 60)
@@ -869,10 +869,6 @@ class BotClient(discord.AutoShardedClient):
 
     async def todo(self, message, stripped, server):
         if 'todos' in message.content.split(' ')[0]:
-            if message.guild is None:
-                await message.channel.send(self.get_strings(server.language, 'todo/server_only').format(prefix='$'))
-                return
-
             location = message.guild.id
             name = message.guild.name
             command = 'todos'
@@ -892,7 +888,7 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(embed=discord.Embed(title='{}\'s TODO'.format(name), description=''.join(msg)))
 
         elif len(splits) >= 2:
-            if splits[0] in ['add', 'a']:
+            if splits[0]  == 'add':
                 a = ' '.join(splits[1:])
                 if len('   '.join(todo.value for todo in todos)) > 1800:
                     await message.channel.send(self.get_strings(server.language, 'todo/too_long2'))
@@ -902,7 +898,7 @@ class BotClient(discord.AutoShardedClient):
                 session.add(todo)
                 await message.channel.send(self.get_strings(server.language, 'todo/added').format(name=a))
 
-            elif splits[0] in ['remove', 'r']:
+            elif splits[0] == 'remove':
                 try:
                     a = session.query(Todo).filter(Todo.id == todos[int(splits[1])-1].id).first()
                     session.query(Todo).filter(Todo.id == todos[int(splits[1])-1].id).delete(synchronize_session='fetch')
@@ -919,7 +915,7 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(self.get_strings(server.language, 'todo/help').format(prefix=server.prefix, command=command))
 
         else:
-            if stripped in ['remove*', 'r*', 'clear', 'clr']:
+            if stripped == 'clear':
                 session.query(Todo).filter(Todo.owner == location).delete(synchronize_session='fetch')
                 await message.channel.send(self.get_strings(server.language, 'todo/cleared'))
 
@@ -1043,7 +1039,7 @@ class BotClient(discord.AutoShardedClient):
         t = self.format_time(stripped, prefs)
 
         if t is None:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'offset/invalid_time')))
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'nudge/invalid_time')))
 
         else:
             t -= unix_time()
@@ -1059,7 +1055,7 @@ class BotClient(discord.AutoShardedClient):
 
             session.commit()
 
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'offset/success').format(t)))
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'nudge/success').format(t)))
 
 
 client = BotClient()
