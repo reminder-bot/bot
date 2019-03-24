@@ -23,6 +23,8 @@ logger.setLevel(os.environ.get("LOGLEVEL", "INFO"))
 logger.addHandler(handler)
 
 
+FIFTY_YEARS = 1576800000
+
 class Information():
     def __init__(self, language, timezone, prefix, allowed_dm):
         self.language = language
@@ -524,7 +526,7 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/bad_time')))
             err = True
 
-        elif datetime_obj.timestamp() - unix_time() > 1576800000:
+        elif datetime_obj.timestamp() - unix_time() > FIFTY_YEARS:
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/long_time')))
             err = True
 
@@ -562,7 +564,7 @@ class BotClient(discord.AutoShardedClient):
                 if interval < 8:
                     await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/8_seconds')))
                     err = True
-                elif interval > 1576800000:
+                elif interval > FIFTY_YEARS:
                     await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/long_time')))
                     err = True
 
@@ -594,7 +596,7 @@ class BotClient(discord.AutoShardedClient):
 
             mtime = datetime_obj.timestamp()
 
-            if not (mtime - unix_time() < 1576800000):
+            if not (mtime - unix_time() < FIFTY_YEARS):
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/long_time')))
 
             else:
@@ -689,7 +691,7 @@ class BotClient(discord.AutoShardedClient):
                 t = args.pop(0)
                 mtime = self.format_time(t, True, server)
 
-                if mtime is None or mtime - unix_time() > 1576800000:
+                if mtime is None or mtime - unix_time() > FIFTY_YEARS:
                     await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_time')))
         
                 else:
@@ -704,7 +706,7 @@ class BotClient(discord.AutoShardedClient):
                             await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/8_seconds')))
                             return
 
-                        elif interval is None or 8 > interval > 1576800000:
+                        elif interval is None or 8 > interval > FIFTY_YEARS:
                             await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/invalid_interval')))
                             return
 
