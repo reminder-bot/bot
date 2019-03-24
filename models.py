@@ -23,12 +23,13 @@ class Reminder(Base):
     __tablename__ = 'reminders'
 
     id = Column(Integer, primary_key=True, unique=True)
-    hashpack = Column(String(64))
+    uid = Column(String(64))
     
     message = Column(String(2000))
     channel = Column(BigInteger)
-    webhook = Column(String(256))
     time = Column(BigInteger)
+    webhook = Column(String(256))
+    enabled = Column(Boolean, nullable=False, default=True)
     
     position = Column(Integer)
 
@@ -103,12 +104,20 @@ class Timer(Base):
     owner = Column( BigInteger, nullable=False )
 
 
-class Languages(Base):
+class Language(Base):
     __tablename__ = 'languages'
 
     id = Column(Integer, primary_key=True)
     name = Column( String(20), nullable=False )
     code = Column( String(2), nullable=False )
+
+
+class ChannelNudge(Base):
+    __tablename__ = 'nudge_channels'
+
+    id = Column(Integer, primary_key=True)
+    channel = Column(BigInteger, unique=True, nullable=False)
+    time = Column(Integer, nullable=False)
 
 
 if passwd:
@@ -122,7 +131,7 @@ Session = scoped_session(session_factory)
 session = Session()
 
 
-languages = session.query(Languages.code).all()
+languages = session.query(Language.code).all()
 
 Strings = Table('strings', Base.metadata,
     Column('id', Integer, primary_key=True),

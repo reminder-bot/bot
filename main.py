@@ -1,19 +1,16 @@
-from models import Reminder, Server, User, Strings, Todo, RoleRestrict, Blacklist, Interval, Timer, session, Languages
+from models import Reminder, Server, User, Strings, Todo, RoleRestrict, Blacklist, Interval, Timer, session, Language, ChannelNudge
 
 import discord
 import pytz
 import asyncio
 import aiohttp
 import dateparser
-import sqlalchemy
 
 from datetime import datetime
-import time
-import sys
+from time import time as unix_time
 import os
-import configparser
-import json
-import traceback
+from configparser import SafeConfigParser as ConfigParser
+from json import dumps as json_dump
 import concurrent.futures
 from functools import partial
 import logging
@@ -36,7 +33,7 @@ class Information():
 
 class Config():
     def __init__(self):
-        config = configparser.SafeConfigParser()
+        config = ConfigParser()
         config.read('config.ini')
 
         self.donor_roles = {
@@ -44,11 +41,11 @@ class Config():
             2 : [353226278435946496],
         }
 
-        self.dbl_token = self.config.get('DEFAULT', 'dbl_token')
-        self.token = self.config.get('DEFAULT', 'token')
+        self.dbl_token = config.get('DEFAULT', 'dbl_token')
+        self.token = config.get('DEFAULT', 'token')
 
-        self.patreon = self.config.get('DEFAULT', 'patreon_enabled') == 'yes'
-        self.patreon_servers = [int(x.strip()) for x in self.config.get('DEFAULT', 'patreon_server').split(',')]
+        self.patreon = config.get('DEFAULT', 'patreon_enabled') == 'yes'
+        self.patreon_servers = [int(x.strip()) for x in config.get('DEFAULT', 'patreon_server').split(',')]
 
         if self.patreon:
             logger.info('Patreon is enabled. Will look for servers {}'.format(self.patreon_servers))
@@ -56,9 +53,7 @@ class Config():
 
 class BotClient(discord.AutoShardedClient):
     def __init__(self, *args, **kwargs):
-        super(BotClient, self).__init__(*args, **kwargs)
-
-        self.start_time = time.time()
+        self.start_time = unix_time()
 
         self.commands = {
         ##  format: 'command' : [<function>, <works in DMs?>]
@@ -75,6 +70,7 @@ class BotClient(discord.AutoShardedClient):
             'clock' : [self.clock, True],
             'lang' : [self.language, True],
             'offset' : [self.offset_reminders, True],
+            'nudge' : [self.nudge_channel, True],
 
             'natural' : [self.natural, True],
             'remind' : [self.remind, True],
@@ -90,16 +86,18 @@ class BotClient(discord.AutoShardedClient):
         }
 
         self.languages = {
-            lang.name: lang.code for lang in session.query(Languages)
+            lang.name: lang.code for lang in session.query(Language)
         }
 
         self.config = Config()
 
-        if 'EN' not in self.languages.values():
-            logger.critical('English strings not present. Exiting...')
-            sys.exit()
-
         self.executor = concurrent.futures.ThreadPoolExecutor()
+
+        if 'EN' not in self.languages.values():
+            raise Exception('English strings not present. Exiting...')
+
+        else:
+            super(BotClient, self).__init__(*args, **kwargs)
 
 
     async def do_blocking(self, method):
@@ -107,7 +105,7 @@ class BotClient(discord.AutoShardedClient):
         return [x.result() for x in a][0]
 
 
-    def create_hashpack(self, i1, i2):
+    def create_uid(self, i1, i2):
         m = i2
         while m > 0:
             i1 *= 10
@@ -236,9 +234,9 @@ class BotClient(discord.AutoShardedClient):
 
             full = seconds + (minutes * 60) + (hours * 3600) + (days * 86400) + int(current_buffer)
             if invert:
-                time_sec = round(time.time() - full)
+                time_sec = round(unix_time() - full)
             else:
-                time_sec = round(time.time() + full)
+                time_sec = round(unix_time() + full)
 
             return time_sec
 
@@ -262,7 +260,7 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def time_stats(self, message, *args):
-        uptime = time.time() - self.start_time
+        uptime = unix_time() - self.start_time
 
         message_ts = message.created_at.timestamp()
 
@@ -306,7 +304,7 @@ class BotClient(discord.AutoShardedClient):
         guild_count = len(self.guilds)
 
         csession = aiohttp.ClientSession()
-        dump = json.dumps({
+        dump = json_dump({
             'server_count': guild_count
         })
 
@@ -518,7 +516,7 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/bad_time')))
             err = True
 
-        elif datetime_obj.timestamp() - time.time() > 1576800000:
+        elif datetime_obj.timestamp() - unix_time() > 1576800000:
             await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/long_time')))
             err = True
 
@@ -588,11 +586,11 @@ class BotClient(discord.AutoShardedClient):
 
             mtime = datetime_obj.timestamp()
 
-            if not (mtime - time.time() < 1576800000):
+            if not (mtime - unix_time() < 1576800000):
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/long_time')))
 
             else:
-                if mtime - time.time() < 0:
+                if mtime - unix_time() < 0:
                     mtime = 0
 
                 if isinstance(scope, discord.TextChannel):
@@ -606,10 +604,10 @@ class BotClient(discord.AutoShardedClient):
                 else:
                     tag = scope.recipient.mention
 
-                full = self.create_hashpack(scope.id, message.id)
+                full = self.create_uid(scope.id, message.id)
 
                 if recurring:
-                    reminder = Reminder(time=mtime, hashpack=full, message=message_crop.strip(), channel=scope.id, position=0, webhook=webhook, method='natural')
+                    reminder = Reminder(time=mtime, uid=full, message=message_crop.strip(), channel=scope.id, position=0, webhook=webhook, method='natural')
                     session.add(reminder)
                     session.commit()
 
@@ -617,12 +615,12 @@ class BotClient(discord.AutoShardedClient):
                     session.add(i)
 
                 else:
-                    reminder = Reminder(time=mtime, hashpack=full, message=message_crop.strip(), channel=scope.id, webhook=webhook, method='natural')
+                    reminder = Reminder(time=mtime, uid=full, message=message_crop.strip(), channel=scope.id, webhook=webhook, method='natural')
                     session.add(reminder)
 
                 session.commit()
 
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/success').format(tag, round(datetime_obj.timestamp() - time.time()))))
+                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/success').format(tag, round(datetime_obj.timestamp() - unix_time()))))
 
 
     async def remind(self, message, stripped, server):
@@ -678,16 +676,16 @@ class BotClient(discord.AutoShardedClient):
                 t = args.pop(0)
                 mtime = self.format_time(t, server)
 
-                if mtime is None or mtime - time.time() > 1576800000:
+                if mtime is None or mtime - unix_time() > 1576800000:
                     await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_time')))
         
                 else:
-                    if mtime - time.time() < 0:
+                    if mtime - unix_time() < 0:
                         mtime = 0
 
                     if is_interval:
                         i = args.pop(0)
-                        interval = self.format_time(i, server) - time.time()
+                        interval = self.format_time(i, server) - unix_time()
 
                         if interval < 8:
                             await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/8_seconds')))
@@ -707,23 +705,23 @@ class BotClient(discord.AutoShardedClient):
 
                     else:
 
-                        full = self.create_hashpack(channel.id, message.id)
+                        full = self.create_uid(channel.id, message.id)
 
                         if is_interval:
-                            reminder = Reminder(time=mtime, hashpack=full, channel=channel.id, message=text, webhook=url, method='remind', position=0)
+                            reminder = Reminder(time=mtime, uid=full, channel=channel.id, message=text, webhook=url, method='remind', position=0)
                             session.add(reminder)
                             session.commit()
 
                             i = Interval(reminder=reminder.id, period=interval, position=0)
                             session.add(i)
 
-                            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/success').format(pref, scope_id, round(mtime - time.time()))))
+                            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/success').format(pref, scope_id, round(mtime - unix_time()))))
 
                         else:
-                            reminder = Reminder(time=mtime, hashpack=full, channel=channel.id, message=text, webhook=url, method='remind')
+                            reminder = Reminder(time=mtime, uid=full, channel=channel.id, message=text, webhook=url, method='remind')
                             session.add(reminder)
 
-                            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/success').format(pref, scope_id, round(mtime - time.time()))))
+                            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/success').format(pref, scope_id, round(mtime - unix_time()))))
 
                         session.commit()
 
@@ -740,7 +738,7 @@ class BotClient(discord.AutoShardedClient):
 
             e = discord.Embed(title="Timers")
             for timer in timers:
-                delta = int(time.time() - timer.start_time)
+                delta = int(unix_time() - timer.start_time)
                 minutes, seconds = divmod(delta, 60)
                 hours, minutes = divmod(minutes, 60)
                 e.add_field(name=timer.name, value="{:02d}:{:02d}:{:02d}".format(hours, minutes, seconds))
@@ -987,7 +985,7 @@ class BotClient(discord.AutoShardedClient):
         session.commit()
 
 
-    async def look(self, message, stripped, server):
+    async def look(self, message, stripped, prefs):
 
         channel = message.channel_mentions[0] if len(message.channel_mentions) > 0 else message.channel
         channel = channel.id
@@ -995,14 +993,14 @@ class BotClient(discord.AutoShardedClient):
         reminders = session.query(Reminder).filter(Reminder.channel == channel)
 
         if reminders.count() > 0:
-            await message.channel.send(self.get_strings(server.language, 'look/listing'))
+            await message.channel.send(self.get_strings(prefs.language, 'look/listing'))
 
             s = ''
             for rem in reminders:
                 string = '\'{}\' *{}* **{}**\n'.format(
                     self.clean_string(rem.message, message.guild),
-                    self.get_strings(server.language, 'look/inter'),
-                    datetime.fromtimestamp(rem.time, pytz.timezone(server.timezone)).strftime('%Y-%m-%d %H:%M:%S'))
+                    self.get_strings(prefs.language, 'look/inter'),
+                    datetime.fromtimestamp(rem.time, pytz.timezone(prefs.timezone)).strftime('%Y-%m-%d %H:%M:%S'))
 
                 if len(s) + len(string) > 2000:
                     await message.channel.send(s)
@@ -1013,29 +1011,55 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(s)
 
         else:
-            await message.channel.send(self.get_strings(server.language, 'look/no_reminders'))
+            await message.channel.send(self.get_strings(prefs.language, 'look/no_reminders'))
 
 
-    async def offset_reminders(self, message, stripped, server):
+    async def offset_reminders(self, message, stripped, prefs):
 
         if message.guild is None:
             channels = [message.channel.id]
         else:
             channels = [x.id for x in message.guild.channels]
 
-        t = self.format_time(stripped, server)
+        t = self.format_time(stripped, prefs)
 
         if t is None:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'offset/invalid_time')))
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'offset/invalid_time')))
 
         else:
-            t -= time.time()
+            t -= unix_time()
             reminders = session.query(Reminder).filter(Reminder.channel.in_(channels))
 
             for r in reminders:
                 r.time += t
 
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'offset/success').format(t)))
+            session.commit()
+
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'offset/success').format(t)))
+
+
+    async def nudge_channel(self, message, stripped, prefs):
+
+        t = self.format_time(stripped, prefs)
+
+        if t is None:
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'offset/invalid_time')))
+
+        else:
+            t -= unix_time()
+
+            query = session.query(ChannelNudge).filter(ChannelNudge.channel == message.channel.id)
+
+            if query.count() < 1:
+                new = ChannelNudge(channel=message.channel.id, time=t)
+                session.add(new)
+
+            else:
+                query.first().time = t
+
+            session.commit()
+
+            await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'offset/success').format(t)))
 
 
 client = BotClient()

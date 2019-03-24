@@ -1,12 +1,14 @@
 CREATE TABLE reminders.reminders (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
-    hashpack VARCHAR(64) UNIQUE NOT NULL,
+    uid VARCHAR(64) UNIQUE NOT NULL,
+    
     message VARCHAR(2000) NOT NULL,
     channel BIGINT UNSIGNED NOT NULL,
     `time` INT UNSIGNED DEFAULT 0 NOT NULL,
     position INT UNSIGNED DEFAULT NULL,
-
     webhook VARCHAR(256),
+    enabled BOOLEAN DEFAULT 1 NOT NULL,
+
     avatar VARCHAR(512) DEFAULT "https://raw.githubusercontent.com/reminder-bot/logos/master/Remind_Me_Bot_Logo_PPic.jpg" NOT NULL,
     username VARCHAR(32) DEFAULT "Reminder" NOT NULL,
     embed MEDIUMINT UNSIGNED,
@@ -82,6 +84,22 @@ CREATE TABLE reminders.timers (
     start_time INT UNSIGNED DEFAULT (UNIX_TIMESTAMP()) NOT NULL,
     name VARCHAR(32) NOT NULL,
     owner BIGINT UNSIGNED NOT NULL,
+
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE reminders.nudge_channels (
+    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
+    channel BIGINT UNSIGNED UNIQUE NOT NULL,
+    `time` INT NOT NULL,
+
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE reminders.languages (
+    id SMALLINT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
+    name VARCHAR(20) NOT NULL,
+    code VARCHAR(2) NOT NULL,
 
     PRIMARY KEY (id)
 );
