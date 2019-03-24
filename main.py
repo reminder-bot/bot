@@ -35,7 +35,24 @@ class Information():
 
 
 class Config():
-    pass
+    def __init__(self):
+        config = configparser.SafeConfigParser()
+        config.read('config.ini')
+
+        self.donor_roles = {
+            1 : [353630811561394206],
+            2 : [353226278435946496],
+        }
+
+        self.dbl_token = self.config.get('DEFAULT', 'dbl_token')
+        self.token = self.config.get('DEFAULT', 'token')
+
+        self.patreon = self.config.get('DEFAULT', 'patreon_enabled') == 'yes'
+        self.patreon_servers = [int(x.strip()) for x in self.config.get('DEFAULT', 'patreon_server').split(',')]
+
+        if self.patreon:
+            logger.info('Patreon is enabled. Will look for servers {}'.format(self.patreon_servers))
+
 
 class BotClient(discord.AutoShardedClient):
     def __init__(self, *args, **kwargs):
@@ -44,7 +61,7 @@ class BotClient(discord.AutoShardedClient):
         self.start_time = time.time()
 
         self.commands = {
-        ## format: 'command' : [<function>, <works in DMs?>]
+        ##  format: 'command' : [<function>, <works in DMs?>]
 
             'help' : [self.help, True],
             'info' : [self.info, True],
@@ -76,19 +93,7 @@ class BotClient(discord.AutoShardedClient):
             lang.name: lang.code for lang in session.query(Languages)
         }
 
-        self.donor_roles = {
-            1 : [353630811561394206],
-            2 : [353226278435946496],
-        }
-
-        self.config = configparser.SafeConfigParser()
-        self.config.read('config.ini')
-        self.dbl_token = self.config.get('DEFAULT', 'dbl_token')
-        self.patreon = self.config.get('DEFAULT', 'patreon_enabled') == 'yes'
-        self.patreon_servers = [int(x.strip()) for x in self.config.get('DEFAULT', 'patreon_server').split(',')]
-
-        if self.patreon:
-            logger.info('Patreon is enabled. Will look for servers {}'.format(self.patreon_servers))
+        self.config = Config()
 
         if 'EN' not in self.languages.values():
             logger.critical('English strings not present. Exiting...')
@@ -147,8 +152,8 @@ class BotClient(discord.AutoShardedClient):
 
 
     def get_patrons(self, memberid, level=2):
-        if self.patreon:
-            p_servers = [client.get_guild(x) for x in self.patreon_servers]
+        if self.config.patreon:
+            p_servers = [client.get_guild(x) for x in self.config.patreon_servers]
             members = []
             for guild in p_servers:
                 for member in guild.members:
@@ -160,7 +165,7 @@ class BotClient(discord.AutoShardedClient):
                 for role in member.roles:
                     roles.append(role.id)
 
-            return bool(set(self.donor_roles[level]) & set(roles))
+            return bool(set(self.config.donor_roles[level]) & set(roles))
 
         else:
             return True
@@ -295,7 +300,7 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def send(self):
-        if not self.dbl_token:
+        if not self.config.dbl_token:
             return
 
         guild_count = len(self.guilds)
@@ -306,7 +311,7 @@ class BotClient(discord.AutoShardedClient):
         })
 
         head = {
-            'authorization': self.dbl_token,
+            'authorization': self.config.dbl_token,
             'content-type' : 'application/json'
         }
 
@@ -1035,4 +1040,4 @@ class BotClient(discord.AutoShardedClient):
 
 client = BotClient()
 
-client.run(client.config.get('DEFAULT', 'token'), max_messages=50)
+client.run(client.config.token, max_messages=50)
