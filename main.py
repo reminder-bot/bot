@@ -1,4 +1,4 @@
-from models import Reminder, Server, User, Strings, Todo, RoleRestrict, Blacklist, Interval, Timer, session
+from models import Reminder, Server, User, Strings, Todo, RoleRestrict, Blacklist, Interval, Timer, session, Languages
 
 import discord
 import pytz
@@ -33,6 +33,9 @@ class Information():
         self.prefix = prefix
         self.allowed_dm = allowed_dm
 
+
+class Config():
+    pass
 
 class BotClient(discord.AutoShardedClient):
     def __init__(self, *args, **kwargs):
@@ -70,7 +73,7 @@ class BotClient(discord.AutoShardedClient):
         }
 
         self.languages = {
-
+            lang.name: lang.code for lang in session.query(Languages)
         }
 
         self.donor_roles = {
@@ -87,10 +90,8 @@ class BotClient(discord.AutoShardedClient):
         if self.patreon:
             logger.info('Patreon is enabled. Will look for servers {}'.format(self.patreon_servers))
 
-        self.update()
-
         if 'EN' not in self.languages.values():
-            logger.critical('English strings file not present or broken. Exiting...')
+            logger.critical('English strings not present. Exiting...')
             sys.exit()
 
         self.executor = concurrent.futures.ThreadPoolExecutor()
@@ -268,16 +269,6 @@ class BotClient(discord.AutoShardedClient):
         Uptime: {}s
         Ping: {}ms
         '''.format(round(uptime), round(ping*1000)))
-
-
-    def update(self, *args):
-        for fn in os.listdir(self.config.get('DEFAULT', 'strings_location')):
-            if fn.startswith('strings_'):
-                with open(self.config.get('DEFAULT', 'strings_location') + fn, 'r', encoding='utf-8') as f:
-                    a = f.read()
-                    self.languages[a.split('\n')[0].strip('#:\n ')] = fn[8:10]
-
-        logger.info('Languages enabled: ' + str(self.languages))
 
 
     async def on_error(self, *a, **k):

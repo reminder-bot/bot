@@ -103,20 +103,12 @@ class Timer(Base):
     owner = Column( BigInteger, nullable=False )
 
 
-languages = []
+class Languages(Base):
+    __tablename__ = 'languages'
 
-for fn in os.listdir(config.get('DEFAULT', 'strings_location')):
-    if fn.startswith('strings_'):
-        languages.append(fn[8:10])
-
-
-Strings = Table('strings', Base.metadata,
-    Column('id', Integer, primary_key=True),
-    Column('name', Text),
-    *(
-        Column('value_{}'.format(lang), Text) for lang in languages
-    )
-)
+    id = Column(Integer, primary_key=True)
+    name = Column( String(20), nullable=False )
+    code = Column( String(2), nullable=False )
 
 
 if passwd:
@@ -128,3 +120,14 @@ Base.metadata.create_all(bind=engine)
 session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
 session = Session()
+
+
+languages = session.query(Languages.code).all()
+
+Strings = Table('strings', Base.metadata,
+    Column('id', Integer, primary_key=True),
+    Column('name', Text),
+    *(
+        Column('value_{}'.format(lang), Text) for lang in languages
+    )
+)
