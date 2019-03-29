@@ -16,6 +16,8 @@ from functools import partial
 import logging
 import secrets
 
+from enum import Enum
+
 
 handler = logging.StreamHandler()
 logger = logging.getLogger()
@@ -24,6 +26,33 @@ logger.addHandler(handler)
 
 
 FIFTY_YEARS = 1576800000
+
+# enumerate possible responses from the remind and natural commands
+class CreateReminderResponse(Enum):
+    OK = 0
+    LONG_TIME = 1
+    LONG_INTERVAL = 2
+    SHORT_INTERVAL = 3
+    PERMISSIONS = 4
+    INVALID_TAG = 5
+
+REMIND_STRINGS = {
+    CreateReminderResponse.OK: '',
+    CreateReminderResponse.LONG_TIME: '',
+    CreateReminderResponse.LONG_INTERVAL: '',
+    CreateReminderResponse.SHORT_INTERVAL: '',
+    CreateReminderResponse.PERMISSIONS: '',
+    CreateReminderResponse.INVALID_TAG: '',
+}
+
+NATURAL_STRINGS = {
+    CreateReminderResponse.OK: '',
+    CreateReminderResponse.LONG_TIME: '',
+    CreateReminderResponse.LONG_INTERVAL: '',
+    CreateReminderResponse.SHORT_INTERVAL: '',
+    CreateReminderResponse.PERMISSIONS: '',
+    CreateReminderResponse.INVALID_TAG: '',
+}
 
 class Information():
     def __init__(self, language, timezone, prefix, allowed_dm):
@@ -655,95 +684,36 @@ class BotClient(discord.AutoShardedClient):
 
             else:
                 channel = message.channel
-                url = None
                 interval = None
                 scope_id = message.channel.id
-                pref = '#' if message.guild is not None else '@'
 
                 if args[0][0] == '<' and message.guild is not None:
                     arg = args.pop(0)
-                    if arg[1] == '@' and arg[2] in '0123456789!':
-                        pref = '@'
-                        
-                        scope_id = int(''.join(x for x in arg if x in '0123456789'))
-                        member = message.guild.get_member(scope_id) or message.author
-                        await member.create_dm()
-                        channel = member.dm_channel
-                        url = None
-
-                    elif arg[1] == '#':
-                        pref = '#'
-
-                        scope_id = int(''.join(x for x in arg if x in '0123456789'))
-
-                    else:
-                        await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_tag')))
-
-                if pref == '#':
-                    channel = message.guild.get_channel(scope_id) or message.channel
-                    hooks = [x for x in await channel.webhooks() if x.user.id == self.user.id]
-                    hook = hooks[0] if len(hooks) > 0 else await channel.create_webhook(name='Reminders')
-                    url = hook.url
+                    scope_id = int(''.join(x for x in arg if x in '0123456789'))
 
                 t = args.pop(0)
                 mtime = self.format_time(t, True, server)
 
-                if mtime is None or mtime - unix_time() > FIFTY_YEARS:
+                if mtime is None:
                     await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_time')))
         
                 else:
-                    if mtime - unix_time() < 0:
-                        mtime = unix_time()
-
                     if is_interval:
                         i = args.pop(0)
                         interval = self.format_time(i, False, server)
 
-                        if interval < 8:
-                            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/8_seconds')))
-                            return
-
-                        elif interval is None or 8 > interval > FIFTY_YEARS:
+                        if interval is None:
                             await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/invalid_interval')))
                             return
 
                     text = ' '.join(args)
 
-                    if message.guild is not None: 
-                        restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
+                    result = await self.add_reminder(message, scope_id, text, mtime, interval, method='remind')
 
-                    if pref == '#' and restrict.count() == 0 and not message.author.guild_permissions.manage_messages:
-                        await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_perms').format(prefix=server.prefix)))
-
-                    else:
-
-                        full = self.create_uid(channel.id, message.id)
-
-                        nudge_channel = session.query(ChannelNudge).filter(ChannelNudge.channel == channel.id).first()
-
-                        if nudge_channel is not None:
-                            mtime += nudge_channel.time
-
-                        if is_interval:
-                            reminder = Reminder(time=mtime, uid=full, channel=channel.id, message=text, webhook=url, method='remind', position=0)
-                            session.add(reminder)
-                            session.commit()
-
-                            i = Interval(reminder=reminder.id, period=interval, position=0)
-                            session.add(i)
-
-                            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/success').format(pref, scope_id, round(mtime - unix_time()))))
-
-                        else:
-                            reminder = Reminder(time=mtime, uid=full, channel=channel.id, message=text, webhook=url, method='remind')
-                            session.add(reminder)
-
-                            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/success').format(pref, scope_id, round(mtime - unix_time()))))
-
-                        session.commit()
+                    await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, REMIND_STRINGS[result])))
 
 
-    def add_reminder(self, message, location, text, time, interval=None, method='natural'):
+    async def add_reminder(self, message, location, text, time, interval=None, method='natural'):
         uid = self.create_uid(location, message.id) # create a UID
 
         nudge_channel = session.query(ChannelNudge).filter(ChannelNudge.channel == location).first() # check if it's being nudged
@@ -752,8 +722,7 @@ class BotClient(discord.AutoShardedClient):
             time += nudge_channel.time
 
         if time > unix_time() + FIFTY_YEARS:
-            return 
-            # return invalid time
+            return CreateReminderResponse.LONG_TIME
 
         elif time < unix_time():
             time = int(unix_time()) + 1
@@ -772,31 +741,46 @@ class BotClient(discord.AutoShardedClient):
             restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
 
             if restrict.count() != 0 and not message.author.guild_permissions.manage_messages:        
-                return
+                return CreateReminderResponse.PERMISSIONS
                 # invalid permissions
 
         else:
-            member = message.guild.get_member(channel.id) or message.author
-            await member.create_dm()
-            channel = member.dm_channel
+            member = message.guild.get_member(location)
+
+            if member is not None:
+                return CreateReminderResponse.INVALID_TAG
+
+            else:
+                await member.create_dm()
+                channel = member.dm_channel
 
         if interval is not None:
-            reminder = Reminder(
-                message=text,
-                channel=channel.id,
-                time=time,
-                webhook=url,
-                enabled=True,
-                position=0,
-                method=method)
-            session.add(reminder)
-            session.commit()
+            if 8 > interval:
+                return CreateReminderResponse.SHORT_INTERVAL
 
-            i = Interval(reminder=reminder.id, period=interval, position=0)
-            session.add(i)
+            elif interval > FIFTY_YEARS:
+                return CreateReminderResponse.LONG_INTERVAL
+
+            else:
+                reminder = Reminder(
+                    uid=uid,
+                    message=text,
+                    channel=channel.id,
+                    time=time,
+                    webhook=url,
+                    enabled=True,
+                    position=0,
+                    method=method)
+                session.add(reminder)
+                session.commit()
+
+                i = Interval(reminder=reminder.id, period=interval, position=0)
+                session.add(i)
+                session.commit()
 
         else:
             r = Reminder(
+                uid=uid,
                 message=text,
                 channel=channel.id,
                 time=time,
@@ -806,6 +790,8 @@ class BotClient(discord.AutoShardedClient):
                 method=method)
             session.add(r)
             session.commit()
+
+        return CreateReminderResponse.OK
 
 
     async def timer(self, message, stripped, prefs):
