@@ -37,7 +37,7 @@ class Reminder(Base):
     username = Column(String(32), default='Reminder', nullable=False)
     embed = Column(Integer, nullable=True)
 
-    method = Column(Text)
+    method = Column(String(9))
 
 
 class Interval(Base):

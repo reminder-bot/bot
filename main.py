@@ -38,10 +38,7 @@ class Config():
         config = ConfigParser()
         config.read('config.ini')
 
-        self.donor_roles = {
-            1 : [353630811561394206],
-            2 : [353226278435946496],
-        }
+        self.donor_roles = [353630811561394206, 353226278435946496]
 
         self.dbl_token = config.get('DEFAULT', 'dbl_token')
         self.token = config.get('DEFAULT', 'token')
@@ -151,7 +148,7 @@ class BotClient(discord.AutoShardedClient):
             return ''.join(new)
 
 
-    def get_patrons(self, memberid, level=2):
+    def is_patron(self, memberid, level=0):
         if self.config.patreon:
             p_servers = [client.get_guild(x) for x in self.config.patreon_servers]
             members = []
@@ -557,7 +554,7 @@ class BotClient(discord.AutoShardedClient):
 
             if interval is None:
                 pass
-            elif self.get_patrons(message.author.id, level=1):
+            elif self.is_patron(message.author.id):
                 recurring = True
 
                 interval = abs((interval - datetime.utcnow()).total_seconds())
@@ -651,7 +648,7 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_argument').format(prefix=server.prefix)))
 
         else:
-            is_patreon = self.get_patrons(message.author.id, level=1)
+            is_patreon = self.is_patron(message.author.id)
 
             if is_interval and not is_patreon:
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/donor')))
@@ -746,10 +743,10 @@ class BotClient(discord.AutoShardedClient):
                         session.commit()
 
 
-    def add_reminder(self, message, channel, text, time, interval=None, method='natural'):
-        uid = self.create_uid(channel.id, message.id) # create a UID
+    def add_reminder(self, message, location, text, time, interval=None, method='natural'):
+        uid = self.create_uid(location, message.id) # create a UID
 
-        nudge_channel = session.query(ChannelNudge).filter(ChannelNudge.channel == channel.id).first() # check if it's being nudged
+        nudge_channel = session.query(ChannelNudge).filter(ChannelNudge.channel == location).first() # check if it's being nudged
 
         if nudge_channel is not None:
             time += nudge_channel.time
@@ -760,13 +757,14 @@ class BotClient(discord.AutoShardedClient):
 
         elif time < unix_time():
             time = int(unix_time()) + 1
+            # push time to be 'now'
 
-        hook = False
+        url = None
 
-        if isinstance(channel, discord.TextChannel): # if not a DM reminder
-            hook = True
+        channel = message.guild.get_channel(location) or message.channel
 
-            channel = message.guild.get_channel(scope_id) or message.channel
+        if channel is not None: # if not a DM reminder
+
             hooks = [x for x in await channel.webhooks() if x.user.id == self.user.id]
             hook = hooks[0] if len(hooks) > 0 else await channel.create_webhook(name='Reminders')
             url = hook.url
@@ -778,13 +776,36 @@ class BotClient(discord.AutoShardedClient):
                 # invalid permissions
 
         else:
-            pass
+            member = message.guild.get_member(channel.id) or message.author
+            await member.create_dm()
+            channel = member.dm_channel
 
         if interval is not None:
-            pass
+            reminder = Reminder(
+                message=text,
+                channel=channel.id,
+                time=time,
+                webhook=url,
+                enabled=True,
+                position=0,
+                method=method)
+            session.add(reminder)
+            session.commit()
+
+            i = Interval(reminder=reminder.id, period=interval, position=0)
+            session.add(i)
 
         else:
-            pass
+            r = Reminder(
+                message=text,
+                channel=channel.id,
+                time=time,
+                webhook=url,
+                enabled=True,
+                position=None,
+                method=method)
+            session.add(r)
+            session.commit()
 
 
     async def timer(self, message, stripped, prefs):
