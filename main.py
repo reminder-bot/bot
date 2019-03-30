@@ -37,12 +37,12 @@ class CreateReminderResponse(Enum):
     INVALID_TAG = 5
 
 REMIND_STRINGS = {
-    CreateReminderResponse.OK: '',
-    CreateReminderResponse.LONG_TIME: '',
-    CreateReminderResponse.LONG_INTERVAL: '',
-    CreateReminderResponse.SHORT_INTERVAL: '',
-    CreateReminderResponse.PERMISSIONS: '',
-    CreateReminderResponse.INVALID_TAG: '',
+    CreateReminderResponse.OK: 'remind/success',
+    CreateReminderResponse.LONG_TIME: 'remind/long_time',
+    CreateReminderResponse.LONG_INTERVAL: 'interval/long_interval',
+    CreateReminderResponse.SHORT_INTERVAL: 'interval/short_interval',
+    CreateReminderResponse.PERMISSIONS: 'remind/no_perms',
+    CreateReminderResponse.INVALID_TAG: 'remind/invalid_tag',
 }
 
 NATURAL_STRINGS = {
@@ -670,7 +670,7 @@ class BotClient(discord.AutoShardedClient):
         is_interval = message.content[1] == 'i'
 
         if len(args) < 2:
-            if is_interval:            
+            if is_interval:
                 await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/no_argument').format(prefix=server.prefix)))
 
             else:
@@ -708,9 +708,16 @@ class BotClient(discord.AutoShardedClient):
 
                     text = ' '.join(args)
 
-                    result = await self.add_reminder(message, scope_id, text, mtime, interval, method='remind')
+                    result, location = await self.add_reminder(message, scope_id, text, mtime, interval, method='remind')
 
-                    await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, REMIND_STRINGS[result])))
+                    if location is not None:
+                        location = location.recipient if isinstance(location, discord.DMChannel) else location
+                        response = self.get_strings(server.language, REMIND_STRINGS[result]).format(location=location.mention, offset='some')
+
+                    else:
+                        response = self.get_strings(server.language, REMIND_STRINGS[result])
+
+                    await message.channel.send(embed=discord.Embed(description=response))
 
 
     async def add_reminder(self, message, location, text, time, interval=None, method='natural'):
@@ -722,7 +729,7 @@ class BotClient(discord.AutoShardedClient):
             time += nudge_channel.time
 
         if time > unix_time() + FIFTY_YEARS:
-            return CreateReminderResponse.LONG_TIME
+            return CreateReminderResponse.LONG_TIME, None
 
         elif time < unix_time():
             time = int(unix_time()) + 1
@@ -730,7 +737,7 @@ class BotClient(discord.AutoShardedClient):
 
         url = None
 
-        channel = message.guild.get_channel(location) or message.channel
+        channel = message.guild.get_channel(location)
 
         if channel is not None: # if not a DM reminder
 
@@ -741,14 +748,14 @@ class BotClient(discord.AutoShardedClient):
             restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
 
             if restrict.count() != 0 and not message.author.guild_permissions.manage_messages:        
-                return CreateReminderResponse.PERMISSIONS
+                return CreateReminderResponse.PERMISSIONS, None
                 # invalid permissions
 
         else:
             member = message.guild.get_member(location)
 
-            if member is not None:
-                return CreateReminderResponse.INVALID_TAG
+            if member is None:
+                return CreateReminderResponse.INVALID_TAG, None
 
             else:
                 await member.create_dm()
@@ -756,10 +763,10 @@ class BotClient(discord.AutoShardedClient):
 
         if interval is not None:
             if 8 > interval:
-                return CreateReminderResponse.SHORT_INTERVAL
+                return CreateReminderResponse.SHORT_INTERVAL, None
 
             elif interval > FIFTY_YEARS:
-                return CreateReminderResponse.LONG_INTERVAL
+                return CreateReminderResponse.LONG_INTERVAL, None
 
             else:
                 reminder = Reminder(
@@ -791,7 +798,7 @@ class BotClient(discord.AutoShardedClient):
             session.add(r)
             session.commit()
 
-        return CreateReminderResponse.OK
+        return CreateReminderResponse.OK, channel
 
 
     async def timer(self, message, stripped, prefs):
