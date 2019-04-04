@@ -515,7 +515,7 @@ class BotClient(discord.AutoShardedClient):
             done = True
 
         language = session.query(Language).filter(Language.code == target.language).first()
-        
+
         if done:
             await message.channel.send(embed=discord.Embed(description=language.get_string(s)))
 
@@ -1062,6 +1062,6 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('nudge/success').format(t)))
 
 
-client = BotClient()
+client = BotClient(max_messages=10)
 
-client.run(client.config.token, max_messages=50)
+client.run(client.config.token)
