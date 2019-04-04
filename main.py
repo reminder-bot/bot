@@ -53,7 +53,7 @@ NATURAL_STRINGS = {
 
 class Information():
     def __init__(self, language, timezone, prefix, allowed_dm):
-        self.language = language
+        self.language = session.query(Language).filter(Language.code == language).first() or session.query(Language).filter(Language.code == 'EN').first()
         self.timezone = timezone
         self.prefix = prefix
         self.allowed_dm = allowed_dm
@@ -274,14 +274,6 @@ class BotClient(discord.AutoShardedClient):
             return time_sec
 
 
-    def get_strings(self, language, string):
-
-        s = session.query(Strings).filter(Strings.c.name == string)
-        req = getattr(s.first(), 'value_{}'.format(language))
-
-        return req if req is not None else s.first().value_EN
-
-
     async def welcome(self, guild, *args):
 
         for channel in guild.text_channels:
@@ -383,7 +375,7 @@ class BotClient(discord.AutoShardedClient):
 
         except discord.errors.Forbidden:
             try:
-                await message.channel.send(self.get_strings(server.language, 'no_perms_general'))
+                await message.channel.send(server.language.get_string('no_perms_general'))
             except discord.errors.Forbidden:
                 logger.info('Twice Forbidden')
 
@@ -414,7 +406,7 @@ class BotClient(discord.AutoShardedClient):
                 channel = session.query(Blacklist).filter(Blacklist.channel == message.channel.id)
 
                 if channel.count() > 0:
-                    await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'blacklisted')))
+                    await message.channel.send(embed=discord.Embed(description=server.language.get_string('blacklisted')))
                     return False
 
             command_form = self.commands[command]
@@ -422,7 +414,7 @@ class BotClient(discord.AutoShardedClient):
             if command_form[1] or server is not None:
 
                 if server is not None and not message.guild.me.guild_permissions.manage_webhooks:
-                    await message.channel.send(self.get_strings(server.language, 'no_perms_webhook'))
+                    await message.channel.send(server.language.get_string('no_perms_webhook'))
 
                 language = user.language or ('EN' if server is None else server.language)
                 timezone = user.timezone or ('UTC' if server is None else server.timezone)
@@ -440,15 +432,15 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def help(self, message, stripped, prefs):
-        await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'help')))
+        await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('help')))
 
 
     async def info(self, message, stripped, prefs):
-        await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'info').format(prefix=prefs.prefix, user=self.user.name)))
+        await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('info').format(prefix=prefs.prefix, user=self.user.name)))
 
 
     async def donate(self, message, stripped, prefs):
-        await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'donate')))
+        await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('donate')))
 
 
     async def change_prefix(self, message, stripped, prefs):
@@ -460,19 +452,19 @@ class BotClient(discord.AutoShardedClient):
                 new = stripped[:stripped.find(' ')]
 
                 if len(new) > 5:
-                    await message.channel.send(self.get_strings(prefs.language, 'prefix/too_long'))
+                    await message.channel.send(prefs.language.get_string('prefix/too_long'))
 
                 else:
                     s = session.query(Server).filter(Server.server == message.guild.id).first()
                     s.prefix = new
 
-                    await message.channel.send(self.get_strings(prefs.language, 'prefix/success').format(prefix=s.prefix))
+                    await message.channel.send(prefs.language.get_string('prefix/success').format(prefix=s.prefix))
 
             else:
-                await message.channel.send(self.get_strings(prefs.language, 'admin_required'))
+                await message.channel.send(prefs.language.get_string('admin_required'))
 
         else:
-            await message.channel.send(self.get_strings(prefs.language, 'prefix/no_argument').format(prefix=prefs.prefix))
+            await message.channel.send(prefs.language.get_string('prefix/no_argument').format(prefix=prefs.prefix))
 
         session.commit()
 
@@ -487,16 +479,16 @@ class BotClient(discord.AutoShardedClient):
             s = 'timezone/set_p'
 
         if stripped == '':
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'timezone/no_argument').format(prefix=prefs.prefix, timezone=prefs.timezone)))
+            await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('timezone/no_argument').format(prefix=prefs.prefix, timezone=prefs.timezone)))
 
         else:
             if stripped not in pytz.all_timezones:
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'timezone/no_timezone')))
+                await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('timezone/no_timezone')))
             else:
                 target.timezone = stripped
                 d = datetime.now(pytz.timezone(target.timezone))
 
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, s).format(timezone=target.timezone, time=d.strftime('%H:%M:%S'))))
+                await message.channel.send(embed=discord.Embed(description=prefs.language.get_string(s).format(timezone=target.timezone, time=d.strftime('%H:%M:%S'))))
 
                 session.commit()
 
@@ -510,16 +502,25 @@ class BotClient(discord.AutoShardedClient):
             target = session.query(User).filter(User.user == message.author.id).first()
             s = 'lang/set_p'
 
+        done = False
+
         if stripped.lower() in self.languages.keys():
             target.language = self.languages[stripped.lower()]
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(target.language, s)))
+
+            done = True
 
         elif stripped.upper() in self.languages.values():
             target.language = stripped.upper()
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(target.language, s)))
+
+            done = True
+
+        language = session.query(Language).filter(Language.code == target.language).first()
+        
+        if done:
+            await message.channel.send(embed=discord.Embed(description=language.get_string(s)))
 
         else:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(target.language, 'lang/invalid').format('\n'.join(['{} ({})'.format(x.title(), y.upper()) for x, y in self.languages.items()]))))
+            await message.channel.send(embed=discord.Embed(description=language.get_string('lang/invalid').format('\n'.join(['{} ({})'.format(x.title(), y.upper()) for x, y in self.languages.items()]))))
             return
 
         session.commit()
@@ -529,28 +530,28 @@ class BotClient(discord.AutoShardedClient):
 
         t = datetime.now(pytz.timezone(prefs.timezone))
 
-        await message.channel.send(self.get_strings(prefs.language, 'clock/time').format(t.strftime('%H:%M:%S')))
+        await message.channel.send(prefs.language.get_string('clock/time').format(t.strftime('%H:%M:%S')))
 
 
     async def natural(self, message, stripped, server):
 
-        if len(stripped.split(self.get_strings(server.language, 'natural/send'))) < 2:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/no_argument').format(prefix=server.prefix)))
+        if len(stripped.split(server.language.get_string('natural/send'))) < 2:
+            await message.channel.send(embed=discord.Embed(description=server.language.get_string('natural/no_argument').format(prefix=server.prefix)))
             return
 
         err = False
         location_id = message.channel.id
 
-        time_crop = stripped.split(self.get_strings(server.language, 'natural/send'))[0]
-        message_crop = stripped.split(self.get_strings(server.language, 'natural/send'), 1)[1]
+        time_crop = stripped.split(server.language.get_string('natural/send'))[0]
+        message_crop = stripped.split(server.language.get_string('natural/send'), 1)[1]
         datetime_obj = await self.do_blocking( partial(dateparser.parse, time_crop, settings={'TIMEZONE': server.timezone, 'TO_TIMEZONE': 'UTC'}) )
 
         if datetime_obj is None:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'natural/invalid_time')))
+            await message.channel.send(embed=discord.Embed(description=server.language.get_string('natural/invalid_time')))
             return
 
         if message.guild is not None:
-            chan_split = message_crop.split(self.get_strings(server.language, 'natural/to'))
+            chan_split = message_crop.split(server.language.get_string('natural/to'))
             if len(chan_split) > 1 \
                 and chan_split[-1].strip()[0] == '<' \
                 and chan_split[-1].strip()[-1] == '>' \
@@ -558,9 +559,9 @@ class BotClient(discord.AutoShardedClient):
 
                 location_id = int( ''.join([x for x in chan_split[-1] if x in '0123456789']) )
 
-                message_crop = message_crop.rsplit(self.get_strings(server.language, 'natural/to'), 1)[0]
+                message_crop = message_crop.rsplit(server.language.get_string('natural/to'), 1)[0]
 
-        interval_split = message_crop.split(self.get_strings(server.language, 'natural/every'))
+        interval_split = message_crop.split(server.language.get_string('natural/every'))
         recurring = False
         interval = 0
 
@@ -574,10 +575,10 @@ class BotClient(discord.AutoShardedClient):
 
                 interval = abs((interval - datetime.utcnow()).total_seconds())
 
-                message_crop = message_crop.rsplit(self.get_strings(server.language, 'natural/every'), 1)[0]
+                message_crop = message_crop.rsplit(server.language.get_string('natural/every'), 1)[0]
 
             else:
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/donor')))
+                await message.channel.send(embed=discord.Embed(description=server.language.get_string('interval/donor')))
                 return
 
         mtime = datetime_obj.timestamp()
@@ -587,10 +588,10 @@ class BotClient(discord.AutoShardedClient):
 
         if location is not None:
             location = location.recipient if isinstance(location, discord.DMChannel) else location
-            response = self.get_strings(server.language, string).format(location=location.mention, offset='some')
+            response = server.language.get_string(string).format(location=location.mention, offset='some')
 
         else:
-            response = self.get_strings(server.language, string)
+            response = server.language.get_string(string)
 
         await message.channel.send(embed=discord.Embed(description=response))
 
@@ -602,16 +603,16 @@ class BotClient(discord.AutoShardedClient):
 
         if len(args) < 2:
             if is_interval:
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/no_argument').format(prefix=server.prefix)))
+                await message.channel.send(embed=discord.Embed(description=server.language.get_string('interval/no_argument').format(prefix=server.prefix)))
 
             else:
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/no_argument').format(prefix=server.prefix)))
+                await message.channel.send(embed=discord.Embed(description=server.language.get_string('remind/no_argument').format(prefix=server.prefix)))
 
         else:
             is_patreon = self.is_patron(message.author.id)
 
             if is_interval and not is_patreon:
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/donor')))
+                await message.channel.send(embed=discord.Embed(description=server.language.get_string('interval/donor')))
 
             else:
                 channel = message.channel
@@ -626,7 +627,7 @@ class BotClient(discord.AutoShardedClient):
                 mtime = self.format_time(t, True, server)
 
                 if mtime is None:
-                    await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'remind/invalid_time')))
+                    await message.channel.send(embed=discord.Embed(description=server.language.get_string('remind/invalid_time')))
         
                 else:
                     if is_interval:
@@ -634,7 +635,7 @@ class BotClient(discord.AutoShardedClient):
                         interval = self.format_time(i, False, server)
 
                         if interval is None:
-                            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'interval/invalid_interval')))
+                            await message.channel.send(embed=discord.Embed(description=server.language.get_string('interval/invalid_interval')))
                             return
 
                     text = ' '.join(args)
@@ -643,10 +644,10 @@ class BotClient(discord.AutoShardedClient):
 
                     if location is not None:
                         location = location.recipient if isinstance(location, discord.DMChannel) else location
-                        response = self.get_strings(server.language, REMIND_STRINGS[result]).format(location=location.mention, offset='some')
+                        response = server.language.get_string(REMIND_STRINGS[result]).format(location=location.mention, offset='some')
 
                     else:
-                        response = self.get_strings(server.language, REMIND_STRINGS[result])
+                        response = server.language.get_string(REMIND_STRINGS[result])
 
                     await message.channel.send(embed=discord.Embed(description=response))
 
@@ -755,16 +756,16 @@ class BotClient(discord.AutoShardedClient):
             timers = session.query(Timer).filter(Timer.owner == owner)
 
             if timers.count() >= 25:
-                await message.channel.send(self.get_strings(prefs.language, 'timer/limit'))
+                await message.channel.send(prefs.language.get_string('timer/limit'))
 
             else:
                 n = stripped.split(' ')[1:2] or 'New timer #{}'.format(timers.count() + 1)
 
                 if len(n) > 32:
-                    await message.channel.send(self.get_strings(prefs.language, 'timer/name_length').format(len(n)))
+                    await message.channel.send(prefs.language.get_string('timer/name_length').format(len(n)))
 
                 elif n in [x.name for x in timers]:
-                    await message.channel.send(self.get_strings(prefs.language, 'timer/unique'))
+                    await message.channel.send(prefs.language.get_string('timer/unique'))
 
                 else:
                     t = Timer(name=n, owner=owner)
@@ -772,7 +773,7 @@ class BotClient(discord.AutoShardedClient):
 
                     session.commit()
 
-                    await message.channel.send(self.get_strings(prefs.language, 'timer/success'))
+                    await message.channel.send(prefs.language.get_string('timer/success'))
 
         elif stripped.startswith('delete '):
 
@@ -781,22 +782,22 @@ class BotClient(discord.AutoShardedClient):
             timers = session.query(Timer).filter(Timer.owner == owner).filter(Timer.name == n)
 
             if timers.count() < 1:
-                await message.channel.send(self.get_strings(prefs.language, 'timer/not_found'))
+                await message.channel.send(prefs.language.get_string('timer/not_found'))
 
             else:
                 timers.delete(synchronize_session='fetch')
-                await message.channel.send(self.get_strings(prefs.language, 'timer/deleted'))
+                await message.channel.send(prefs.language.get_string('timer/deleted'))
 
                 session.commit()
 
         else:
-            await message.channel.send(self.get_strings(prefs.language, 'timer/help'))
+            await message.channel.send(prefs.language.get_string('timer/help'))
 
 
     async def blacklist(self, message, stripped, server):
 
         if not message.author.guild_permissions.manage_guild:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'admin_required')))
+            await message.channel.send(embed=discord.Embed(description=server.language.get_string('admin_required')))
 
         elif len(message.channel_mentions) > 0:
             disengage_all = True
@@ -812,7 +813,7 @@ class BotClient(discord.AutoShardedClient):
                 channels = c & all_channels
                 session.query(Blacklist).filter(Blacklist.channel.in_(channels)).delete(synchronize_session='fetch')
 
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'blacklist/removed_from')))
+                await message.channel.send(embed=discord.Embed(description=server.language.get_string('blacklist/removed_from')))
 
             else:
                 channels = [x for x in c if x not in all_channels]
@@ -820,19 +821,19 @@ class BotClient(discord.AutoShardedClient):
                     blacklist = Blacklist(channel=channel, server=message.guild.id)
                     session.add(blacklist)
 
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'blacklist/added_from')))
+                await message.channel.send(embed=discord.Embed(description=server.language.get_string('blacklist/added_from')))
 
         else:
             q = session.query(Blacklist).filter(Blacklist.channel == message.channel.id)
 
             if q.count() > 0:
                 q.delete(synchronize_session='fetch')
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'blacklist/removed')))
+                await message.channel.send(embed=discord.Embed(description=server.language.get_string('blacklist/removed')))
 
             else:
                 blacklist = Blacklist(channel=message.channel.id, server=message.guild.id)
                 session.add(blacklist)
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'blacklist/added')))
+                await message.channel.send(embed=discord.Embed(description=server.language.get_string('blacklist/added')))
 
         session.commit()
 
@@ -840,7 +841,7 @@ class BotClient(discord.AutoShardedClient):
     async def restrict(self, message, stripped, server):
 
         if not message.author.guild_permissions.manage_guild:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'admin_required')))
+            await message.channel.send(embed=discord.Embed(description=server.language.get_string('admin_required')))
 
         else:
             disengage_all = True
@@ -859,16 +860,16 @@ class BotClient(discord.AutoShardedClient):
                 roles = [x.id for x in message.role_mentions]
                 session.query(RoleRestrict).filter(RoleRestrict.role.in_(roles)).delete(synchronize_session='fetch')
 
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'restrict/disabled')))
+                await message.channel.send(embed=discord.Embed(description=server.language.get_string('restrict/disabled')))
 
             elif args:
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'restrict/enabled')))
+                await message.channel.send(embed=discord.Embed(description=server.language.get_string('restrict/enabled')))
 
             elif stripped:
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'restrict/help')))
+                await message.channel.send(embed=discord.Embed(description=server.language.get_string('restrict/help')))
 
             else:
-                await message.channel.send(embed=discord.Embed(description=self.get_strings(server.language, 'restrict/allowed').format(' '.join(['<@&{}>'.format(i) for i in all_roles]))))
+                await message.channel.send(embed=discord.Embed(description=server.language.get_string('restrict/allowed').format(' '.join(['<@&{}>'.format(i) for i in all_roles]))))
 
         session.commit()
 
@@ -890,43 +891,43 @@ class BotClient(discord.AutoShardedClient):
         if len(splits) == 1 and splits[0] == '':
             msg = ['\n{}: {}'.format(i+1, todo.value) for i, todo in enumerate(todos)]
             if len(msg) == 0:
-                msg.append(self.get_strings(server.language, 'todo/add').format(prefix=server.prefix, command=command))
+                msg.append(server.language.get_string('todo/add').format(prefix=server.prefix, command=command))
             await message.channel.send(embed=discord.Embed(title='{}\'s TODO'.format(name), description=''.join(msg)))
 
         elif len(splits) >= 2:
             if splits[0]  == 'add':
                 a = ' '.join(splits[1:])
                 if len('   '.join(todo.value for todo in todos)) > 1800:
-                    await message.channel.send(self.get_strings(server.language, 'todo/too_long2'))
+                    await message.channel.send(server.language.get_string('todo/too_long2'))
                     return
 
                 todo = Todo(owner=location, value=a)
                 session.add(todo)
-                await message.channel.send(self.get_strings(server.language, 'todo/added').format(name=a))
+                await message.channel.send(server.language.get_string('todo/added').format(name=a))
 
             elif splits[0] == 'remove':
                 try:
                     a = session.query(Todo).filter(Todo.id == todos[int(splits[1])-1].id).first()
                     session.query(Todo).filter(Todo.id == todos[int(splits[1])-1].id).delete(synchronize_session='fetch')
                     
-                    await message.channel.send(self.get_strings(server.language, 'todo/removed').format(a.value))
+                    await message.channel.send(server.language.get_string('todo/removed').format(a.value))
 
                 except ValueError:
-                    await message.channel.send(self.get_strings(server.language, 'todo/error_value').format(prefix=server.prefix, command=command))
+                    await message.channel.send(server.language.get_string('todo/error_value').format(prefix=server.prefix, command=command))
                 except IndexError:
-                    await message.channel.send(self.get_strings(server.language, 'todo/error_index'))
+                    await message.channel.send(server.language.get_string('todo/error_index'))
 
 
             else:
-                await message.channel.send(self.get_strings(server.language, 'todo/help').format(prefix=server.prefix, command=command))
+                await message.channel.send(server.language.get_string('todo/help').format(prefix=server.prefix, command=command))
 
         else:
             if stripped == 'clear':
                 session.query(Todo).filter(Todo.owner == location).delete(synchronize_session='fetch')
-                await message.channel.send(self.get_strings(server.language, 'todo/cleared'))
+                await message.channel.send(server.language.get_string('todo/cleared'))
 
             else:
-                await message.channel.send(self.get_strings(server.language, 'todo/help').format(prefix=server.prefix, command=command))
+                await message.channel.send(server.language.get_string('todo/help').format(prefix=server.prefix, command=command))
 
         session.commit()
 
@@ -937,7 +938,7 @@ class BotClient(discord.AutoShardedClient):
         else:
             li = [message.channel.id]
 
-        await message.channel.send(self.get_strings(prefs.language, 'del/listing'))
+        await message.channel.send(prefs.language.get_string('del/listing'))
 
         n = 1
 
@@ -961,7 +962,7 @@ class BotClient(discord.AutoShardedClient):
         if s:
             await message.channel.send(s)
 
-        await message.channel.send(self.get_strings(prefs.language, 'del/listed'))
+        await message.channel.send(prefs.language.get_string('del/listed'))
 
         num = await client.wait_for('message', check=lambda m: m.author == message.author and m.channel == message.channel)
         nums = [n.strip() for n in num.content.split(',')]
@@ -983,7 +984,7 @@ class BotClient(discord.AutoShardedClient):
             except IndexError:
                 continue
 
-        await message.channel.send(self.get_strings(prefs.language, 'del/count').format(dels))
+        await message.channel.send(prefs.language.get_string('del/count').format(dels))
         session.commit()
 
 
@@ -995,13 +996,13 @@ class BotClient(discord.AutoShardedClient):
         reminders = session.query(Reminder).filter(Reminder.channel == channel)
 
         if reminders.count() > 0:
-            await message.channel.send(self.get_strings(prefs.language, 'look/listing'))
+            await message.channel.send(prefs.language.get_string('look/listing'))
 
             s = ''
             for rem in reminders:
                 string = '\'{}\' *{}* **{}**\n'.format(
                     self.clean_string(rem.message, message.guild),
-                    self.get_strings(prefs.language, 'look/inter'),
+                    prefs.language.get_string('look/inter'),
                     datetime.fromtimestamp(rem.time, pytz.timezone(prefs.timezone)).strftime('%Y-%m-%d %H:%M:%S'))
 
                 if len(s) + len(string) > 2000:
@@ -1013,7 +1014,7 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(s)
 
         else:
-            await message.channel.send(self.get_strings(prefs.language, 'look/no_reminders'))
+            await message.channel.send(prefs.language.get_string('look/no_reminders'))
 
 
     async def offset_reminders(self, message, stripped, prefs):
@@ -1026,7 +1027,7 @@ class BotClient(discord.AutoShardedClient):
         time = self.format_time(stripped, False, prefs)
 
         if time is None:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'offset/invalid_time')))
+            await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('offset/invalid_time')))
 
         else:
             reminders = session.query(Reminder).filter(Reminder.channel.in_(channels))
@@ -1036,7 +1037,7 @@ class BotClient(discord.AutoShardedClient):
 
             session.commit()
 
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'offset/success').format(time)))
+            await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('offset/success').format(time)))
 
 
     async def nudge_channel(self, message, stripped, prefs):
@@ -1044,7 +1045,7 @@ class BotClient(discord.AutoShardedClient):
         t = self.format_time(stripped, False, prefs)
 
         if t is None:
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'nudge/invalid_time')))
+            await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('nudge/invalid_time')))
 
         else:
             query = session.query(ChannelNudge).filter(ChannelNudge.channel == message.channel.id)
@@ -1058,7 +1059,7 @@ class BotClient(discord.AutoShardedClient):
 
             session.commit()
 
-            await message.channel.send(embed=discord.Embed(description=self.get_strings(prefs.language, 'nudge/success').format(t)))
+            await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('nudge/success').format(t)))
 
 
 client = BotClient()

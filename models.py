@@ -111,6 +111,12 @@ class Language(Base):
     name = Column( String(20), nullable=False )
     code = Column( String(2), nullable=False )
 
+    def get_string(self, string):
+        s = session.query(Strings).filter(Strings.c.name == string)
+        req = getattr(s.first(), 'value_{}'.format(self.code))
+
+        return req if req is not None else s.first().value_EN
+
 
 class ChannelNudge(Base):
     __tablename__ = 'nudge_channels'
