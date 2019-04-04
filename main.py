@@ -110,19 +110,11 @@ class BotClient(discord.AutoShardedClient):
             'ping' : [self.time_stats, True],
         }
 
-        self.languages = {
-            lang.name: lang.code for lang in session.query(Language)
-        }
-
         self.config = Config()
 
         self.executor = concurrent.futures.ThreadPoolExecutor()
 
-        if 'EN' not in self.languages.values():
-            raise Exception('English strings not present. Exiting...')
-
-        else:
-            super(BotClient, self).__init__(*args, **kwargs)
+        super(BotClient, self).__init__(*args, **kwargs)
 
 
     async def do_blocking(self, method):
@@ -502,28 +494,17 @@ class BotClient(discord.AutoShardedClient):
             target = session.query(User).filter(User.user == message.author.id).first()
             s = 'lang/set_p'
 
-        done = False
+        new_lang = session.query(Language).filter((Language.code == stripped.upper()) | (Language.name == stripped.lower())).first()
 
-        if stripped.lower() in self.languages.keys():
-            target.language = self.languages[stripped.lower()]
+        if new_lang is not None:
+            target.language = new_lang.code
 
-            done = True
-
-        elif stripped.upper() in self.languages.values():
-            target.language = stripped.upper()
-
-            done = True
-
-        language = session.query(Language).filter(Language.code == target.language).first()
-
-        if done:
-            await message.channel.send(embed=discord.Embed(description=language.get_string(s)))
+            await message.channel.send(embed=discord.Embed(description=new_lang.get_string(s)))
+    
+            session.commit()
 
         else:
-            await message.channel.send(embed=discord.Embed(description=language.get_string('lang/invalid').format('\n'.join(['{} ({})'.format(x.title(), y.upper()) for x, y in self.languages.items()]))))
-            return
-
-        session.commit()
+            await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('lang/invalid').format('\n'.join(['{} ({})'.format(l.name.title(), l.code.upper()) for l in session.query(Language)]))))
 
 
     async def clock(self, message, stripped, prefs):
