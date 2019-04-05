@@ -180,7 +180,7 @@ class BotClient(discord.AutoShardedClient):
                 for role in member.roles:
                     roles.append(role.id)
 
-            return bool(set(self.config.donor_roles[level]) & set(roles))
+            return bool(set([self.config.donor_roles[level]]) & set(roles))
 
         else:
             return True
