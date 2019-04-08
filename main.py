@@ -564,12 +564,12 @@ class BotClient(discord.AutoShardedClient):
 
         mtime = datetime_obj.timestamp()
 
-        result, location = await self.add_reminder(message, location_id, message_crop, mtime, interval=interval if recurring else None, method='natural')
+        result, location, time = await self.add_reminder(message, location_id, message_crop, mtime, interval=interval if recurring else None, method='natural')
         string = NATURAL_STRINGS.get(result, REMIND_STRINGS[result])
 
         if location is not None:
             location = location.recipient if isinstance(location, discord.DMChannel) else location
-            response = server.language.get_string(string).format(location=location.mention, offset='some')
+            response = server.language.get_string(string).format(location=location.mention, offset=int(time - unix_time()))
 
         else:
             response = server.language.get_string(string)
@@ -621,11 +621,11 @@ class BotClient(discord.AutoShardedClient):
 
                     text = ' '.join(args)
 
-                    result, location = await self.add_reminder(message, scope_id, text, mtime, interval, method='remind')
+                    result, location, time = await self.add_reminder(message, scope_id, text, mtime, interval, method='remind')
 
                     if location is not None:
                         location = location.recipient if isinstance(location, discord.DMChannel) else location
-                        response = server.language.get_string(REMIND_STRINGS[result]).format(location=location.mention, offset='some')
+                        response = server.language.get_string(REMIND_STRINGS[result]).format(location=location.mention, offset=int(time - unix_time()))
 
                     else:
                         response = server.language.get_string(REMIND_STRINGS[result])
@@ -660,7 +660,7 @@ class BotClient(discord.AutoShardedClient):
 
             restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
 
-            if restrict.count() != 0 and not message.author.guild_permissions.manage_messages:        
+            if restrict.count() == 0 and not message.author.guild_permissions.manage_messages:        
                 return CreateReminderResponse.PERMISSIONS, None
                 # invalid permissions
 
@@ -711,7 +711,7 @@ class BotClient(discord.AutoShardedClient):
             session.add(r)
             session.commit()
 
-        return CreateReminderResponse.OK, channel
+        return CreateReminderResponse.OK, channel, time
 
 
     async def timer(self, message, stripped, prefs):
