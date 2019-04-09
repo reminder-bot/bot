@@ -25,9 +25,10 @@ logger.setLevel(os.environ.get("LOGLEVEL", "INFO"))
 logger.addHandler(handler)
 
 
-FIFTY_YEARS = 1576800000
+MAX_TIME = 1576800000
+MIN_INTERVAL = 8
 
-# enumerate possible responses from the remind and natural commands
+# enumerate possible error types from the remind and natural commands
 class CreateReminderResponse(Enum):
     OK = 0
     LONG_TIME = 1
@@ -57,6 +58,16 @@ class Information():
         self.timezone = timezone
         self.prefix = prefix
         self.allowed_dm = allowed_dm
+
+
+class ReminderInformation():
+    def __init__(self, status, channel=None, time=None):
+        self.status = status
+        self.time = time
+        self.location = None
+
+        if channel is not None:
+            self.location = channel.recipient if isinstance(channel, discord.DMChannel) else channel
 
 
 class Config():
@@ -564,12 +575,11 @@ class BotClient(discord.AutoShardedClient):
 
         mtime = datetime_obj.timestamp()
 
-        result, location, time = await self.add_reminder(message, location_id, message_crop, mtime, interval=interval if recurring else None, method='natural')
-        string = NATURAL_STRINGS.get(result, REMIND_STRINGS[result])
+        result = await self.add_reminder(message, location_id, message_crop, mtime, interval=interval if recurring else None, method='natural')
+        string = NATURAL_STRINGS.get(result.status, REMIND_STRINGS[result.status])
 
-        if location is not None:
-            location = location.recipient if isinstance(location, discord.DMChannel) else location
-            response = server.language.get_string(string).format(location=location.mention, offset=int(time - unix_time()))
+        if result.location is not None:
+            response = server.language.get_string(string).format(location=result.location.mention, offset=int(result.time - unix_time()))
 
         else:
             response = server.language.get_string(string)
@@ -621,14 +631,13 @@ class BotClient(discord.AutoShardedClient):
 
                     text = ' '.join(args)
 
-                    result, location, time = await self.add_reminder(message, scope_id, text, mtime, interval, method='remind')
+                    result = await self.add_reminder(message, scope_id, text, mtime, interval, method='remind')
 
-                    if location is not None:
-                        location = location.recipient if isinstance(location, discord.DMChannel) else location
-                        response = server.language.get_string(REMIND_STRINGS[result]).format(location=location.mention, offset=int(time - unix_time()))
+                    if result.location is not None:
+                        response = server.language.get_string(REMIND_STRINGS[result.status]).format(location=result.location.mention, offset=int(result.time - unix_time()))
 
                     else:
-                        response = server.language.get_string(REMIND_STRINGS[result])
+                        response = server.language.get_string(REMIND_STRINGS[result.status])
 
                     await message.channel.send(embed=discord.Embed(description=response))
 
@@ -641,8 +650,8 @@ class BotClient(discord.AutoShardedClient):
         if nudge_channel is not None:
             time += nudge_channel.time
 
-        if time > unix_time() + FIFTY_YEARS:
-            return CreateReminderResponse.LONG_TIME, None
+        if time > unix_time() + MAX_TIME:
+            return ReminderInformation(CreateReminderResponse.LONG_TIME)
 
         elif time < unix_time():
             time = int(unix_time()) + 1
@@ -661,25 +670,25 @@ class BotClient(discord.AutoShardedClient):
             restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
 
             if restrict.count() == 0 and not message.author.guild_permissions.manage_messages:        
-                return CreateReminderResponse.PERMISSIONS, None
+                return ReminderInformation(CreateReminderResponse.PERMISSIONS)
                 # invalid permissions
 
         else:
             member = message.guild.get_member(location)
 
             if member is None:
-                return CreateReminderResponse.INVALID_TAG, None
+                return ReminderInformation(CreateReminderResponse.INVALID_TAG)
 
             else:
                 await member.create_dm()
                 channel = member.dm_channel
 
         if interval is not None:
-            if 8 > interval:
-                return CreateReminderResponse.SHORT_INTERVAL, None
+            if MIN_INTERVAL > interval:
+                return ReminderInformation(CreateReminderResponse.SHORT_INTERVAL)
 
-            elif interval > FIFTY_YEARS:
-                return CreateReminderResponse.LONG_INTERVAL, None
+            elif interval > MAX_TIME:
+                return ReminderInformation(CreateReminderResponse.LONG_INTERVAL)
 
             else:
                 reminder = Reminder(
@@ -711,7 +720,7 @@ class BotClient(discord.AutoShardedClient):
             session.add(r)
             session.commit()
 
-        return CreateReminderResponse.OK, channel, time
+        return ReminderInformation(CreateReminderResponse.OK, channel=channel, time=time)
 
 
     async def timer(self, message, stripped, prefs):
