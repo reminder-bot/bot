@@ -57,7 +57,6 @@ class Server(Base):
     server = Column(BigInteger, unique=True)
     
     prefix = Column( String(5), default="$", nullable=False )
-    language = Column( String(2), default="EN", nullable=False )
     timezone = Column( String(32), default="UTC", nullable=False )
 
 
@@ -67,7 +66,7 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     user = Column(BigInteger, unique=True, nullable=False)
 
-    language = Column( String(2), nullable=True )
+    language = Column( String(2), default="EN", nullable=False )
     timezone = Column( String(32), nullable=True )
     allowed_dm = Column( Boolean, default=True, nullable=False )
 

@@ -51,13 +51,59 @@ NATURAL_STRINGS = {
     CreateReminderResponse.LONG_TIME: 'natural/long_time',
 }
 
+ENGLISH_STRINGS = session.query(Language).filter(Language.code == 'EN').first()
 
-class Information():
-    def __init__(self, language, timezone, prefix, allowed_dm):
-        self.language = session.query(Language).filter(Language.code == language).first() or session.query(Language).filter(Language.code == 'EN').first()
-        self.timezone = timezone
-        self.prefix = prefix
-        self.allowed_dm = allowed_dm
+class Preferences():
+    def __init__(self, server, user):
+
+        self._user = user
+        self._server = server
+
+        language_code = user.language or 'EN'
+        timezone_code = user.timezone or ('UTC' if server is None else server.timezone)
+        server_timezone_code = None if server is None else server.timezone
+
+        self._language = session.query(Language).filter(Language.code == language).first() or ENGLISH_STRINGS
+        self._timezone = timezone_code
+        self._server_timezone = server_timezone_code
+        self._prefix = server.prefix
+        self._allowed_dm = user.allowed_dm
+
+        @property
+        def language(self):
+            return self._language
+
+        @property
+        def timezone(self):
+            return self._timezone
+
+        @property
+        def server_timezone(self):
+            return self._server_timezone
+
+        @property
+        def prefix(self):
+            return self._prefix
+
+        @language.setter
+        def language(self, value):
+            self._user.language = value
+            self._language = value
+
+        @timezone.setter
+        def timezone(self, value):
+            self._user.timezone = value
+            self._timezone = value
+
+        @server_timezone.setter
+        def server_timezone(self, value):
+            self._server.timezone = value
+            self._server_timezone = value
+
+        @prefix.setter
+        def prefix(self, value):
+            self._server.prefix = value
+            self._prefix = value
 
 
 class ReminderInformation():
@@ -87,6 +133,111 @@ class Config():
             logger.info('Patreon is enabled. Will look for servers {}'.format(self.patreon_servers))
 
 
+class ProcessedMessage(discord.Message):
+    argument_string = ''
+
+
+class InvalidTime(Exception):
+    pass
+
+class TimeExtractor():
+    def __init__(self, string, timezone=None):
+        self.timezone = timezone
+
+        self.inverted = string[0] == '-'
+
+        if inverted:
+            self.time_string = string[1:]
+
+        else:
+            self.time_string = string
+
+        if '/' in string or ':' in string:
+            self.process_type = 'explicit'
+
+        else:
+            self.process_type = 'displacement'
+
+    def extract_exact(self): # produce a timestamp
+        return self._process_spaceless()
+
+    def extract_displacement(self): # produce a relative time
+        return self._process_spaceless() - unix_time()
+
+    def _process_spaceless(self):
+        if self.process_type == 'explicit':
+            d = self._process_explicit()
+            return d
+
+        else:
+            d = self._process_displacement()
+            return unix_time() + d
+
+    def _process_explicit(self): # processing times that dictate a specific time
+        date = datetime.now(pytz.timezone(self.timezone))
+
+        for clump in self.time_string.split('-'):
+            if '/' in clump:
+                a = clump.split('/')
+                if len(a) == 2:
+                    date = date.replace(month=int(a[1]), day=int(a[0]))
+                elif len(a) == 3:
+                    date = date.replace(year=int(a[2]), month=int(a[1]), day=int(a[0]))
+
+            elif ':' in clump:
+                a = clump.split(':')
+                if len(a) == 2:
+                    date = date.replace(hour=int(a[0]), minute=int(a[1]))
+                elif len(a) == 3:
+                    date = date.replace(hour=int(a[0]), minute=int(a[1]), second=int(a[2]))
+                else:
+                    raise InvalidTime()
+
+            else:
+                date = date.replace(day=int(clump))
+
+        return date.timestamp()
+
+    def _process_displacement(self): # processing times that dictate a time relative to now
+        current_buffer = '0'
+        seconds = 0
+        minutes = 0
+        hours = 0
+        days = 0
+
+        for char in self.time_string:
+
+            if char == 's':
+                seconds = int(current_buffer)
+                current_buffer = '0'
+
+            elif char == 'm':
+                minutes = int(current_buffer)
+                current_buffer = '0'
+
+            elif char == 'h':
+                hours = int(current_buffer)
+                current_buffer = '0'
+
+            elif char == 'd':
+                days = int(current_buffer)
+                current_buffer = '0'
+
+            else:
+                try:
+                    int(char)
+                    current_buffer += char
+                except ValueError:
+                    raise InvalidTime()
+
+        full = seconds + (minutes * 60) + (hours * 3600) + (days * 86400) + int(current_buffer)
+
+        if self.inverted:
+            full = -full
+
+        return full
+
+
 class BotClient(discord.AutoShardedClient):
     def __init__(self, *args, **kwargs):
         self.start_time = unix_time()
@@ -102,9 +253,9 @@ class BotClient(discord.AutoShardedClient):
             'blacklist' : [self.blacklist, False],
             'restrict' : [self.restrict, False],
 
-            'timezone' : [self.timezone, True],
+            'timezone' : [self.set_timezone, True],
             'clock' : [self.clock, True],
-            'lang' : [self.language, True],
+            'lang' : [self.set_language, True],
             'offset' : [self.offset_reminders, True],
             'nudge' : [self.nudge_channel, True],
 
@@ -197,86 +348,6 @@ class BotClient(discord.AutoShardedClient):
             return True
 
 
-    def format_time(self, text, as_exact, server):
-        invert = False
-        if text[0] == '-':
-            invert = True
-            text = text[1:]
-
-        if '/' in text or ':' in text:
-            date = datetime.now(pytz.timezone(server.timezone))
-
-            for clump in text.split('-'):
-                if '/' in clump:
-                    a = clump.split('/')
-                    if len(a) == 2:
-                        date = date.replace(month=int(a[1]), day=int(a[0]))
-                    elif len(a) == 3:
-                        date = date.replace(year=int(a[2]), month=int(a[1]), day=int(a[0]))
-
-                elif ':' in clump:
-                    a = clump.split(':')
-                    if len(a) == 2:
-                        date = date.replace(hour=int(a[0]), minute=int(a[1]))
-                    elif len(a) == 3:
-                        date = date.replace(hour=int(a[0]), minute=int(a[1]), second=int(a[2]))
-                    else:
-                        return None
-
-                else:
-                    date = date.replace(day=int(clump))
-
-            return date.timestamp()
-
-        else:
-            current_buffer = '0'
-            seconds = 0
-            minutes = 0
-            hours = 0
-            days = 0
-
-            for char in text:
-
-                if char == 's':
-                    seconds = int(current_buffer)
-                    current_buffer = '0'
-
-                elif char == 'm':
-                    minutes = int(current_buffer)
-                    current_buffer = '0'
-
-                elif char == 'h':
-                    hours = int(current_buffer)
-                    current_buffer = '0'
-
-                elif char == 'd':
-                    days = int(current_buffer)
-                    current_buffer = '0'
-
-                else:
-                    try:
-                        int(char)
-                        current_buffer += char
-                    except ValueError:
-                        return None
-
-            full = seconds + (minutes * 60) + (hours * 3600) + (days * 86400) + int(current_buffer)
-
-            if as_exact:
-                if invert:
-                    time_sec = round(unix_time() - full)
-                else:
-                    time_sec = round(unix_time() + full)
-
-            else:
-                if invert:
-                    time_sec = -full
-                else:
-                    time_sec = full
-
-            return time_sec
-
-
     async def welcome(self, guild, *args):
 
         for channel in guild.text_channels:
@@ -312,7 +383,6 @@ class BotClient(discord.AutoShardedClient):
         logger.info('Logged in as')
         logger.info(self.user.name)
         logger.info(self.user.id)
-        logger.info('------------')
 
 
     async def on_guild_remove(self, guild):
@@ -326,26 +396,24 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def send(self):
-        if not self.config.dbl_token:
-            return
+        if self.config.dbl_token:
+            guild_count = len(self.guilds)
 
-        guild_count = len(self.guilds)
+            csession = aiohttp.ClientSession()
+            dump = json_dump({
+                'server_count': guild_count
+            })
 
-        csession = aiohttp.ClientSession()
-        dump = json_dump({
-            'server_count': guild_count
-        })
+            head = {
+                'authorization': self.config.dbl_token,
+                'content-type' : 'application/json'
+            }
 
-        head = {
-            'authorization': self.config.dbl_token,
-            'content-type' : 'application/json'
-        }
+            url = 'https://discordbots.org/api/bots/stats'
+            async with csession.post(url, data=dump, headers=head) as resp:
+                logger.info('returned {0.status} for {1}'.format(resp, dump))
 
-        url = 'https://discordbots.org/api/bots/stats'
-        async with csession.post(url, data=dump, headers=head) as resp:
-            logger.info('returned {0.status} for {1}'.format(resp, dump))
-
-        await csession.close()
+            await csession.close()
 
 
     async def on_message(self, message):
@@ -419,10 +487,10 @@ class BotClient(discord.AutoShardedClient):
                 if server is not None and not message.guild.me.guild_permissions.manage_webhooks:
                     await message.channel.send(server.language.get_string('no_perms_webhook'))
 
-                language = user.language or ('EN' if server is None else server.language)
-                timezone = user.timezone or ('UTC' if server is None else server.timezone)
+                info = Preferences(language, timezone, prefix, user.allowed_dm)
 
-                info = Information(language, timezone, prefix, user.allowed_dm)
+                message.__class__ = ProcessedMessage
+                message.argument_string = stripped
 
                 await command_form[0](message, stripped, info)
                 return True
@@ -458,10 +526,9 @@ class BotClient(discord.AutoShardedClient):
                     await message.channel.send(prefs.language.get_string('prefix/too_long'))
 
                 else:
-                    s = session.query(Server).filter(Server.server == message.guild.id).first()
-                    s.prefix = new
+                    prefs.prefix = new
 
-                    await message.channel.send(prefs.language.get_string('prefix/success').format(prefix=s.prefix))
+                    await message.channel.send(prefs.language.get_string('prefix/success').format(prefix=prefs.prefix))
 
             else:
                 await message.channel.send(prefs.language.get_string('admin_required'))
@@ -472,14 +539,14 @@ class BotClient(discord.AutoShardedClient):
         session.commit()
 
 
-    async def timezone(self, message, stripped, prefs):
+    async def set_timezone(self, message, stripped, prefs):
 
         if message.guild is not None and message.author.guild_permissions.manage_guild:
-            target = session.query(Server).filter(Server.server == message.guild.id).first()
             s = 'timezone/set'
+            admin = True
         else:
-            target = session.query(User).filter(User.user == message.author.id).first()
             s = 'timezone/set_p'
+            admin = False
 
         if stripped == '':
             await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('timezone/no_argument').format(prefix=prefs.prefix, timezone=prefs.timezone)))
@@ -488,29 +555,26 @@ class BotClient(discord.AutoShardedClient):
             if stripped not in pytz.all_timezones:
                 await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('timezone/no_timezone')))
             else:
-                target.timezone = stripped
-                d = datetime.now(pytz.timezone(target.timezone))
+                if admin:
+                    prefs.server_timezone = stripped
+                else:
+                    prefs.timezone = stripped
 
-                await message.channel.send(embed=discord.Embed(description=prefs.language.get_string(s).format(timezone=target.timezone, time=d.strftime('%H:%M:%S'))))
+                d = datetime.now(pytz.timezone(stripped))
+
+                await message.channel.send(embed=discord.Embed(description=prefs.language.get_string(s).format(timezone=stripped, time=d.strftime('%H:%M:%S'))))
 
                 session.commit()
 
 
-    async def language(self, message, stripped, prefs):
-
-        if message.guild is not None and message.author.guild_permissions.manage_guild:
-            target = session.query(Server).filter(Server.server == message.guild.id).first()
-            s = 'lang/set'
-        else:
-            target = session.query(User).filter(User.user == message.author.id).first()
-            s = 'lang/set_p'
+    async def set_language(self, message, stripped, prefs):
 
         new_lang = session.query(Language).filter((Language.code == stripped.upper()) | (Language.name == stripped.lower())).first()
 
         if new_lang is not None:
-            target.language = new_lang.code
+            prefs.language = new_lang.code
 
-            await message.channel.send(embed=discord.Embed(description=new_lang.get_string(s)))
+            await message.channel.send(embed=discord.Embed(description=new_lang.get_string('lang/set_p')))
     
             session.commit()
 
@@ -575,7 +639,7 @@ class BotClient(discord.AutoShardedClient):
 
         mtime = datetime_obj.timestamp()
 
-        result = await self.add_reminder(message, location_id, message_crop, mtime, interval=interval if recurring else None, method='natural')
+        result = await self.create_reminder(message, location_id, message_crop, mtime, interval=interval if recurring else None, method='natural')
         string = NATURAL_STRINGS.get(result.status, REMIND_STRINGS[result.status])
 
         if result.location is not None:
@@ -615,23 +679,27 @@ class BotClient(discord.AutoShardedClient):
                     scope_id = int(''.join(x for x in arg if x in '0123456789'))
 
                 t = args.pop(0)
-                mtime = self.format_time(t, True, server)
+                time_parser = TimeExtractor(t, server.timezone)
 
-                if mtime is None:
+                try:
+                    mtime = time_parser.extract_exact()
+                except:
                     await message.channel.send(embed=discord.Embed(description=server.language.get_string('remind/invalid_time')))
-        
                 else:
                     if is_interval:
                         i = args.pop(0)
-                        interval = self.format_time(i, False, server)
 
-                        if interval is None:
+                        parser = TimeExtractor(i, server.timezone)
+
+                        try:
+                            interval = parser.extract_displacement()
+                        except:
                             await message.channel.send(embed=discord.Embed(description=server.language.get_string('interval/invalid_interval')))
                             return
 
                     text = ' '.join(args)
 
-                    result = await self.add_reminder(message, scope_id, text, mtime, interval, method='remind')
+                    result = await self.create_reminder(message, scope_id, text, mtime, interval, method='remind')
 
                     if result.location is not None:
                         response = server.language.get_string(REMIND_STRINGS[result.status]).format(location=result.location.mention, offset=int(result.time - unix_time()))
@@ -642,7 +710,7 @@ class BotClient(discord.AutoShardedClient):
                     await message.channel.send(embed=discord.Embed(description=response))
 
 
-    async def add_reminder(self, message, location, text, time, interval=None, method='natural'):
+    async def create_reminder(self, message, location, text, time, interval=None, method='natural'):
         uid = self.create_uid(location, message.id) # create a UID
 
         nudge_channel = session.query(ChannelNudge).filter(ChannelNudge.channel == location).first() # check if it's being nudged
@@ -1014,9 +1082,12 @@ class BotClient(discord.AutoShardedClient):
         else:
             channels = [x.id for x in message.guild.channels]
 
-        time = self.format_time(stripped, False, prefs)
+        time_parser = TimeExtractor(stripped, prefs.timezone)
 
-        if time is None:
+        try:
+            time = time_parser.extract_displacement()
+
+        except:
             await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('offset/invalid_time')))
 
         else:
@@ -1032,9 +1103,12 @@ class BotClient(discord.AutoShardedClient):
 
     async def nudge_channel(self, message, stripped, prefs):
 
-        t = self.format_time(stripped, False, prefs)
+        time_parser = TimeExtractor(stripped, prefs.timezone)
 
-        if t is None:
+        try:
+            t = time_parser.extract_displacement()
+
+        except:
             await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('nudge/invalid_time')))
 
         else:

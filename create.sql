@@ -38,7 +38,6 @@ CREATE TABLE reminders.servers (
     server BIGINT UNSIGNED UNIQUE NOT NULL,
 
     prefix VARCHAR(5) DEFAULT "$" NOT NULL,
-    language VARCHAR(2) DEFAULT "EN" NOT NULL,
     timezone VARCHAR(32) DEFAULT "UTC" NOT NULL,
 
     PRIMARY KEY (id)
@@ -48,7 +47,7 @@ CREATE TABLE reminders.users (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
     user BIGINT UNSIGNED UNIQUE NOT NULL,
 
-    language VARCHAR(2),
+    language VARCHAR(2) DEFAULT "EN" NOT NULL,
     timezone VARCHAR(32),
     allowed_dm BOOLEAN DEFAULT 1 NOT NULL,
 
