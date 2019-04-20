@@ -63,47 +63,47 @@ class Preferences():
         timezone_code = user.timezone or ('UTC' if server is None else server.timezone)
         server_timezone_code = None if server is None else server.timezone
 
-        self._language = session.query(Language).filter(Language.code == language).first() or ENGLISH_STRINGS
+        self._language = session.query(Language).filter(Language.code == language_code).first() or ENGLISH_STRINGS
         self._timezone = timezone_code
         self._server_timezone = server_timezone_code
         self._prefix = server.prefix
         self._allowed_dm = user.allowed_dm
 
-        @property
-        def language(self):
-            return self._language
+    @property
+    def language(self):
+        return self._language
 
-        @property
-        def timezone(self):
-            return self._timezone
+    @property
+    def timezone(self):
+        return self._timezone
 
-        @property
-        def server_timezone(self):
-            return self._server_timezone
+    @property
+    def server_timezone(self):
+        return self._server_timezone
 
-        @property
-        def prefix(self):
-            return self._prefix
+    @property
+    def prefix(self):
+        return self._prefix
 
-        @language.setter
-        def language(self, value):
-            self._user.language = value
-            self._language = value
+    @language.setter
+    def language(self, value):
+        self._user.language = value
+        self._language = value
 
-        @timezone.setter
-        def timezone(self, value):
-            self._user.timezone = value
-            self._timezone = value
+    @timezone.setter
+    def timezone(self, value):
+        self._user.timezone = value
+        self._timezone = value
 
-        @server_timezone.setter
-        def server_timezone(self, value):
-            self._server.timezone = value
-            self._server_timezone = value
+    @server_timezone.setter
+    def server_timezone(self, value):
+        self._server.timezone = value
+        self._server_timezone = value
 
-        @prefix.setter
-        def prefix(self, value):
-            self._server.prefix = value
-            self._prefix = value
+    @prefix.setter
+    def prefix(self, value):
+        self._server.prefix = value
+        self._prefix = value
 
 
 class ReminderInformation():
@@ -133,10 +133,6 @@ class Config():
             logger.info('Patreon is enabled. Will look for servers {}'.format(self.patreon_servers))
 
 
-class ProcessedMessage(discord.Message):
-    argument_string = ''
-
-
 class InvalidTime(Exception):
     pass
 
@@ -146,7 +142,7 @@ class TimeExtractor():
 
         self.inverted = string[0] == '-'
 
-        if inverted:
+        if self.inverted:
             self.time_string = string[1:]
 
         else:
@@ -159,10 +155,10 @@ class TimeExtractor():
             self.process_type = 'displacement'
 
     def extract_exact(self): # produce a timestamp
-        return self._process_spaceless()
+        return int(self._process_spaceless())
 
     def extract_displacement(self): # produce a relative time
-        return self._process_spaceless() - unix_time()
+        return int(self._process_spaceless() - unix_time())
 
     def _process_spaceless(self):
         if self.process_type == 'explicit':
@@ -487,10 +483,7 @@ class BotClient(discord.AutoShardedClient):
                 if server is not None and not message.guild.me.guild_permissions.manage_webhooks:
                     await message.channel.send(server.language.get_string('no_perms_webhook'))
 
-                info = Preferences(language, timezone, prefix, user.allowed_dm)
-
-                message.__class__ = ProcessedMessage
-                message.argument_string = stripped
+                info = Preferences(server, user)
 
                 await command_form[0](message, stripped, info)
                 return True
