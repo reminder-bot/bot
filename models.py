@@ -70,6 +70,7 @@ class User(Base):
     timezone = Column( String(32), nullable=True )
     allowed_dm = Column( Boolean, default=True, nullable=False )
 
+
 class Todo(Base):
     __tablename__ = 'todos'
 

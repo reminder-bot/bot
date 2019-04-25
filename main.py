@@ -127,7 +127,7 @@ class Config():
         self.token = config.get('DEFAULT', 'token')
 
         self.patreon = config.get('DEFAULT', 'patreon_enabled') == 'yes'
-        self.patreon_servers = [int(x.strip()) for x in config.get('DEFAULT', 'patreon_server').split(',')]
+        self.patreon_server = int(config.get('DEFAULT', 'patreon_server'))
 
         if self.patreon:
             logger.info('Patreon is enabled. Will look for servers {}'.format(self.patreon_servers))
@@ -271,6 +271,7 @@ class BotClient(discord.AutoShardedClient):
         self.config = Config()
 
         self.executor = concurrent.futures.ThreadPoolExecutor()
+        self.csession = None
 
         super(BotClient, self).__init__(*args, **kwargs)
 
@@ -324,19 +325,32 @@ class BotClient(discord.AutoShardedClient):
             return ''.join(new)
 
 
-    def is_patron(self, memberid, level=0):
+    async def is_patron(self, memberid, level=0):
         if self.config.patreon:
-            p_servers = [client.get_guild(x) for x in self.config.patreon_servers]
-            members = []
-            for guild in p_servers:
-                for member in guild.members:
-                    if member.id == memberid:
-                        members.append(member)
 
             roles = []
-            for member in members:
-                for role in member.roles:
-                    roles.append(role.id)
+            p_server = self.get_guild(self.config.patreon_server)
+
+            if p_server is None:
+
+                url = 'https://discordapp.com/api/v6/guilds/{}/members/{}'.format(self.config.patreon_server, memberid)
+
+                head = {
+                    'authorization': self.config.token,
+                    'content-type' : 'application/json'
+                }
+
+                async with self.csession.get(url, headers=head) as resp:
+                    member = await resp.json()
+                    roles = [int(x) for x in member['roles']]
+
+            else:
+                member = None
+                for m in p_server.members:
+                    if m.id == memberid:
+                        for role in member.roles:
+                            roles.append(role.id)
+                        break
 
             return bool(set([self.config.donor_roles[level]]) & set(roles))
 
@@ -380,6 +394,8 @@ class BotClient(discord.AutoShardedClient):
         logger.info(self.user.name)
         logger.info(self.user.id)
 
+        self.csession = aiohttp.ClientSession()
+
 
     async def on_guild_remove(self, guild):
         await self.send()
@@ -395,7 +411,6 @@ class BotClient(discord.AutoShardedClient):
         if self.config.dbl_token:
             guild_count = len(self.guilds)
 
-            csession = aiohttp.ClientSession()
             dump = json_dump({
                 'server_count': guild_count
             })
@@ -406,10 +421,8 @@ class BotClient(discord.AutoShardedClient):
             }
 
             url = 'https://discordbots.org/api/bots/stats'
-            async with csession.post(url, data=dump, headers=head) as resp:
+            async with self.csession.post(url, data=dump, headers=head) as resp:
                 logger.info('returned {0.status} for {1}'.format(resp, dump))
-
-            await csession.close()
 
 
     async def on_message(self, message):
@@ -619,7 +632,7 @@ class BotClient(discord.AutoShardedClient):
 
             if interval is None:
                 pass
-            elif self.is_patron(message.author.id):
+            elif await self.is_patron(message.author.id):
                 recurring = True
 
                 interval = abs((interval - datetime.utcnow()).total_seconds())
@@ -657,7 +670,7 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(embed=discord.Embed(description=server.language.get_string('remind/no_argument').format(prefix=server.prefix)))
 
         else:
-            is_patreon = self.is_patron(message.author.id)
+            is_patreon = await self.is_patron(message.author.id)
 
             if is_interval and not is_patreon:
                 await message.channel.send(embed=discord.Embed(description=server.language.get_string('interval/donor')))
