@@ -130,7 +130,7 @@ class Config():
         self.patreon_server = int(config.get('DEFAULT', 'patreon_server'))
 
         if self.patreon:
-            logger.info('Patreon is enabled. Will look for servers {}'.format(self.patreon_servers))
+            logger.info('Patreon is enabled. Will look for servers {}'.format(self.patreon_server))
 
 
 class InvalidTime(Exception):
