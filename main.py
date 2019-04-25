@@ -670,9 +670,7 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(embed=discord.Embed(description=server.language.get_string('remind/no_argument').format(prefix=server.prefix)))
 
         else:
-            is_patreon = await self.is_patron(message.author.id)
-
-            if is_interval and not is_patreon:
+            if is_interval and not await self.is_patron(message.author.id):
                 await message.channel.send(embed=discord.Embed(description=server.language.get_string('interval/donor')))
 
             else:
