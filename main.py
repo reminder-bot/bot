@@ -127,7 +127,7 @@ class Config():
         self.token = config.get('DEFAULT', 'token')
 
         self.patreon = config.get('DEFAULT', 'patreon_enabled') == 'yes'
-        self.patreon_server = 350391364896161793
+        self.patreon_server = int(config.get('DEFAULT', 'patreon_server'))
 
         if self.patreon:
             logger.info('Patreon is enabled. Will look for servers {}'.format(self.patreon_server))
@@ -347,7 +347,7 @@ class BotClient(discord.AutoShardedClient):
             else:
                 for m in p_server.members:
                     if m.id == memberid:
-                        roles.extend(m.roles)
+                        roles.extend([r.id for r in m.roles])
 
             return bool(set([self.config.donor_roles[level]]) & set(roles))
 
