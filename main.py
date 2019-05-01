@@ -347,7 +347,7 @@ class BotClient(discord.AutoShardedClient):
             else:
                 for m in p_server.members:
                     if m.id == memberid:
-                        roles = m.roles
+                        roles.extend(m.roles)
 
             return bool(set([self.config.donor_roles[level]]) & set(roles))
 
