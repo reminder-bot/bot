@@ -345,12 +345,9 @@ class BotClient(discord.AutoShardedClient):
                     roles = [int(x) for x in member['roles']]
 
             else:
-                member = None
                 for m in p_server.members:
                     if m.id == memberid:
-                        for role in member.roles:
-                            roles.append(role.id)
-                        break
+                        roles = m.roles
 
             return bool(set([self.config.donor_roles[level]]) & set(roles))
 
@@ -455,7 +452,7 @@ class BotClient(discord.AutoShardedClient):
 
         except discord.errors.Forbidden:
             try:
-                await message.channel.send(server.language.get_string('no_perms_general'))
+                await message.channel.send(user.language.get_string('no_perms_general'))
             except discord.errors.Forbidden:
                 logger.info('Twice Forbidden')
 
@@ -486,7 +483,7 @@ class BotClient(discord.AutoShardedClient):
                 channel = session.query(Blacklist).filter(Blacklist.channel == message.channel.id)
 
                 if channel.count() > 0:
-                    await message.channel.send(embed=discord.Embed(description=server.language.get_string('blacklisted')))
+                    await message.channel.send(embed=discord.Embed(description=user.language.get_string('blacklisted')))
                     return False
 
             command_form = self.commands[command]
@@ -494,7 +491,7 @@ class BotClient(discord.AutoShardedClient):
             if command_form[1] or server is not None:
 
                 if server is not None and not message.guild.me.guild_permissions.manage_webhooks:
-                    await message.channel.send(server.language.get_string('no_perms_webhook'))
+                    await message.channel.send(user.language.get_string('no_perms_webhook'))
 
                 info = Preferences(server, user)
 
