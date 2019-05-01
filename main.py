@@ -127,7 +127,7 @@ class Config():
         self.token = config.get('DEFAULT', 'token')
 
         self.patreon = config.get('DEFAULT', 'patreon_enabled') == 'yes'
-        self.patreon_server = int(config.get('DEFAULT', 'patreon_server'))
+        self.patreon_server = 350391364896161793
 
         if self.patreon:
             logger.info('Patreon is enabled. Will look for servers {}'.format(self.patreon_server))
