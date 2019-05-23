@@ -66,7 +66,10 @@ class Preferences():
         self._language = session.query(Language).filter(Language.code == language_code).first() or ENGLISH_STRINGS
         self._timezone = timezone_code
         self._server_timezone = server_timezone_code
-        self._prefix = server.prefix
+        if server is not None:
+            self._prefix = server.prefix
+        else:
+            self._prefix = '$'
         self._allowed_dm = user.allowed_dm
 
     @property
