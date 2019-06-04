@@ -15,6 +15,7 @@ import concurrent.futures
 from functools import partial
 import logging
 import secrets
+from types import FunctionType
 
 from enum import Enum
 
@@ -25,6 +26,8 @@ logger.setLevel(os.environ.get("LOGLEVEL", "INFO"))
 logger.addHandler(handler)
 
 
+ALL_CHARACTERS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
+
 MAX_TIME = 1576800000
 MIN_INTERVAL = 8
 
@@ -34,8 +37,23 @@ class CreateReminderResponse(Enum):
     LONG_TIME = 1
     LONG_INTERVAL = 2
     SHORT_INTERVAL = 3
-    PERMISSIONS = 4
+    PERMISSIONS = 4 # deprecated
     INVALID_TAG = 5
+
+
+# enumerate possible permission levels for command execution
+class PermissionLevels(Enum):
+    UNRESTRICTED = 0
+    MANAGED = 1
+    RESTRICTED = 2
+
+
+# wrapper for command functions
+class Command():
+    def __init__(self, func_call: FunctionType, dm_allowed: bool = True, permission_level: int = PermissionLevels.UNRESTRICTED):
+        self.func = func_call
+        self.allowed_dm = dm_allowed
+        self.permission_level = permission_level
 
 
 REMIND_STRINGS = {
@@ -43,7 +61,7 @@ REMIND_STRINGS = {
     CreateReminderResponse.LONG_TIME: 'remind/long_time',
     CreateReminderResponse.LONG_INTERVAL: 'interval/long_interval',
     CreateReminderResponse.SHORT_INTERVAL: 'interval/short_interval',
-    CreateReminderResponse.PERMISSIONS: 'remind/no_perms',
+    CreateReminderResponse.PERMISSIONS: 'remind/no_perms', # deprecated
     CreateReminderResponse.INVALID_TAG: 'remind/invalid_tag',
 }
 
@@ -66,10 +84,12 @@ class Preferences():
         self._language = session.query(Language).filter(Language.code == language_code).first() or ENGLISH_STRINGS
         self._timezone = timezone_code
         self._server_timezone = server_timezone_code
+
         if server is not None:
             self._prefix = server.prefix
         else:
             self._prefix = '$'
+
         self._allowed_dm = user.allowed_dm
 
     @property
@@ -242,33 +262,33 @@ class BotClient(discord.AutoShardedClient):
         self.start_time = unix_time()
 
         self.commands = {
-        ##  format: 'command' : [<function>, <works in DMs?>]
 
-            'help' : [self.help, True],
-            'info' : [self.info, True],
-            'donate' : [self.donate, True],
+            'help' : Command(self.help),
+            'info' : Command(self.info),
+            'donate' : Command(self.donate),
 
-            'prefix' : [self.change_prefix, False],
-            'blacklist' : [self.blacklist, False],
-            'restrict' : [self.restrict, False],
+            'prefix' : Command(self.change_prefix, False, PermissionLevels.RESTRICTED),
+            'blacklist' : Command(self.blacklist, False, PermissionLevels.RESTRICTED),
+            'restrict' : Command(self.restrict, False, PermissionLevels.RESTRICTED),
 
-            'timezone' : [self.set_timezone, True],
-            'clock' : [self.clock, True],
-            'lang' : [self.set_language, True],
-            'offset' : [self.offset_reminders, True],
-            'nudge' : [self.nudge_channel, True],
+            'timezone' : Command(self.set_timezone),
+            'lang' : Command(self.set_language),
+            'clock' : Command(self.clock),
 
-            'natural' : [self.natural, True],
-            'remind' : [self.remind, True],
-            'interval' : [self.remind, True],
-            'timer' : [self.timer, True],
-            'del' : [self.delete, True],
-            'look' : [self.look, True],
+            'offset' : Command(self.offset_reminders, True, PermissionLevels.RESTRICTED),
+            'nudge' : Command(self.nudge_channel, True, PermissionLevels.RESTRICTED),
 
-            'todo' : [self.todo, True],
-            'todos' : [self.todo, False],
+            'natural' : Command(self.natural, True, PermissionLevels.MANAGED),
+            'remind' : Command(self.remind, True, PermissionLevels.MANAGED),
+            'interval' : Command(self.remind, True, PermissionLevels.MANAGED),
+            'timer' : Command(self.timer, True, PermissionLevels.MANAGED),
+            'del' : Command(self.delete, True, PermissionLevels.MANAGED),
+            'look' : Command(self.look, True, PermissionLevels.MANAGED),
 
-            'ping' : [self.time_stats, True],
+            'todo' : Command(self.todo),
+            'todos' : Command(self.todo, False, PermissionLevels.MANAGED),
+
+            'ping' : Command(self.time_stats),
         }
 
         self.config = Config()
@@ -284,21 +304,21 @@ class BotClient(discord.AutoShardedClient):
         return [x.result() for x in a][0]
 
 
-    def create_uid(self, i1, i2):
-        m = i2
+    def create_uid(self, i1: int, i2: int) -> str:
+        m: int = i2
         while m > 0:
             i1 *= 10
             m //= 10
         
-        bigint = i1 + i2
-        full = hex(bigint)[2:]
+        bigint: int = i1 + i2
+        full: str = hex(bigint)[2:]
         while len(full) < 64:
-            full += secrets.choice('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_')
+            full += secrets.choice(ALL_CHARACTERS)
 
         return full
 
 
-    def clean_string(self, string, guild):
+    def clean_string(self, string: str, guild: discord.Guild) -> str:
         if guild is None:
             return string
         else:
@@ -369,13 +389,13 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def time_stats(self, message, *args):
-        uptime = unix_time() - self.start_time
+        uptime: float = unix_time() - self.start_time
 
-        message_ts = message.created_at.timestamp()
+        message_ts: float = message.created_at.timestamp()
 
-        m = await message.channel.send('.')
+        m: discord.Message = await message.channel.send('.')
 
-        ping = m.created_at.timestamp() - message_ts
+        ping: float = m.created_at.timestamp() - message_ts
 
         await m.edit(content='''
         Uptime: {}s
@@ -460,12 +480,13 @@ class BotClient(discord.AutoShardedClient):
                 logger.info('Twice Forbidden')
 
 
-    async def get_cmd(self, message, server, user):
+    async def get_cmd(self, message, server, user) -> bool:
 
-        prefix = '$' if server is None else server.prefix
+        info: Preferences = Preferences(server, user)
+        prefix: str = info.prefix
 
-        command = ''
-        stripped = ''
+        command: str = ''
+        stripped: str = ''
 
         if message.content[0:len(prefix)] == prefix:
 
@@ -481,25 +502,43 @@ class BotClient(discord.AutoShardedClient):
             return False
 
         if command in self.commands.keys():
-            if server is not None and not message.content.startswith(('{}help'.format(server.prefix), '{}blacklist'.format(server.prefix), '{}restrict'.format(server.prefix))):
+            if server is not None and not message.content.startswith(('{}help'.format(prefix), '{}blacklist'.format(prefix))):
 
                 channel = session.query(Blacklist).filter(Blacklist.channel == message.channel.id)
 
                 if channel.count() > 0:
-                    await message.channel.send(embed=discord.Embed(description=user.language.get_string('blacklisted')))
+                    await message.channel.send(embed=discord.Embed(description=info.language.get_string('blacklisted')))
                     return False
 
             command_form = self.commands[command]
 
-            if command_form[1] or server is not None:
+            if command_form.allowed_dm or server is not None:
 
-                if server is not None and not message.guild.me.guild_permissions.manage_webhooks:
-                    await message.channel.send(user.language.get_string('no_perms_webhook'))
+                permission_check_status: bool = True
 
-                info = Preferences(server, user)
+                if command_form.permission_level == PermissionLevels.RESTRICTED:
+                    if not message.author.guild_permissions.manage_guild:
+                        permission_check_status = False
 
-                await command_form[0](message, stripped, info)
-                return True
+                        await message.channel.send(info.language.get_string('no_perms_restricted'))
+
+                elif command_form.permission_level == PermissionLevels.MANAGED:
+                    restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
+
+                    if restrict.count() == 0 and not message.author.guild_permissions.manage_messages:
+                        permission_check_status = False
+
+                        await message.channel.send(info.language.get_string('no_perms_managed'))
+
+                if permission_check_status:
+                    if server is not None and not message.guild.me.guild_permissions.manage_webhooks:
+                        await message.channel.send(info.language.get_string('no_perms_webhook'))
+
+                    await command_form.func(message, stripped, info)
+                    return True
+
+                else:
+                    return False
 
             else:
                 return False
@@ -741,10 +780,6 @@ class BotClient(discord.AutoShardedClient):
 
             restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
 
-            if restrict.count() == 0 and not message.author.guild_permissions.manage_messages:        
-                return ReminderInformation(CreateReminderResponse.PERMISSIONS)
-                # invalid permissions
-
         else:
             member = message.guild.get_member(location)
 
@@ -858,10 +893,7 @@ class BotClient(discord.AutoShardedClient):
 
     async def blacklist(self, message, stripped, server):
 
-        if not message.author.guild_permissions.manage_guild:
-            await message.channel.send(embed=discord.Embed(description=server.language.get_string('admin_required')))
-
-        elif len(message.channel_mentions) > 0:
+        if len(message.channel_mentions) > 0:
             disengage_all = True
 
             all_channels = set([x.channel for x in session.query(Blacklist).filter(Blacklist.server == message.guild.id)])
@@ -902,36 +934,32 @@ class BotClient(discord.AutoShardedClient):
 
     async def restrict(self, message, stripped, server):
 
-        if not message.author.guild_permissions.manage_guild:
-            await message.channel.send(embed=discord.Embed(description=server.language.get_string('admin_required')))
+        disengage_all = True
+        args = False
+
+        all_roles = [x.role for x in session.query(RoleRestrict).filter(RoleRestrict.server == message.guild.id)]
+
+        for role in message.role_mentions:
+            args = True
+            if role.id not in all_roles:
+                disengage_all = False
+                r = RoleRestrict(role=role.id, server=message.guild.id)
+                session.add(r)
+
+        if disengage_all and args:
+            roles = [x.id for x in message.role_mentions]
+            session.query(RoleRestrict).filter(RoleRestrict.role.in_(roles)).delete(synchronize_session='fetch')
+
+            await message.channel.send(embed=discord.Embed(description=server.language.get_string('restrict/disabled')))
+
+        elif args:
+            await message.channel.send(embed=discord.Embed(description=server.language.get_string('restrict/enabled')))
+
+        elif stripped:
+            await message.channel.send(embed=discord.Embed(description=server.language.get_string('restrict/help')))
 
         else:
-            disengage_all = True
-            args = False
-
-            all_roles = [x.role for x in session.query(RoleRestrict).filter(RoleRestrict.server == message.guild.id)]
-
-            for role in message.role_mentions:
-                args = True
-                if role.id not in all_roles:
-                    disengage_all = False
-                    r = RoleRestrict(role=role.id, server=message.guild.id)
-                    session.add(r)
-
-            if disengage_all and args:
-                roles = [x.id for x in message.role_mentions]
-                session.query(RoleRestrict).filter(RoleRestrict.role.in_(roles)).delete(synchronize_session='fetch')
-
-                await message.channel.send(embed=discord.Embed(description=server.language.get_string('restrict/disabled')))
-
-            elif args:
-                await message.channel.send(embed=discord.Embed(description=server.language.get_string('restrict/enabled')))
-
-            elif stripped:
-                await message.channel.send(embed=discord.Embed(description=server.language.get_string('restrict/help')))
-
-            else:
-                await message.channel.send(embed=discord.Embed(description=server.language.get_string('restrict/allowed').format(' '.join(['<@&{}>'.format(i) for i in all_roles]))))
+            await message.channel.send(embed=discord.Embed(description=server.language.get_string('restrict/allowed').format(' '.join(['<@&{}>'.format(i) for i in all_roles]))))
 
         session.commit()
 
@@ -978,7 +1006,6 @@ class BotClient(discord.AutoShardedClient):
                     await message.channel.send(server.language.get_string('todo/error_value').format(prefix=server.prefix, command=command))
                 except IndexError:
                     await message.channel.send(server.language.get_string('todo/error_index'))
-
 
             else:
                 await message.channel.send(server.language.get_string('todo/help').format(prefix=server.prefix, command=command))
