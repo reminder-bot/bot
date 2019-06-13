@@ -1157,6 +1157,6 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('nudge/success').format(t)))
 
 
-client = BotClient(max_messages=10)
+client = BotClient(message_cache=True)
 
 client.run(client.config.token)
