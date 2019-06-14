@@ -448,9 +448,6 @@ class BotClient(discord.AutoShardedClient):
 
     async def on_message(self, message):
 
-        print(len(message.guild.members))
-        print(message.author)
-
         if message.author.bot or message.content is None:
             return
 
