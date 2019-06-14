@@ -289,6 +289,7 @@ class BotClient(discord.AutoShardedClient):
             'todos' : Command(self.todo, False, PermissionLevels.MANAGED),
 
             'ping' : Command(self.time_stats),
+
         }
 
         self.config = Config()
@@ -309,7 +310,7 @@ class BotClient(discord.AutoShardedClient):
         while m > 0:
             i1 *= 10
             m //= 10
-        
+
         bigint: int = i1 + i2
         full: str = hex(bigint)[2:]
         while len(full) < 64:
@@ -475,7 +476,7 @@ class BotClient(discord.AutoShardedClient):
 
         except discord.errors.Forbidden:
             try:
-                await message.channel.send(user.language.get_string('no_perms_general'))
+                await message.channel.send(ENGLISH_STRINGS.get_string('no_perms_general'))
             except discord.errors.Forbidden:
                 logger.info('Twice Forbidden')
 
@@ -1157,6 +1158,6 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('nudge/success').format(t)))
 
 
-client = BotClient(message_cache=True)
+client = BotClient(message_cache=False)
 
 client.run(client.config.token)
