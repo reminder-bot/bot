@@ -448,6 +448,9 @@ class BotClient(discord.AutoShardedClient):
 
     async def on_message(self, message):
 
+        print(len(message.guild.members))
+        print(message.author)
+
         if message.author.bot or message.content is None:
             return
 
@@ -1158,6 +1161,6 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('nudge/success').format(t)))
 
 
-client = BotClient(message_cache=False)
+client = BotClient(message_cache=False, fetch_offline_members=False)
 
 client.run(client.config.token)
