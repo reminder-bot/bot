@@ -1166,6 +1166,6 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('nudge/success').format(t)))
 
 
-client = BotClient(message_cache=False)
+client = BotClient(message_cache=False, user_data_cache=('id', 'bot'))
 
 client.run(client.config.token)
