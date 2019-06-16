@@ -48,6 +48,11 @@ class PermissionLevels(Enum):
     RESTRICTED = 2
 
 
+class TimeExtractionTypes(Enum):
+    EXPLICIT = 0
+    DISPLACEMENT = 1
+
+
 # wrapper for command functions
 class Command():
     def __init__(self, func_call: FunctionType, dm_allowed: bool = True, permission_level: int = PermissionLevels.UNRESTRICTED):
@@ -161,30 +166,33 @@ class InvalidTime(Exception):
 
 class TimeExtractor():
     def __init__(self, string, timezone=None):
-        self.timezone = timezone
+        self.timezone: str = timezone
 
-        self.inverted = string[0] == '-'
+        if len(string) > 0:
+            self.inverted: bool = string[0] == '-'
+        else:
+            self.inverted: bool = False
 
         if self.inverted:
-            self.time_string = string[1:]
+            self.time_string: str = string[1:]
 
         else:
-            self.time_string = string
+            self.time_string: str = string
 
         if '/' in string or ':' in string:
-            self.process_type = 'explicit'
+            self.process_type = TimeExtractionTypes.EXPLICIT
 
         else:
-            self.process_type = 'displacement'
+            self.process_type = TimeExtractionTypes.DISPLACEMENT
 
-    def extract_exact(self): # produce a timestamp
+    def extract_exact(self) -> int: # produce a timestamp
         return int(self._process_spaceless())
 
-    def extract_displacement(self): # produce a relative time
+    def extract_displacement(self) -> int: # produce a relative time
         return int(self._process_spaceless() - unix_time())
 
-    def _process_spaceless(self):
-        if self.process_type == 'explicit':
+    def _process_spaceless(self) -> int:
+        if self.process_type == TimeExtractionTypes.EXPLICIT:
             d = self._process_explicit()
             return d
 
@@ -192,7 +200,7 @@ class TimeExtractor():
             d = self._process_displacement()
             return unix_time() + d
 
-    def _process_explicit(self): # processing times that dictate a specific time
+    def _process_explicit(self) -> int: # processing times that dictate a specific time
         date = datetime.now(pytz.timezone(self.timezone))
 
         for clump in self.time_string.split('-'):
@@ -217,7 +225,7 @@ class TimeExtractor():
 
         return date.timestamp()
 
-    def _process_displacement(self): # processing times that dictate a time relative to now
+    def _process_displacement(self) -> int: # processing times that dictate a time relative to now
         current_buffer = '0'
         seconds = 0
         minutes = 0
@@ -349,7 +357,7 @@ class BotClient(discord.AutoShardedClient):
             return ''.join(new)
 
 
-    async def is_patron(self, memberid, level=0):
+    async def is_patron(self, memberid, level=0) -> bool:
         if self.config.patreon:
 
             roles = []
@@ -447,8 +455,8 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def on_message(self, message):
-
-        if message.author.bot or message.content is None:
+ 
+       if message.author.bot or message.content is None:
             return
 
         u = session.query(User).filter(User.user == message.author.id)
@@ -754,7 +762,7 @@ class BotClient(discord.AutoShardedClient):
                     await message.channel.send(embed=discord.Embed(description=response))
 
 
-    async def create_reminder(self, message, location, text, time, interval=None, method='natural'):
+    async def create_reminder(self, message, location, text, time, interval=None, method='natural') -> ReminderInformation:
         uid = self.create_uid(location, message.id) # create a UID
 
         nudge_channel = session.query(ChannelNudge).filter(ChannelNudge.channel == location).first() # check if it's being nudged
@@ -1158,6 +1166,6 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('nudge/success').format(t)))
 
 
-client = BotClient(message_cache=False, fetch_offline_members=False)
+client = BotClient(message_cache=False)
 
 client.run(client.config.token)
