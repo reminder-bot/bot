@@ -519,7 +519,7 @@ class BotClient(discord.AutoShardedClient):
                     await message.channel.send(embed=discord.Embed(description=info.language.get_string('blacklisted')))
                     return False
 
-            command_form = self.commands[command]
+            command_form: Command = self.commands[command]
 
             if command_form.allowed_dm or server is not None:
 
@@ -762,10 +762,10 @@ class BotClient(discord.AutoShardedClient):
                     await message.channel.send(embed=discord.Embed(description=response))
 
 
-    async def create_reminder(self, message, location, text, time, interval=None, method='natural') -> ReminderInformation:
-        uid = self.create_uid(location, message.id) # create a UID
+    async def create_reminder(self, message: discord.Message, location: int, text: str, time: int, interval: int=None, method: str='natural') -> ReminderInformation:
+        uid: str = self.create_uid(location, message.id) # create a UID
 
-        nudge_channel = session.query(ChannelNudge).filter(ChannelNudge.channel == location).first() # check if it's being nudged
+        nudge_channel: ChannelNudge = session.query(ChannelNudge).filter(ChannelNudge.channel == location).first() # check if it's being nudged
 
         if nudge_channel is not None:
             time += nudge_channel.time
@@ -777,27 +777,32 @@ class BotClient(discord.AutoShardedClient):
             time = int(unix_time()) + 1
             # push time to be 'now'
 
-        url = None
+        url: str = None
+        channel: discord.Channel = None
 
-        channel = message.guild.get_channel(location)
+        if message.guild is not None:
+            channel = message.guild.get_channel(location)
 
-        if channel is not None: # if not a DM reminder
+            if channel is not None: # if not a DM reminder
 
-            hooks = [x for x in await channel.webhooks() if x.user.id == self.user.id]
-            hook = hooks[0] if len(hooks) > 0 else await channel.create_webhook(name='Reminders')
-            url = hook.url
+                hooks = [x for x in await channel.webhooks() if x.user.id == self.user.id]
+                hook = hooks[0] if len(hooks) > 0 else await channel.create_webhook(name='Reminders')
+                url = hook.url
 
-            restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
-
-        else:
-            member = message.guild.get_member(location)
-
-            if member is None:
-                return ReminderInformation(CreateReminderResponse.INVALID_TAG)
+                restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
 
             else:
-                await member.create_dm()
-                channel = member.dm_channel
+                member = message.guild.get_member(location)
+
+                if member is None:
+                    return ReminderInformation(CreateReminderResponse.INVALID_TAG)
+
+                else:
+                    await member.create_dm()
+                    channel = member.dm_channel
+
+        else:
+            channel = message.channel
 
         if interval is not None:
             if MIN_INTERVAL > interval:
