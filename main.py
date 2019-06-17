@@ -525,13 +525,13 @@ class BotClient(discord.AutoShardedClient):
 
                 permission_check_status: bool = True
 
-                if command_form.permission_level == PermissionLevels.RESTRICTED:
+                if server is not None and command_form.permission_level == PermissionLevels.RESTRICTED:
                     if not message.author.guild_permissions.manage_guild:
                         permission_check_status = False
 
                         await message.channel.send(info.language.get_string('no_perms_restricted'))
 
-                elif command_form.permission_level == PermissionLevels.MANAGED:
+                elif server is not None and command_form.permission_level == PermissionLevels.MANAGED:
                     restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
 
                     if restrict.count() == 0 and not message.author.guild_permissions.manage_messages:
