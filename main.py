@@ -37,7 +37,6 @@ class CreateReminderResponse(Enum):
     LONG_TIME = 1
     LONG_INTERVAL = 2
     SHORT_INTERVAL = 3
-    PERMISSIONS = 4 # deprecated
     INVALID_TAG = 5
 
 
@@ -66,7 +65,6 @@ REMIND_STRINGS = {
     CreateReminderResponse.LONG_TIME: 'remind/long_time',
     CreateReminderResponse.LONG_INTERVAL: 'interval/long_interval',
     CreateReminderResponse.SHORT_INTERVAL: 'interval/short_interval',
-    CreateReminderResponse.PERMISSIONS: 'remind/no_perms', # deprecated
     CreateReminderResponse.INVALID_TAG: 'remind/invalid_tag',
 }
 
@@ -409,7 +407,7 @@ class BotClient(discord.AutoShardedClient):
         await m.edit(content='''
         Uptime: {}s
         Ping: {}ms
-        '''.format(round(uptime), round(ping*1000)))
+        '''.format(round(uptime), round(ping * 1000)))
 
 
     async def on_error(self, *a, **k):
@@ -423,7 +421,7 @@ class BotClient(discord.AutoShardedClient):
         logger.info(self.user.name)
         logger.info(self.user.id)
 
-        self.csession = aiohttp.ClientSession()
+        self.csession: aiohttp.client.ClientSession = aiohttp.ClientSession()
 
 
     async def on_guild_remove(self, guild):
@@ -459,7 +457,7 @@ class BotClient(discord.AutoShardedClient):
         if message.author.bot or message.content is None:
             return
 
-        u = session.query(User).filter(User.user == message.author.id)
+        u: User = session.query(User).filter(User.user == message.author.id)
 
         if u.count() < 1:
 
