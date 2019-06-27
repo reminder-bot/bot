@@ -16,6 +16,7 @@ from functools import partial
 import logging
 import secrets
 from types import FunctionType
+import typing
 
 from enum import Enum
 
@@ -54,7 +55,7 @@ class TimeExtractionTypes(Enum):
 
 # wrapper for command functions
 class Command():
-    def __init__(self, func_call: FunctionType, dm_allowed: bool = True, permission_level: int = PermissionLevels.UNRESTRICTED):
+    def __init__(self, func_call: FunctionType, dm_allowed: bool = True, permission_level: PermissionLevels = PermissionLevels.UNRESTRICTED):
         self.func = func_call
         self.allowed_dm = dm_allowed
         self.permission_level = permission_level
@@ -75,13 +76,13 @@ NATURAL_STRINGS = {
 ENGLISH_STRINGS = session.query(Language).filter(Language.code == 'EN').first()
 
 class Preferences():
-    def __init__(self, server, user):
+    def __init__(self, server: Server, user: User):
 
-        self._user = user
-        self._server = server
+        self._user: User = user
+        self._server: Server = server
 
-        language_code = user.language or 'EN'
-        timezone_code = user.timezone or ('UTC' if server is None else server.timezone)
+        language_code: str = user.language or 'EN'
+        timezone_code: str = user.timezone or ('UTC' if server is None else server.timezone)
         server_timezone_code = None if server is None else server.timezone
 
         self._language = session.query(Language).filter(Language.code == language_code).first() or ENGLISH_STRINGS
@@ -133,10 +134,10 @@ class Preferences():
 
 
 class ReminderInformation():
-    def __init__(self, status, channel=None, time=None):
-        self.status = status
-        self.time = time
-        self.location = None
+    def __init__(self, status: CreateReminderResponse, channel: discord.Channel = None, time: float = None):
+        self.status: CreateReminderResponse = status
+        self.time: typing.Optional[float] = time
+        self.location: typing.Optional[discord.Channel] = None
 
         if channel is not None:
             self.location = channel.recipient if isinstance(channel, discord.DMChannel) else channel
@@ -189,7 +190,7 @@ class TimeExtractor():
     def extract_displacement(self) -> int: # produce a relative time
         return int(self._process_spaceless() - unix_time())
 
-    def _process_spaceless(self) -> int:
+    def _process_spaceless(self) -> float:
         if self.process_type == TimeExtractionTypes.EXPLICIT:
             d = self._process_explicit()
             return d
@@ -198,7 +199,7 @@ class TimeExtractor():
             d = self._process_displacement()
             return unix_time() + d
 
-    def _process_explicit(self) -> int: # processing times that dictate a specific time
+    def _process_explicit(self) -> float: # processing times that dictate a specific time
         date = datetime.now(pytz.timezone(self.timezone))
 
         for clump in self.time_string.split('-'):
@@ -358,7 +359,7 @@ class BotClient(discord.AutoShardedClient):
     async def is_patron(self, memberid, level=0) -> bool:
         if self.config.patreon:
 
-            roles = []
+            roles: typing.List[int] = []
             p_server = self.get_guild(self.config.patreon_server)
 
             if p_server is None:
@@ -660,12 +661,9 @@ class BotClient(discord.AutoShardedClient):
 
         if message.guild is not None:
             chan_split = message_crop.split(server.language.get_string('natural/to'))
-            if len(chan_split) > 1 \
-                and chan_split[-1].strip()[0] == '<' \
-                and chan_split[-1].strip()[-1] == '>' \
-                and all([x not in '< >' for x in chan_split[-1].strip()[1:-1]]):
+            if len(chan_split) > 1:
 
-                location_id = int( ''.join([x for x in chan_split[-1] if x in '0123456789']) )
+                location_ids = [int( ''.join([x for x in z if x in '0123456789']) ) for z in chan_split[-1].split(' ') ]
 
                 message_crop = message_crop.rsplit(server.language.get_string('natural/to'), 1)[0]
 
@@ -690,17 +688,27 @@ class BotClient(discord.AutoShardedClient):
                 return
 
         mtime = datetime_obj.timestamp()
+        responses: typing.List[ReminderInformation] = []
 
-        result = await self.create_reminder(message, location_id, message_crop, mtime, interval=interval if recurring else None, method='natural')
-        string = NATURAL_STRINGS.get(result.status, REMIND_STRINGS[result.status])
+        for id in location_ids:
+            response: ReminderInformation = await self.create_reminder(message, id, message_crop, mtime, interval=interval if recurring else None, method='natural')
+            responses.append(response)
 
-        if result.location is not None:
-            response = server.language.get_string(string).format(location=result.location.mention, offset=int(result.time - unix_time()))
+        if len(responses) == 1:
+            string: str = NATURAL_STRINGS.get(result.status, REMIND_STRINGS[result.status])
+
+            if result.location is not None:
+                response = server.language.get_string(string).format(location=result.location.mention, offset=int(result.time - unix_time()))
+
+            else:
+                response = server.language.get_string(string)
+
+            await message.channel.send(embed=discord.Embed(description=response))
 
         else:
-            response = server.language.get_string(string)
+            successes: int = len(filter(lambda r: r.status == CreateReminderResponse.SUCCESS, responses))
 
-        await message.channel.send(embed=discord.Embed(description=response))
+            await message.channel.send(embed=discord.Embed(description='{} reminders set successfully'.format(successes)))
 
 
     async def remind(self, message, stripped, server):
@@ -775,8 +783,8 @@ class BotClient(discord.AutoShardedClient):
             time = int(unix_time()) + 1
             # push time to be 'now'
 
-        url: str = None
-        channel: discord.Channel = None
+        url: typing.Optional[str] = None
+        channel: typing.Optional[discord.Channel] = None
 
         if message.guild is not None:
             channel = message.guild.get_channel(location)

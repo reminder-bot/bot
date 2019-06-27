@@ -5,11 +5,13 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 import configparser
 import os
 import time
+import typing
 
 
 config = configparser.SafeConfigParser()
 config.read('config.ini')
 user = config.get('MYSQL', 'USER')
+passwd: typing.Optional[str] = None
 try:
     passwd = config.get('MYSQL', 'PASSWD')
 except:
@@ -126,7 +128,7 @@ class ChannelNudge(Base):
     time = Column(Integer, nullable=False)
 
 
-if passwd:
+if passwd is not None:
     engine = create_engine('mysql+pymysql://{user}:{passwd}@{host}/{db}?charset=utf8mb4'.format(user=user, passwd=passwd, host=host, db=database))
 else:
     engine = create_engine('mysql+pymysql://{user}@{host}/{db}?charset=utf8mb4'.format(user=user, host=host, db=database))
