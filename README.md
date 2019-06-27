@@ -7,9 +7,13 @@
 #### Deps:
 
 * Python 3.6+
-* MySQL
+* MySQL 8+
 * pymysql, [discord.py==1.2.2j](https://github.com/jellywx/discord.py), pytz, dateparser, sqlalchemy, sqlalchemy-json
-* Rust 1.31 with Cargo
+* Rust 1.31 with Cargo (for compilation only)
+
+#### Optional Deps:
+
+* Mypy (for static type checking if modifying code)
 
 #### Running:
 
