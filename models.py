@@ -8,17 +8,6 @@ import time
 import typing
 
 
-config = configparser.SafeConfigParser()
-config.read('config.ini')
-user = config.get('MYSQL', 'USER')
-passwd: typing.Optional[str] = None
-try:
-    passwd = config.get('MYSQL', 'PASSWD')
-except:
-    passwd = None
-host = config.get('MYSQL', 'HOST')
-database = config.get('MYSQL', 'DATABASE')
-
 Base = declarative_base()
 
 class Reminder(Base):
@@ -127,6 +116,17 @@ class ChannelNudge(Base):
     channel = Column(BigInteger, unique=True, nullable=False)
     time = Column(Integer, nullable=False)
 
+
+config = configparser.SafeConfigParser()
+config.read('config.ini')
+user = config.get('MYSQL', 'USER')
+passwd: typing.Optional[str] = None
+try:
+    passwd = config.get('MYSQL', 'PASSWD')
+except:
+    passwd = None
+host = config.get('MYSQL', 'HOST')
+database = config.get('MYSQL', 'DATABASE')
 
 if passwd is not None:
     engine = create_engine('mysql+pymysql://{user}:{passwd}@{host}/{db}?charset=utf8mb4'.format(user=user, passwd=passwd, host=host, db=database))

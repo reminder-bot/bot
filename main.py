@@ -85,16 +85,16 @@ class Preferences():
         timezone_code: str = user.timezone or ('UTC' if server is None else server.timezone)
         server_timezone_code = None if server is None else server.timezone
 
-        self._language = session.query(Language).filter(Language.code == language_code).first() or ENGLISH_STRINGS
-        self._timezone = timezone_code
-        self._server_timezone = server_timezone_code
+        self._language: str = session.query(Language).filter(Language.code == language_code).first() or ENGLISH_STRINGS
+        self._timezone: str = timezone_code
+        self._server_timezone: str = server_timezone_code
 
         if server is not None:
-            self._prefix = server.prefix
+            self._prefix: str = server.prefix
         else:
-            self._prefix = '$'
+            self._prefix: str = '$'
 
-        self._allowed_dm = user.allowed_dm
+        self._allowed_dm: bool = user.allowed_dm
 
     @property
     def language(self):
@@ -134,10 +134,10 @@ class Preferences():
 
 
 class ReminderInformation():
-    def __init__(self, status: CreateReminderResponse, channel: discord.Channel = None, time: float = None):
+    def __init__(self, status: CreateReminderResponse, channel: discord.TextChannel = None, time: float = None):
         self.status: CreateReminderResponse = status
         self.time: typing.Optional[float] = time
-        self.location: typing.Optional[discord.Channel] = None
+        self.location: typing.Optional[discord.TextChannel] = None
 
         if channel is not None:
             self.location = channel.recipient if isinstance(channel, discord.DMChannel) else channel
@@ -148,13 +148,13 @@ class Config():
         config = ConfigParser()
         config.read('config.ini')
 
-        self.donor_roles = [353630811561394206, 353226278435946496]
+        self.donor_roles: typing.List[int] = [353630811561394206, 353226278435946496]
 
-        self.dbl_token = config.get('DEFAULT', 'dbl_token')
-        self.token = config.get('DEFAULT', 'token')
+        self.dbl_token: str = config.get('DEFAULT', 'dbl_token')
+        self.token: str = config.get('DEFAULT', 'token')
 
-        self.patreon = config.get('DEFAULT', 'patreon_enabled') == 'yes'
-        self.patreon_server = int(config.get('DEFAULT', 'patreon_server'))
+        self.patreon: bool = config.get('DEFAULT', 'patreon_enabled') == 'yes'
+        self.patreon_server: int = int(config.get('DEFAULT', 'patreon_server'))
 
         if self.patreon:
             logger.info('Patreon is enabled. Will look for servers {}'.format(self.patreon_server))
@@ -648,8 +648,8 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(embed=discord.Embed(description=server.language.get_string('natural/no_argument').format(prefix=server.prefix)))
             return
 
-        err = False
-        location_id = message.channel.id
+        err: bool = False
+        location_ids: typing.List[int] = [message.channel.id]
 
         time_crop = stripped.split(server.language.get_string('natural/send'))[0]
         message_crop = stripped.split(server.language.get_string('natural/send'), 1)[1]
@@ -663,19 +663,20 @@ class BotClient(discord.AutoShardedClient):
             chan_split = message_crop.split(server.language.get_string('natural/to'))
             if len(chan_split) > 1:
 
-                location_ids = [int( ''.join([x for x in z if x in '0123456789']) ) for z in chan_split[-1].split(' ') ]
+                location_ids: typing.List[int] = [int( ''.join([x for x in z if x in '0123456789']) ) for z in chan_split[-1].split(' ') ]
 
-                message_crop = message_crop.rsplit(server.language.get_string('natural/to'), 1)[0]
+                message_crop: str = message_crop.rsplit(server.language.get_string('natural/to'), 1)[0]
 
         interval_split = message_crop.split(server.language.get_string('natural/every'))
-        recurring = False
-        interval = 0
+        recurring: bool = False
+        interval: int = 0
 
         if len(interval_split) > 1:
             interval = await self.do_blocking( partial(dateparser.parse, '1 ' + interval_split[-1], settings={'TO_TIMEZONE' : 'UTC'}) )
 
             if interval is None:
                 pass
+
             elif await self.is_patron(message.author.id):
                 recurring = True
 
@@ -687,7 +688,7 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(embed=discord.Embed(description=server.language.get_string('interval/donor')))
                 return
 
-        mtime = datetime_obj.timestamp()
+        mtime: float = datetime_obj.timestamp()
         responses: typing.List[ReminderInformation] = []
 
         for id in location_ids:
@@ -695,6 +696,7 @@ class BotClient(discord.AutoShardedClient):
             responses.append(response)
 
         if len(responses) == 1:
+            result: CreateReminderResponse = responses[0]
             string: str = NATURAL_STRINGS.get(result.status, REMIND_STRINGS[result.status])
 
             if result.location is not None:
@@ -706,7 +708,7 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(embed=discord.Embed(description=response))
 
         else:
-            successes: int = len(filter(lambda r: r.status == CreateReminderResponse.SUCCESS, responses))
+            successes: int = len([r for r in responses if r.status == CreateReminderResponse.OK])
 
             await message.channel.send(embed=discord.Embed(description='{} reminders set successfully'.format(successes)))
 
