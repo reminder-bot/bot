@@ -1,4 +1,8 @@
 from models import Reminder, Server, User, Strings, Todo, RoleRestrict, Blacklist, Interval, Timer, session, Language, ChannelNudge
+from config import Config
+from time_extractor import TimeExtractor
+from enums import CreateReminderResponse, PermissionLevels, TimeExtractionTypes
+from passers import *
 
 import discord
 import pytz
@@ -9,7 +13,6 @@ import dateparser
 from datetime import datetime
 from time import time as unix_time
 import os
-from configparser import SafeConfigParser as ConfigParser
 from json import dumps as json_dump
 import concurrent.futures
 from functools import partial
@@ -18,48 +21,20 @@ import secrets
 from types import FunctionType
 import typing
 
-from enum import Enum
 
+def start_logger():
+    handler = logging.StreamHandler()
+    logger = logging.getLogger()
+    logger.setLevel(os.environ.get("LOGLEVEL", "INFO"))
+    logger.addHandler(handler)
 
-handler = logging.StreamHandler()
-logger = logging.getLogger()
-logger.setLevel(os.environ.get("LOGLEVEL", "INFO"))
-logger.addHandler(handler)
+    return logger
 
 
 ALL_CHARACTERS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
 
 MAX_TIME = 1576800000
 MIN_INTERVAL = 8
-
-# enumerate possible error types from the remind and natural commands
-class CreateReminderResponse(Enum):
-    OK = 0
-    LONG_TIME = 1
-    LONG_INTERVAL = 2
-    SHORT_INTERVAL = 3
-    INVALID_TAG = 5
-
-
-# enumerate possible permission levels for command execution
-class PermissionLevels(Enum):
-    UNRESTRICTED = 0
-    MANAGED = 1
-    RESTRICTED = 2
-
-
-class TimeExtractionTypes(Enum):
-    EXPLICIT = 0
-    DISPLACEMENT = 1
-
-
-# wrapper for command functions
-class Command():
-    def __init__(self, func_call: FunctionType, dm_allowed: bool = True, permission_level: PermissionLevels = PermissionLevels.UNRESTRICTED):
-        self.func = func_call
-        self.allowed_dm = dm_allowed
-        self.permission_level = permission_level
-
 
 REMIND_STRINGS = {
     CreateReminderResponse.OK: 'remind/success',
@@ -74,194 +49,6 @@ NATURAL_STRINGS = {
 }
 
 ENGLISH_STRINGS = session.query(Language).filter(Language.code == 'EN').first()
-
-class Preferences():
-    def __init__(self, server: Server, user: User):
-
-        self._user: User = user
-        self._server: Server = server
-
-        language_code: str = user.language or 'EN'
-        timezone_code: str = user.timezone or ('UTC' if server is None else server.timezone)
-        server_timezone_code = None if server is None else server.timezone
-
-        self._language: str = session.query(Language).filter(Language.code == language_code).first() or ENGLISH_STRINGS
-        self._timezone: str = timezone_code
-        self._server_timezone: str = server_timezone_code
-
-        if server is not None:
-            self._prefix: str = server.prefix
-        else:
-            self._prefix: str = '$'
-
-        self._allowed_dm: bool = user.allowed_dm
-
-    @property
-    def language(self):
-        return self._language
-
-    @property
-    def timezone(self):
-        return self._timezone
-
-    @property
-    def server_timezone(self):
-        return self._server_timezone
-
-    @property
-    def prefix(self):
-        return self._prefix
-
-    @language.setter
-    def language(self, value):
-        self._user.language = value
-        self._language = value
-
-    @timezone.setter
-    def timezone(self, value):
-        self._user.timezone = value
-        self._timezone = value
-
-    @server_timezone.setter
-    def server_timezone(self, value):
-        self._server.timezone = value
-        self._server_timezone = value
-
-    @prefix.setter
-    def prefix(self, value):
-        self._server.prefix = value
-        self._prefix = value
-
-
-class ReminderInformation():
-    def __init__(self, status: CreateReminderResponse, channel: discord.TextChannel = None, time: float = None):
-        self.status: CreateReminderResponse = status
-        self.time: typing.Optional[float] = time
-        self.location: typing.Optional[discord.TextChannel] = None
-
-        if channel is not None:
-            self.location = channel.recipient if isinstance(channel, discord.DMChannel) else channel
-
-
-class Config():
-    def __init__(self):
-        config = ConfigParser()
-        config.read('config.ini')
-
-        self.donor_roles: typing.List[int] = [353630811561394206, 353226278435946496]
-
-        self.dbl_token: str = config.get('DEFAULT', 'dbl_token')
-        self.token: str = config.get('DEFAULT', 'token')
-
-        self.patreon: bool = config.get('DEFAULT', 'patreon_enabled') == 'yes'
-        self.patreon_server: int = int(config.get('DEFAULT', 'patreon_server'))
-
-        if self.patreon:
-            logger.info('Patreon is enabled. Will look for servers {}'.format(self.patreon_server))
-
-
-class InvalidTime(Exception):
-    pass
-
-class TimeExtractor():
-    def __init__(self, string, timezone=None):
-        self.timezone: str = timezone
-
-        if len(string) > 0:
-            self.inverted: bool = string[0] == '-'
-        else:
-            self.inverted: bool = False
-
-        if self.inverted:
-            self.time_string: str = string[1:]
-
-        else:
-            self.time_string: str = string
-
-        if '/' in string or ':' in string:
-            self.process_type = TimeExtractionTypes.EXPLICIT
-
-        else:
-            self.process_type = TimeExtractionTypes.DISPLACEMENT
-
-    def extract_exact(self) -> int: # produce a timestamp
-        return int(self._process_spaceless())
-
-    def extract_displacement(self) -> int: # produce a relative time
-        return int(self._process_spaceless() - unix_time())
-
-    def _process_spaceless(self) -> float:
-        if self.process_type == TimeExtractionTypes.EXPLICIT:
-            d = self._process_explicit()
-            return d
-
-        else:
-            d = self._process_displacement()
-            return unix_time() + d
-
-    def _process_explicit(self) -> float: # processing times that dictate a specific time
-        date = datetime.now(pytz.timezone(self.timezone))
-
-        for clump in self.time_string.split('-'):
-            if '/' in clump:
-                a = clump.split('/')
-                if len(a) == 2:
-                    date = date.replace(month=int(a[1]), day=int(a[0]))
-                elif len(a) == 3:
-                    date = date.replace(year=int(a[2]), month=int(a[1]), day=int(a[0]))
-
-            elif ':' in clump:
-                a = clump.split(':')
-                if len(a) == 2:
-                    date = date.replace(hour=int(a[0]), minute=int(a[1]))
-                elif len(a) == 3:
-                    date = date.replace(hour=int(a[0]), minute=int(a[1]), second=int(a[2]))
-                else:
-                    raise InvalidTime()
-
-            else:
-                date = date.replace(day=int(clump))
-
-        return date.timestamp()
-
-    def _process_displacement(self) -> int: # processing times that dictate a time relative to now
-        current_buffer = '0'
-        seconds = 0
-        minutes = 0
-        hours = 0
-        days = 0
-
-        for char in self.time_string:
-
-            if char == 's':
-                seconds = int(current_buffer)
-                current_buffer = '0'
-
-            elif char == 'm':
-                minutes = int(current_buffer)
-                current_buffer = '0'
-
-            elif char == 'h':
-                hours = int(current_buffer)
-                current_buffer = '0'
-
-            elif char == 'd':
-                days = int(current_buffer)
-                current_buffer = '0'
-
-            else:
-                try:
-                    int(char)
-                    current_buffer += char
-                except ValueError:
-                    raise InvalidTime()
-
-        full = seconds + (minutes * 60) + (hours * 3600) + (days * 86400) + int(current_buffer)
-
-        if self.inverted:
-            full = -full
-
-        return full
 
 
 class BotClient(discord.AutoShardedClient):
@@ -1179,6 +966,6 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('nudge/success').format(t)))
 
 
+logger = start_logger()
 client = BotClient(message_cache=False, user_data_cache=('bot'), guild_data_cache=(), emoji_cache=False)
-
 client.run(client.config.token)
