@@ -34,9 +34,9 @@ def start_logger():
 
 class BotClient(discord.AutoShardedClient):
     def __init__(self, *args, **kwargs):
-        self.start_time = unix_time()
+        self.start_time: float = unix_time()
 
-        self.commands = {
+        self.commands: dict = {
 
             'help' : Command(self.help),
             'info' : Command(self.info),
@@ -67,10 +67,10 @@ class BotClient(discord.AutoShardedClient):
 
         }
 
-        self.config = Config()
+        self.config: Config = Config()
 
-        self.executor = concurrent.futures.ThreadPoolExecutor()
-        self.csession = None
+        self.executor: concurrent.futures.ThreadPoolExecutor = concurrent.futures.ThreadPoolExecutor()
+        self.csession: aiohttp.ClientSession = None
 
         super(BotClient, self).__init__(*args, **kwargs)
 
@@ -191,6 +191,9 @@ class BotClient(discord.AutoShardedClient):
         logger.info(self.user.id)
 
         self.csession: aiohttp.client.ClientSession = aiohttp.ClientSession()
+
+        if self.config.patreon:
+            logger.info('Patreon is enabled. Will look for servers {}'.format(self.patreon_server))
 
 
     async def on_guild_remove(self, guild):

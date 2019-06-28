@@ -13,6 +13,3 @@ class Config():
 
         self.patreon: bool = config.get('DEFAULT', 'patreon_enabled') == 'yes'
         self.patreon_server: int = int(config.get('DEFAULT', 'patreon_server'))
-
-        if self.patreon:
-            logger.info('Patreon is enabled. Will look for servers {}'.format(self.patreon_server))
