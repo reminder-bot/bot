@@ -341,21 +341,17 @@ class BotClient(discord.AutoShardedClient):
     async def change_prefix(self, message, stripped, prefs):
 
         if stripped:
-            if message.author.guild_permissions.manage_guild:
 
-                stripped += ' '
-                new = stripped[:stripped.find(' ')]
+            stripped += ' '
+            new = stripped[:stripped.find(' ')]
 
-                if len(new) > 5:
-                    await message.channel.send(prefs.language.get_string('prefix/too_long'))
-
-                else:
-                    prefs.prefix = new
-
-                    await message.channel.send(prefs.language.get_string('prefix/success').format(prefix=prefs.prefix))
+            if len(new) > 5:
+                await message.channel.send(prefs.language.get_string('prefix/too_long'))
 
             else:
-                await message.channel.send(prefs.language.get_string('admin_required'))
+                prefs.prefix = new
+
+                await message.channel.send(prefs.language.get_string('prefix/success').format(prefix=prefs.prefix))
 
         else:
             await message.channel.send(prefs.language.get_string('prefix/no_argument').format(prefix=prefs.prefix))
@@ -481,7 +477,7 @@ class BotClient(discord.AutoShardedClient):
         else:
             successes: int = len([r for r in responses if r.status == CreateReminderResponse.OK])
 
-            await message.channel.send(embed=discord.Embed(description='{} reminders set successfully'.format(successes)))
+            await message.channel.send(embed=discord.Embed(description=server.language.get_string('natural/bulk_set').format(successes)))
 
 
     async def remind(self, message, stripped, server):
