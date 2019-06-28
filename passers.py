@@ -2,7 +2,10 @@ import discord
 
 from types import FunctionType
 from enums import PermissionLevels, CreateReminderResponse
-from models import Server, User
+from models import Server, User, Language, session
+from consts import ENGLISH_STRINGS
+import typing
+
 
 # wrapper for command functions
 class Command():
@@ -24,11 +27,10 @@ class Preferences():
         self._language: str = session.query(Language).filter(Language.code == language_code).first() or ENGLISH_STRINGS
         self._timezone: str = timezone_code
         self._server_timezone: str = server_timezone_code
+        self._prefix: str = '$'
 
         if server is not None:
-            self._prefix: str = server.prefix
-        else:
-            self._prefix: str = '$'
+            self._prefix = server.prefix
 
         self._allowed_dm: bool = user.allowed_dm
 

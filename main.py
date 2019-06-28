@@ -3,6 +3,7 @@ from config import Config
 from time_extractor import TimeExtractor
 from enums import CreateReminderResponse, PermissionLevels, TimeExtractionTypes
 from passers import *
+from consts import *
 
 import discord
 import pytz
@@ -29,26 +30,6 @@ def start_logger():
     logger.addHandler(handler)
 
     return logger
-
-
-ALL_CHARACTERS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
-
-MAX_TIME = 1576800000
-MIN_INTERVAL = 8
-
-REMIND_STRINGS = {
-    CreateReminderResponse.OK: 'remind/success',
-    CreateReminderResponse.LONG_TIME: 'remind/long_time',
-    CreateReminderResponse.LONG_INTERVAL: 'interval/long_interval',
-    CreateReminderResponse.SHORT_INTERVAL: 'interval/short_interval',
-    CreateReminderResponse.INVALID_TAG: 'remind/invalid_tag',
-}
-
-NATURAL_STRINGS = {
-    CreateReminderResponse.LONG_TIME: 'natural/long_time',
-}
-
-ENGLISH_STRINGS = session.query(Language).filter(Language.code == 'EN').first()
 
 
 class BotClient(discord.AutoShardedClient):
