@@ -621,10 +621,10 @@ class BotClient(discord.AutoShardedClient):
 
     async def timer(self, message, stripped, prefs):
 
+        owner: int = message.guild.id
+
         if message.guild is None:
             owner = message.author.id
-        else:
-            owner = message.guild.id
 
         if stripped == 'list':
             timers = session.query(Timer).filter(Timer.owner == owner)
@@ -771,7 +771,7 @@ class BotClient(discord.AutoShardedClient):
             msg = ['\n{}: {}'.format(i+1, todo.value) for i, todo in enumerate(todos)]
             if len(msg) == 0:
                 msg.append(server.language.get_string('todo/add').format(prefix=server.prefix, command=command))
-            await message.channel.send(embed=discord.Embed(title='{}\'s TODO'.format(name), description=''.join(msg)))
+            await message.channel.send(embed=discord.Embed(title='{} TODO'.format('Server' if command == 'todos' else 'Your', name), description=''.join(msg)))
 
         elif len(splits) >= 2:
             if splits[0]  == 'add':
