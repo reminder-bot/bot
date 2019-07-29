@@ -466,11 +466,7 @@ class BotClient(discord.AutoShardedClient):
             result: CreateReminderResponse = responses[0]
             string: str = NATURAL_STRINGS.get(result.status, REMIND_STRINGS[result.status])
 
-            if result.location is not None:
-                response = server.language.get_string(string).format(location=result.location.mention, offset=int(result.time - unix_time()))
-
-            else:
-                response = server.language.get_string(string)
+            response = server.language.get_string(string).format(location=result.location.mention, offset=int(result.time - unix_time()), min_interval=MIN_INTERVAL, max_time=MAX_TIME_DAYS)
 
             await message.channel.send(embed=discord.Embed(description=response))
 
@@ -528,11 +524,7 @@ class BotClient(discord.AutoShardedClient):
 
                     result = await self.create_reminder(message, scope_id, text, mtime, interval, method='remind')
 
-                    if result.location is not None:
-                        response = server.language.get_string(REMIND_STRINGS[result.status]).format(location=result.location.mention, offset=int(result.time - unix_time()))
-
-                    else:
-                        response = server.language.get_string(REMIND_STRINGS[result.status])
+                    response = server.language.get_string(REMIND_STRINGS[result.status]).format(location=result.location.mention, offset=int(result.time - unix_time()), min_interval=MIN_INTERVAL, max_time=MAX_TIME_DAYS)
 
                     await message.channel.send(embed=discord.Embed(description=response))
 
