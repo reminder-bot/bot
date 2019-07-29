@@ -72,10 +72,17 @@ class Preferences():
 
 
 class ReminderInformation():
-    def __init__(self, status: CreateReminderResponse, channel: discord.TextChannel = None, time: float = None):
+    def __init__(self, status: CreateReminderResponse, channel: discord.TextChannel = None, time: float = 0):
         self.status: CreateReminderResponse = status
         self.time: typing.Optional[float] = time
         self.location: typing.Optional[discord.TextChannel] = None
 
         if channel is not None:
             self.location = channel.recipient if isinstance(channel, discord.DMChannel) else channel
+        else:
+            self.location = NoneChannel()
+
+
+class NoneChannel():
+    def __init__(self):
+        self.mention: str = ''
