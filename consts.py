@@ -1,24 +1,26 @@
 from enums import CreateReminderResponse
 from models import session, Language
+import typing
 
-ALL_CHARACTERS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
+ALL_CHARACTERS: str = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
 
-MAX_TIME = 1576800000
-DAY_LENGTH = 86400
+MAX_TIME: int = 1576800000
+DAY_LENGTH: int = 86400
 
-MAX_TIME_DAYS = MAX_TIME / DAY_LENGTH
-MIN_INTERVAL = 8
+MAX_TIME_DAYS: int = MAX_TIME // DAY_LENGTH
+MIN_INTERVAL: int = 8
 
-REMIND_STRINGS = {
+REMIND_STRINGS: dict = {
     CreateReminderResponse.OK: 'remind/success',
     CreateReminderResponse.LONG_TIME: 'remind/long_time',
     CreateReminderResponse.LONG_INTERVAL: 'interval/long_interval',
     CreateReminderResponse.SHORT_INTERVAL: 'interval/short_interval',
     CreateReminderResponse.INVALID_TAG: 'remind/invalid_tag',
+    CreateReminderResponse.PAST_TIME: 'remind/past_time',
 }
 
-NATURAL_STRINGS = {
+NATURAL_STRINGS: dict = {
     CreateReminderResponse.LONG_TIME: 'natural/long_time',
 }
 
-ENGLISH_STRINGS = session.query(Language).filter(Language.code == 'EN').first()
+ENGLISH_STRINGS: typing.Optional[Language] = session.query(Language).filter(Language.code == 'EN').first()

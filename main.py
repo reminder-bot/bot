@@ -64,7 +64,6 @@ class BotClient(discord.AutoShardedClient):
             'todos' : Command(self.todo, False, PermissionLevels.MANAGED),
 
             'ping' : Command(self.time_stats),
-
         }
 
         self.config: Config = Config()
@@ -541,8 +540,7 @@ class BotClient(discord.AutoShardedClient):
             return ReminderInformation(CreateReminderResponse.LONG_TIME)
 
         elif time < unix_time():
-            time = int(unix_time()) + 1
-            # push time to be 'now'
+            return ReminderInformation(CreateReminderResponse.PAST_TIME)
 
         url: typing.Optional[str] = None
         channel: typing.Optional[discord.Channel] = None
@@ -903,14 +901,18 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('offset/invalid_time')))
 
         else:
-            reminders = session.query(Reminder).filter(Reminder.channel.in_(channels))
+            if time == 0:
+                await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('offset/help').format(prefix=prefs.prefix)))
 
-            for r in reminders:
-                r.time += time
+            else:
+                reminders = session.query(Reminder).filter(Reminder.channel.in_(channels))
 
-            session.commit()
+                for r in reminders:
+                    r.time += time
 
-            await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('offset/success').format(time)))
+                session.commit()
+
+                await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('offset/success').format(time)))
 
 
     async def nudge_channel(self, message, stripped, prefs):

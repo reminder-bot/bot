@@ -7,6 +7,7 @@ class CreateReminderResponse(Enum):
     LONG_INTERVAL = 2
     SHORT_INTERVAL = 3
     INVALID_TAG = 5
+    PAST_TIME = 6
 
 
 # enumerate possible permission levels for command execution

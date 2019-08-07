@@ -24,7 +24,7 @@ class Preferences():
         timezone_code: str = user.timezone or ('UTC' if server is None else server.timezone)
         server_timezone_code = None if server is None else server.timezone
 
-        self._language: str = session.query(Language).filter(Language.code == language_code).first() or ENGLISH_STRINGS
+        self._language: typing.Optional[Language] = session.query(Language).filter(Language.code == language_code).first() or ENGLISH_STRINGS
         self._timezone: str = timezone_code
         self._server_timezone: str = server_timezone_code
         self._prefix: str = '$'
