@@ -127,25 +127,17 @@ class BotClient(discord.AutoShardedClient):
         if self.config.patreon:
 
             roles: typing.List[int] = []
-            p_server = self.get_guild(self.config.patreon_server)
 
-            if p_server is None:
+            url = 'https://discordapp.com/api/v6/guilds/{}/members/{}'.format(self.config.patreon_server, memberid)
 
-                url = 'https://discordapp.com/api/v6/guilds/{}/members/{}'.format(self.config.patreon_server, memberid)
+            head = {
+                'authorization': self.config.token,
+                'content-type' : 'application/json'
+            }
 
-                head = {
-                    'authorization': self.config.token,
-                    'content-type' : 'application/json'
-                }
-
-                async with self.csession.get(url, headers=head) as resp:
-                    member = await resp.json()
-                    roles = [int(x) for x in member['roles']]
-
-            else:
-                for m in p_server.members:
-                    if m.id == memberid:
-                        roles.extend([r.id for r in m.roles])
+            async with self.csession.get(url, headers=head) as resp:
+                member = await resp.json()
+                roles = [int(x) for x in member['roles']]
 
             return bool(set([self.config.donor_roles[level]]) & set(roles))
 
@@ -941,5 +933,5 @@ class BotClient(discord.AutoShardedClient):
 
 
 logger = start_logger()
-client = BotClient(message_cache=False, user_data_cache=('bot'), guild_data_cache=(), emoji_cache=False)
+client = BotClient(message_cache=False, fetch_offline_members=False, guild_subscriptions=False, guild_data_cache=(), emoji_cache=False)
 client.run(client.config.token)
