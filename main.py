@@ -933,5 +933,5 @@ class BotClient(discord.AutoShardedClient):
 
 
 logger = start_logger()
-client = BotClient(message_cache=False, fetch_offline_members=False, guild_subscriptions=False, guild_data_cache=(), emoji_cache=False)
+client = BotClient(message_cache=False, user_data_cache=(), guild_data_cache=(), emoji_cache=False)
 client.run(client.config.token)
