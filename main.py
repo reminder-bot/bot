@@ -306,7 +306,7 @@ class BotClient(discord.AutoShardedClient):
                     if restrict.count() == 0 and not message.author.guild_permissions.manage_messages:
                         permission_check_status = False
 
-                        await message.channel.send(info.language.get_string('no_perms_managed'))
+                        await message.channel.send(info.language.get_string('no_perms_managed').format(info.prefix))
 
                 if permission_check_status:
                     if server is not None and not message.guild.me.guild_permissions.manage_webhooks:
@@ -451,7 +451,7 @@ class BotClient(discord.AutoShardedClient):
                 message_crop = message_crop.rsplit(server.language.get_string('natural/every'), 1)[0]
 
             else:
-                await message.channel.send(embed=discord.Embed(description=server.language.get_string('interval/donor')))
+                await message.channel.send(embed=discord.Embed(description=server.language.get_string('interval/donor').format(prefix=server.prefix)))
                 return
 
         mtime: float = datetime_obj.timestamp()
