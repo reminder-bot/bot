@@ -184,7 +184,7 @@ class BotClient(discord.AutoShardedClient):
         self.csession: aiohttp.client.ClientSession = aiohttp.ClientSession()
 
         if self.config.patreon:
-            logger.info('Patreon is enabled. Will look for servers {}'.format(self.patreon_server))
+            logger.info('Patreon is enabled. Will look for servers {}'.format(self.config.patreon_server))
 
 
     async def on_guild_remove(self, guild):
