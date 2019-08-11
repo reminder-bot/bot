@@ -239,15 +239,9 @@ class BotClient(discord.AutoShardedClient):
         server = None if message.guild is None else session.query(Server).filter(Server.server == message.guild.id).first()
         user = session.query(User).filter(User.user == message.author.id).first()
 
-        try:
+        if message.channel.permissions_for(message.guild.me).send_messages:
             if await self.get_cmd(message, server, user):
                 logger.info('Command: ' + message.content)
-
-        except discord.errors.Forbidden:
-            try:
-                await message.channel.send(ENGLISH_STRINGS.get_string('no_perms_general'))
-            except discord.errors.Forbidden:
-                logger.info('Twice Forbidden')
 
 
     async def get_cmd(self, message, server, user) -> bool:
@@ -301,8 +295,10 @@ class BotClient(discord.AutoShardedClient):
                         await message.channel.send(info.language.get_string('no_perms_managed').format(info.prefix))
 
                 if permission_check_status:
-                    if server is not None and not message.guild.me.guild_permissions.manage_webhooks:
+                    m = message.guild.me.guild_permissions
+                    if server is not None and not m.manage_webhooks:
                         await message.channel.send(info.language.get_string('no_perms_webhook'))
+                        return False
 
                     await command_form.func(message, stripped, info)
                     return True
@@ -933,5 +929,5 @@ class BotClient(discord.AutoShardedClient):
 
 
 logger = start_logger()
-client = BotClient(message_cache=False, user_data_cache=(), guild_data_cache=(), emoji_cache=False)
+client = BotClient(max_messages=100, guild_subscriptions=False)
 client.run(client.config.token)

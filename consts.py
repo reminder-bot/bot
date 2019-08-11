@@ -8,7 +8,7 @@ MAX_TIME: int = 1576800000
 DAY_LENGTH: int = 86400
 
 MAX_TIME_DAYS: int = MAX_TIME // DAY_LENGTH
-MIN_INTERVAL: int = 8
+MIN_INTERVAL: int = 800
 
 REMIND_STRINGS: dict = {
     CreateReminderResponse.OK: 'remind/success',
