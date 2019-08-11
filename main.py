@@ -292,7 +292,7 @@ class BotClient(discord.AutoShardedClient):
                     if restrict.count() == 0 and not message.author.guild_permissions.manage_messages:
                         permission_check_status = False
 
-                        await message.channel.send(info.language.get_string('no_perms_managed').format(info.prefix))
+                        await message.channel.send(info.language.get_string('no_perms_managed').format(prefix=info.prefix))
 
                 if permission_check_status:
                     m = message.guild.me.guild_permissions
