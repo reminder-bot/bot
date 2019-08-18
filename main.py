@@ -771,9 +771,6 @@ class BotClient(discord.AutoShardedClient):
         elif len(splits) >= 2:
             if splits[0]  == 'add':
                 a = ' '.join(splits[1:])
-                if len('   '.join(todo.value for todo in todos)) > 1800:
-                    await message.channel.send(server.language.get_string('todo/too_long2'))
-                    return
 
                 todo = Todo(owner=location, value=a)
                 session.add(todo)
