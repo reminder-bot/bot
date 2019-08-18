@@ -247,7 +247,7 @@ class BotClient(discord.AutoShardedClient):
         server = None if message.guild is None else session.query(Server).filter(Server.server == message.guild.id).first()
         user = session.query(User).filter(User.user == message.author.id).first()
 
-        if message.channel.permissions_for(message.guild.me).send_messages:
+        if message.guild is None or message.channel.permissions_for(message.guild.me).send_messages:
             if await self.get_cmd(message, server, user):
                 logger.info('Command: ' + message.content)
 
@@ -303,8 +303,7 @@ class BotClient(discord.AutoShardedClient):
                         await message.channel.send(info.language.get_string('no_perms_managed').format(prefix=info.prefix))
 
                 if permission_check_status:
-                    m = message.guild.me.guild_permissions
-                    if server is not None and not m.manage_webhooks:
+                    if server is not None and not message.guild.me.guild_permissions.manage_webhooks:
                         await message.channel.send(info.language.get_string('no_perms_webhook'))
                         return False
 
@@ -423,9 +422,9 @@ class BotClient(discord.AutoShardedClient):
 
         if message.guild is not None:
             chan_split = message_crop.split(server.language.get_string('natural/to'))
-            if len(chan_split) > 1:
+            if len(chan_split) > 1 and all( bool( set(x) & set('0123456789') ) for x in chan_split[-1].split(' ')):
 
-                location_ids: typing.List[int] = [int( ''.join([x for x in z if x in '0123456789']) ) for z in chan_split[-1].split(' ') ]
+                location_ids = [int( ''.join([x for x in z if x in '0123456789']) ) for z in chan_split[-1].split(' ') ]
 
                 message_crop: str = message_crop.rsplit(server.language.get_string('natural/to'), 1)[0]
 
