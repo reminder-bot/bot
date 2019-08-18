@@ -247,7 +247,7 @@ class BotClient(discord.AutoShardedClient):
         server = None if message.guild is None else session.query(Server).filter(Server.server == message.guild.id).first()
         user = session.query(User).filter(User.user == message.author.id).first()
 
-        if message.guild is None or message.channel.permissions_for(message.guild.me).send_messages:
+        if message.guild is None or (message.channel.permissions_for(message.guild.me).send_messages and message.channel.permissions_for(message.guild.me).embed_links):
             if await self.get_cmd(message, server, user):
                 logger.info('Command: ' + message.content)
 
@@ -756,7 +756,17 @@ class BotClient(discord.AutoShardedClient):
             msg = ['\n{}: {}'.format(i+1, todo.value) for i, todo in enumerate(todos)]
             if len(msg) == 0:
                 msg.append(server.language.get_string('todo/add').format(prefix=server.prefix, command=command))
-            await message.channel.send(embed=discord.Embed(title='{} TODO'.format('Server' if command == 'todos' else 'Your', name), description=''.join(msg)))
+
+            s = ''
+            for item in msg:
+                if len(item) + len(s) < 2000:
+                    s += item
+                else:
+                    await message.channel.send(embed=discord.Embed(title='{} TODO'.format('Server' if command == 'todos' else 'Your', name), description=s))
+                    s = ''
+
+            if len(s) > 0:
+                await message.channel.send(embed=discord.Embed(title='{} TODO'.format('Server' if command == 'todos' else 'Your', name), description=s))
 
         elif len(splits) >= 2:
             if splits[0]  == 'add':
