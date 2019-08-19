@@ -247,7 +247,7 @@ class BotClient(discord.AutoShardedClient):
         server = None if message.guild is None else session.query(Server).filter(Server.server == message.guild.id).first()
         user = session.query(User).filter(User.user == message.author.id).first()
 
-        if message.guild is None or (message.channel.permissions_for(message.guild.me).send_messages and message.channel.permissions_for(message.guild.me).embed_links):
+        if message.guild is None or message.channel.permissions_for(message.guild.me).send_messages:
             if await self.get_cmd(message, server, user):
                 logger.info('Command: ' + message.content)
 
@@ -305,6 +305,10 @@ class BotClient(discord.AutoShardedClient):
                 if permission_check_status:
                     if server is not None and not message.guild.me.guild_permissions.manage_webhooks:
                         await message.channel.send(info.language.get_string('no_perms_webhook'))
+                        return False
+
+                    elif server is not None and not message.channel.permissions_for(message.guild.me).embed_links:
+                        await message.channel.send(info.language.get_string('no_perms_embed_links'))
                         return False
 
                     await command_form.func(message, stripped, info)
