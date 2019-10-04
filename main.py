@@ -54,7 +54,9 @@ class BotClient(discord.AutoShardedClient):
             'nudge' : Command(self.nudge_channel, True, PermissionLevels.RESTRICTED),
 
             'natural' : Command(self.natural, True, PermissionLevels.MANAGED),
+            'n' : Command(self.natural, True, PermissionLevels.MANAGED),
             'remind' : Command(self.remind, True, PermissionLevels.MANAGED),
+            'r' : Command(self.remind, True, PermissionLevels.MANAGED),
             'interval' : Command(self.remind, True, PermissionLevels.MANAGED),
             'timer' : Command(self.timer, True, PermissionLevels.MANAGED),
             'del' : Command(self.delete, True, PermissionLevels.MANAGED),
