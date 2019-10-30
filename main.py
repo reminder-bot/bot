@@ -253,6 +253,9 @@ class BotClient(discord.AutoShardedClient):
             if await self.get_cmd(message, server, user):
                 logger.info('Command: ' + message.content)
 
+        else:
+            logger.info('Bot permissions insufficient in guild {}'.format(message.guild))
+
 
     async def get_cmd(self, message, server, user) -> bool:
 
