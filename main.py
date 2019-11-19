@@ -125,31 +125,26 @@ class BotClient(discord.AutoShardedClient):
             return ''.join(new)
 
 
-    async def is_patron(self, memberid, level=0) -> bool:
+    async def is_patron(self, memberid) -> bool:
         if self.config.patreon:
 
-            roles = []
-            p_server = self.get_guild(self.config.patreon_server)
+            url = 'https://discordapp.com/api/v6/guilds/{}/members/{}'.format(self.config.patreon_server, memberid)
 
-            if p_server is None:
+            head = {
+                'authorization': 'Bot {}'.format(self.config.token),
+                'content-type' : 'application/json'
+            }
 
-                url = 'https://discordapp.com/api/v6/guilds/{}/members/{}'.format(self.config.patreon_server, memberid)
+            async with self.csession.get(url, headers=head) as resp:
 
-                head = {
-                    'authorization': self.config.token,
-                    'content-type' : 'application/json'
-                }
-
-                async with self.csession.get(url, headers=head) as resp:
+                if resp.status == 200:
                     member = await resp.json()
                     roles = [int(x) for x in member['roles']]
 
-            else:
-                for m in p_server.members:
-                    if m.id == memberid:
-                        roles.extend([r.id for r in m.roles])
+                else:
+                    return False
 
-            return bool(set([self.config.donor_roles[level]]) & set(roles))
+            return self.config.donor_role in roles
 
         else:
             return True

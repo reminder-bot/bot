@@ -6,7 +6,7 @@ class Config():
         config = ConfigParser()
         config.read('config.ini')
 
-        self.donor_roles: typing.List[int] = [353630811561394206, 353226278435946496]
+        self.donor_role: int = int(config.get('DEFAULT', 'patreon_role'))
 
         self.dbl_token: str = config.get('DEFAULT', 'dbl_token')
         self.token: str = config.get('DEFAULT', 'token')
