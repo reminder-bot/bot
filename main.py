@@ -538,7 +538,7 @@ class BotClient(discord.AutoShardedClient):
         if time > unix_time() + MAX_TIME:
             return ReminderInformation(CreateReminderResponse.LONG_TIME)
 
-        elif unix_time() - time < DAY_LENGTH: # assume intended time is the following day
+        elif 0 > time - unix_time() > -DAY_LENGTH: # assume intended time is the following day
             time += DAY_LENGTH
 
         elif time < unix_time():
