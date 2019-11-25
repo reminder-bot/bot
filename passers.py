@@ -2,8 +2,7 @@ import discord
 
 from types import FunctionType
 from enums import PermissionLevels, CreateReminderResponse
-from models import Server, User, Language, session
-from consts import ENGLISH_STRINGS
+from models import Guild, User, Language, session, ENGLISH_STRINGS
 import typing
 
 
@@ -15,10 +14,10 @@ class Command():
         self.permission_level = permission_level
 
 class Preferences():
-    def __init__(self, server: Server, user: User):
+    def __init__(self, server: Guild, user: User):
 
         self._user: User = user
-        self._server: Server = server
+        self._server: Guild = server
 
         language_code: str = user.language or 'EN'
         timezone_code: str = user.timezone or ('UTC' if server is None else server.timezone)

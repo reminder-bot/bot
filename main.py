@@ -1,4 +1,4 @@
-from models import Reminder, Server, User, Strings, Todo, RoleRestrict, Blacklist, Interval, Timer, session, Language, ChannelNudge
+from models import Reminder, Guild, User, Strings, Todo, RoleRestrict, Blacklist, Interval, Timer, session, Language, ChannelNudge, ENGLISH_STRINGS
 from config import Config
 from time_extractor import TimeExtractor
 from enums import CreateReminderResponse, PermissionLevels, TimeExtractionTypes
@@ -18,7 +18,6 @@ from json import dumps as json_dump
 import concurrent.futures
 from functools import partial
 import logging
-import secrets
 from types import FunctionType
 import typing
 
@@ -85,7 +84,8 @@ class BotClient(discord.AutoShardedClient):
         u: User = session.query(User).get(member_id)
 
         if u is None and context_guild is not None:
-            m = context_guild.get_member()
+            m = context_guild.get_member() or self.get_user(member_id)
+
             if m is not None:
                 u: User = User(user=m.id, name=m, dm_channel=(await m.create_dm()).id)
 
@@ -93,20 +93,6 @@ class BotClient(discord.AutoShardedClient):
                 session.commit()
 
         return u
-
-
-    def create_uid(self, i1: int, i2: int) -> str:
-        m: int = i2
-        while m > 0:
-            i1 *= 10
-            m //= 10
-
-        bigint: int = i1 + i2
-        full: str = hex(bigint)[2:]
-        while len(full) < 64:
-            full += secrets.choice(ALL_CHARACTERS)
-
-        return full
 
 
     def clean_string(self, string: str, guild: discord.Guild) -> str:
@@ -126,7 +112,7 @@ class BotClient(discord.AutoShardedClient):
                 if len(piece) > 3 and piece[1] == '@' and all(x in '0123456789' for x in piece[3:]):
                     if piece[2] in '0123456789!':
                         uid = int(''.join(x for x in piece if x in '0123456789'))
-                        user = guild.get_member(uid)
+                        user = self.find_member(uid, guild)
                         new_piece = '`@{}`'.format(user)
 
                     elif piece[2] == '&':
@@ -237,22 +223,27 @@ class BotClient(discord.AutoShardedClient):
 
         u: User = session.query(User).get(message.author.id)
 
-        if u is None or u.name is None or u.dm_channel is None:
+        if u is None:
 
             user = User(user=message.author.id, name='{}'.format(message.author), dm_channel=(await message.author.create_dm()).id)
 
             session.add(user)
             session.commit()
 
-        if message.guild is not None and session.query(Server).filter_by(server=message.guild.id).first() is None:
+        if message.guild is not None and session.query(Guild).get(message.guild.id) is None:
 
-            server = Server(server=message.guild.id)
+            server = Guild(guild=message.guild.id)
 
             session.add(server)
             session.commit()
 
-        server = None if message.guild is None else session.query(Server).filter(Server.server == message.guild.id).first()
-        user = session.query(User).filter(User.user == message.author.id).first()
+        server = None if message.guild is None else session.query(Guild).get(message.guild.id)
+        user = session.query(User).get(message.author.id)
+
+        user.name = '{}'.format(message.author)
+
+        if u.dm_channel is None:
+            u.dm_channel = (await message.author.create_dm()).id
 
         if message.guild is None or message.channel.permissions_for(message.guild.me).send_messages:
             if await self.get_cmd(message, server, user):
@@ -538,8 +529,6 @@ class BotClient(discord.AutoShardedClient):
 
 
     async def create_reminder(self, message: discord.Message, location: int, text: str, time: int, interval: int=None, method: str='natural') -> ReminderInformation:
-        uid: str = self.create_uid(location, message.id) # create a UID
-
         nudge_channel: ChannelNudge = session.query(ChannelNudge).filter(ChannelNudge.channel == location).first() # check if it's being nudged
 
         if nudge_channel is not None:
@@ -589,7 +578,6 @@ class BotClient(discord.AutoShardedClient):
 
             else:
                 reminder = Reminder(
-                    uid=uid,
                     message=text,
                     channel=channel.id,
                     time=time,
@@ -606,7 +594,6 @@ class BotClient(discord.AutoShardedClient):
 
         else:
             r = Reminder(
-                uid=uid,
                 message=text,
                 channel=channel.id,
                 time=time,
@@ -959,5 +946,5 @@ class BotClient(discord.AutoShardedClient):
 
 
 logger = start_logger()
-client = BotClient(max_messages=100, guild_subscriptions=False)
+client = BotClient(max_messages=100, guild_subscriptions=False, fetch_offline_members=False)
 client.run(client.config.token)

@@ -1,5 +1,4 @@
 from enums import CreateReminderResponse
-from models import session, Language
 import typing
 
 ALL_CHARACTERS: str = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
@@ -22,5 +21,3 @@ REMIND_STRINGS: dict = {
 NATURAL_STRINGS: dict = {
     CreateReminderResponse.LONG_TIME: 'natural/long_time',
 }
-
-ENGLISH_STRINGS: typing.Optional[Language] = session.query(Language).filter(Language.code == 'EN').first()

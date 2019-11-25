@@ -6,6 +6,9 @@ import configparser
 import os
 import time
 import typing
+import secrets
+
+from consts import ALL_CHARACTERS
 
 
 Base = declarative_base()
@@ -13,8 +16,8 @@ Base = declarative_base()
 class Reminder(Base):
     __tablename__ = 'reminders'
 
-    id = Column(Integer, primary_key=True, unique=True)
-    uid = Column(String(64))
+    id = Column(Integer, primary_key=True)
+    uid = Column(String(64), default=lambda: Reminder.create_uid(), unique=True)
     
     message = Column(String(2000))
     channel = Column(BigInteger)
@@ -30,6 +33,14 @@ class Reminder(Base):
 
     method = Column(String(9))
 
+    @staticmethod
+    def create_uid() -> str:
+        full: str = ''
+        while len(full) < 64:
+            full += secrets.choice(ALL_CHARACTERS)
+
+        return full
+
 
 class Interval(Base):
     __tablename__ = 'intervals'
@@ -41,11 +52,10 @@ class Interval(Base):
     position = Column(Integer)
 
 
-class Server(Base):
-    __tablename__ = 'servers'
+class Guild(Base):
+    __tablename__ = 'guilds'
 
-    id = Column(Integer, primary_key=True)
-    server = Column(BigInteger, unique=True)
+    guild = Column( BigInteger, primary_key=True, autoincrement=False )
     
     prefix = Column( String(5), default="$", nullable=False )
     timezone = Column( String(32), default="UTC", nullable=False )
@@ -153,3 +163,5 @@ Strings = Table('strings', Base.metadata,
         Column('value_{}'.format(lang[0]), Text) for lang in languages
     )
 )
+
+ENGLISH_STRINGS: typing.Optional[Language] = session.query(Language).filter(Language.code == 'EN').first()
