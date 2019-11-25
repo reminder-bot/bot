@@ -81,6 +81,20 @@ class BotClient(discord.AutoShardedClient):
         return [x.result() for x in a][0]
 
 
+    async def find_member(self, member_id: int, context_guild: typing.Optional[discord.Guild]):
+        u: User = session.query(User).get(member_id)
+
+        if u is None and context_guild is not None:
+            m = context_guild.get_member()
+            if m is not None:
+                u: User = User(user=m.id, name=m, dm_channel=(await m.create_dm()).id)
+
+                session.add(u)
+                session.commit()
+
+        return u
+
+
     def create_uid(self, i1: int, i2: int) -> str:
         m: int = i2
         while m > 0:
@@ -192,10 +206,6 @@ class BotClient(discord.AutoShardedClient):
             logger.info('Patreon is enabled. Will look for servers {}'.format(self.config.patreon_server))
 
 
-    async def on_guild_remove(self, guild):
-        await self.send()
-
-
     async def on_guild_join(self, guild):
         await self.send()
 
@@ -225,11 +235,11 @@ class BotClient(discord.AutoShardedClient):
         if message.author.bot or message.content is None:
             return
 
-        u: User = session.query(User).filter(User.user == message.author.id)
+        u: User = session.query(User).get(message.author.id)
 
-        if u.count() < 1:
+        if u is None or u.name is None or u.dm_channel is None:
 
-            user = User(user=message.author.id)
+            user = User(user=message.author.id, name='{}'.format(message.author), dm_channel=(await message.author.create_dm()).id)
 
             session.add(user)
             session.commit()
@@ -246,7 +256,7 @@ class BotClient(discord.AutoShardedClient):
 
         if message.guild is None or message.channel.permissions_for(message.guild.me).send_messages:
             if await self.get_cmd(message, server, user):
-                logger.info('Command: ' + message.content)
+                logger.info('Command: {}'.format(message.content))
 
         else:
             logger.info('Bot permissions insufficient in guild {}'.format(message.guild))
@@ -559,14 +569,13 @@ class BotClient(discord.AutoShardedClient):
                 restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
 
             else:
-                member = message.guild.get_member(location)
+                member = await self.find_member(location, message.guild)
 
                 if member is None:
                     return ReminderInformation(CreateReminderResponse.INVALID_TAG)
 
                 else:
-                    await member.create_dm()
-                    channel = member.dm_channel
+                    channel = DMChannelId(member.dm_channel, member.user)
 
         else:
             channel = message.channel

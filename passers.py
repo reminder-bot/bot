@@ -86,3 +86,9 @@ class ReminderInformation():
 class NoneChannel():
     def __init__(self):
         self.mention: str = ''
+
+
+class DMChannelId():
+    def __init__(self, id, user):
+        self.id: int = id
+        self.mention: str = '<@{}>'.format(user)

@@ -54,12 +54,17 @@ class Server(Base):
 class User(Base):
     __tablename__ = 'users'
 
-    id = Column(Integer, primary_key=True)
-    user = Column(BigInteger, unique=True, nullable=False)
+    user = Column(BigInteger, primary_key=True, nullable=False, autoincrement=False)
 
     language = Column( String(2), default="EN", nullable=False )
     timezone = Column( String(32), nullable=True )
     allowed_dm = Column( Boolean, default=True, nullable=False )
+
+    dm_channel = Column(BigInteger)
+    name = Column(String(37))
+
+    def __repr__(self):
+        return self.name
 
 
 class Todo(Base):
