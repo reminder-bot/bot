@@ -242,8 +242,8 @@ class BotClient(discord.AutoShardedClient):
 
         user.name = '{}'.format(message.author)
 
-        if u.dm_channel is None:
-            u.dm_channel = (await message.author.create_dm()).id
+        if user.dm_channel is None:
+            user.dm_channel = (await message.author.create_dm()).id
 
         if message.guild is None or message.channel.permissions_for(message.guild.me).send_messages:
             if await self.get_cmd(message, server, user):
