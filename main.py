@@ -17,7 +17,6 @@ import os
 from json import dumps as json_dump
 import concurrent.futures
 from functools import partial
-import logging
 from types import FunctionType
 import typing
 
@@ -173,14 +172,14 @@ class BotClient(discord.AutoShardedClient):
 
     async def on_ready(self):
 
-        logger.info('Logged in as')
-        logger.info(self.user.name)
-        logger.info(self.user.id)
+        print('Logged in as')
+        print(self.user.name)
+        print(self.user.id)
 
         self.csession: aiohttp.client.ClientSession = aiohttp.ClientSession()
 
         if self.config.patreon:
-            logger.info('Patreon is enabled. Will look for servers {}'.format(self.config.patreon_server))
+            print('Patreon is enabled. Will look for servers {}'.format(self.config.patreon_server))
 
 
     async def on_guild_join(self, guild):
@@ -204,7 +203,7 @@ class BotClient(discord.AutoShardedClient):
 
             url = 'https://discordbots.org/api/bots/stats'
             async with self.csession.post(url, data=dump, headers=head) as resp:
-                logger.info('returned {0.status} for {1}'.format(resp, dump))
+                print('returned {0.status} for {1}'.format(resp, dump))
 
 
     async def on_message(self, message):
@@ -238,10 +237,10 @@ class BotClient(discord.AutoShardedClient):
 
         if message.guild is None or message.channel.permissions_for(message.guild.me).send_messages:
             if await self.get_cmd(message, server, user):
-                logger.info('Command: {}'.format(message.content))
+                print('Command: {}'.format(message.content))
 
         else:
-            logger.info('Bot permissions insufficient in guild {}'.format(message.guild))
+            print('Bot permissions insufficient in guild {}'.format(message.guild))
 
 
     async def get_cmd(self, message, server, user) -> bool:
@@ -840,7 +839,7 @@ class BotClient(discord.AutoShardedClient):
 
                 session.query(Reminder).filter(Reminder.id == reminders[i].id).delete(synchronize_session='fetch')
 
-                logger.info('Deleted reminder')
+                print('Deleted reminder')
                 dels += 1
 
             except ValueError:
