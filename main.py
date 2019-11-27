@@ -112,7 +112,7 @@ class BotClient(discord.AutoShardedClient):
 
                 new.append(new_piece)
 
-            return ''.join(new)
+            return ''.join(new).replace('@everyone', '`@everyone`').replace('@here', '`@here`')
 
 
     async def is_patron(self, memberid) -> bool:
