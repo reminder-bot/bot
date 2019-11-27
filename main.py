@@ -22,15 +22,6 @@ from types import FunctionType
 import typing
 
 
-def start_logger():
-    handler = logging.StreamHandler()
-    logger = logging.getLogger()
-    logger.setLevel(os.environ.get("LOGLEVEL", "INFO"))
-    logger.addHandler(handler)
-
-    return logger
-
-
 class BotClient(discord.AutoShardedClient):
     def __init__(self, *args, **kwargs):
         self.start_time: float = unix_time()
@@ -945,6 +936,5 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('nudge/success').format(t)))
 
 
-logger = start_logger()
 client = BotClient(max_messages=100, guild_subscriptions=False, fetch_offline_members=False)
 client.run(client.config.token)
