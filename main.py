@@ -84,7 +84,7 @@ class BotClient(discord.AutoShardedClient):
         u: User = session.query(User).get(member_id)
 
         if u is None and context_guild is not None:
-            m = context_guild.get_member() or self.get_user(member_id)
+            m = context_guild.get_member(member_id) or self.get_user(member_id)
 
             if m is not None:
                 u: User = User(user=m.id, name=m, dm_channel=(await m.create_dm()).id)
