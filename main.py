@@ -102,7 +102,7 @@ class BotClient(discord.AutoShardedClient):
                 if len(piece) > 3 and piece[1] == '@' and all(x in '0123456789' for x in piece[3:]):
                     if piece[2] in '0123456789!':
                         uid = int(''.join(x for x in piece if x in '0123456789'))
-                        user = self.find_member(uid, guild)
+                        user = await self.find_member(uid, guild)
                         new_piece = '`@{}`'.format(user)
 
                     elif piece[2] == '&':
@@ -238,9 +238,6 @@ class BotClient(discord.AutoShardedClient):
         if message.guild is None or message.channel.permissions_for(message.guild.me).send_messages:
             if await self.get_cmd(message, server, user):
                 print('Command: {}'.format(message.content))
-
-        else:
-            print('Bot permissions insufficient in guild {}'.format(message.guild))
 
 
     async def get_cmd(self, message, server, user) -> bool:
