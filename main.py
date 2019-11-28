@@ -85,7 +85,7 @@ class BotClient(discord.AutoShardedClient):
         return u
 
 
-    def clean_string(self, string: str, guild: discord.Guild) -> str:
+    async def clean_string(self, string: str, guild: discord.Guild) -> str:
         if guild is None:
             return string
         else:
@@ -808,7 +808,7 @@ class BotClient(discord.AutoShardedClient):
         for rem in reminders:
             string = '''**{}**: '{}' *<#{}>*\n'''.format(
                 n,
-                self.clean_string(rem.message, message.guild),
+                await self.clean_string(rem.message, message.guild),
                 rem.channel)
 
             if len(s) + len(string) > 2000:
@@ -861,7 +861,7 @@ class BotClient(discord.AutoShardedClient):
             s = ''
             for rem in reminders:
                 string = '\'{}\' *{}* **{}**\n'.format(
-                    self.clean_string(rem.message, message.guild),
+                    await self.clean_string(rem.message, message.guild),
                     prefs.language.get_string('look/inter'),
                     datetime.fromtimestamp(rem.time, pytz.timezone(prefs.timezone)).strftime('%Y-%m-%d %H:%M:%S'))
 
