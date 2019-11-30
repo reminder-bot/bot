@@ -211,21 +211,27 @@ class BotClient(discord.AutoShardedClient):
         if message.author.bot or message.content is None:
             return
 
-        u: User = session.query(User).get(message.author.id)
-
-        if u is None:
+        if session.query(User).get(message.author.id) is None:
 
             user = User(user=message.author.id, name='{}'.format(message.author), dm_channel=(await message.author.create_dm()).id)
 
             session.add(user)
-            session.commit()
+            try:
+                session.commit()
+
+            except:
+                return
 
         if message.guild is not None and session.query(Guild).get(message.guild.id) is None:
 
             server = Guild(guild=message.guild.id)
 
             session.add(server)
-            session.commit()
+            try:
+                session.commit()
+
+            except:
+                return
 
         server = None if message.guild is None else session.query(Guild).get(message.guild.id)
         user = session.query(User).get(message.author.id)
@@ -236,8 +242,12 @@ class BotClient(discord.AutoShardedClient):
             user.dm_channel = (await message.author.create_dm()).id
 
         if message.guild is None or message.channel.permissions_for(message.guild.me).send_messages:
-            if await self.get_cmd(message, server, user):
-                print('Command: {}'.format(message.content))
+            try:
+                if await self.get_cmd(message, server, user):
+                    print('Command: {}'.format(message.content))
+
+            except discord.errors.Forbidden:
+                await message.channel.send('Insufficient permissions for command')
 
 
     async def get_cmd(self, message, server, user) -> bool:
