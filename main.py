@@ -528,16 +528,19 @@ class BotClient(discord.AutoShardedClient):
     async def create_reminder(self, message: discord.Message, location: int, text: str, time: int, interval: int=None, method: str='natural') -> ReminderInformation:
         nudge_channel: ChannelNudge = session.query(ChannelNudge).filter(ChannelNudge.channel == location).first() # check if it's being nudged
 
+        ut: float = unix_time()
+
         if nudge_channel is not None:
             time += nudge_channel.time
 
-        if time > unix_time() + MAX_TIME:
+        if time > ut + MAX_TIME:
             return ReminderInformation(CreateReminderResponse.LONG_TIME)
 
-        elif 0 > time - unix_time() > -DAY_LENGTH: # assume intended time is the following day
+        elif ut > time > ut - DAY_LENGTH: # assume intended time is the following day
+            print('D: Applied +86\'400 to time {} at {}'.format(time, ut))
             time += DAY_LENGTH
 
-        elif time < unix_time():
+        elif time < ut:
             return ReminderInformation(CreateReminderResponse.PAST_TIME)
 
         url: typing.Optional[str] = None
