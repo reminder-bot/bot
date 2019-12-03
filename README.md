@@ -8,7 +8,7 @@
 
 * Python 3.6+
 * MySQL 8+
-* pymysql, [discord.py==1.2.2j](https://github.com/jellywx/discord.py), pytz, dateparser, sqlalchemy, sqlalchemy-json
+* pymysql, discord.py>=1.3.0a, pytz, dateparser, sqlalchemy
 * Rust 1.31 with Cargo (for compilation only)
 
 #### Optional Deps:
