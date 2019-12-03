@@ -525,7 +525,7 @@ class BotClient(discord.AutoShardedClient):
                     await message.channel.send(embed=discord.Embed(description=response))
 
 
-    async def create_reminder(self, message: discord.Message, location: int, text: str, time: int, interval: int=None, method: str='natural') -> ReminderInformation:
+    async def create_reminder(self, message: discord.Message, location: int, text: str, time: int, interval: typing.Optional[int]=None, method: str='natural') -> ReminderInformation:
         nudge_channel: ChannelNudge = session.query(ChannelNudge).filter(ChannelNudge.channel == location).first() # check if it's being nudged
 
         ut: float = unix_time()
