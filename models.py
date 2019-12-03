@@ -74,7 +74,10 @@ class User(Base):
     name = Column(String(37))
 
     def __repr__(self):
-        return self.name
+        return self.name or str(self.user)
+
+    def __str__(self):
+        return self.name or str(self.user)
 
 
 class Todo(Base):
