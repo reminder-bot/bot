@@ -47,7 +47,7 @@ class BotClient(discord.AutoShardedClient):
             'remind' : Command(self.remind, True, PermissionLevels.MANAGED),
             'r' : Command(self.remind, True, PermissionLevels.MANAGED),
             'interval' : Command(self.remind, True, PermissionLevels.MANAGED),
-            'timer' : Command(self.timer, True, PermissionLevels.MANAGED),
+            'timer' : Command(self.timer, False, PermissionLevels.MANAGED),
             'del' : Command(self.delete, True, PermissionLevels.MANAGED),
             'look' : Command(self.look, True, PermissionLevels.MANAGED),
 
@@ -88,6 +88,7 @@ class BotClient(discord.AutoShardedClient):
     async def clean_string(self, string: str, guild: discord.Guild) -> str:
         if guild is None:
             return string
+
         else:
             parts = ['']
             for char in string:
@@ -146,6 +147,7 @@ class BotClient(discord.AutoShardedClient):
             if channel.permissions_for(guild.me).send_messages and not channel.is_nsfw():
                 await channel.send('Thank you for adding reminder-bot! To begin, type `$help`!')
                 break
+
             else:
                 continue
 
@@ -560,7 +562,7 @@ class BotClient(discord.AutoShardedClient):
             else:
                 member = await self.find_member(location, message.guild)
 
-                if member is None:
+                if member is None or member.dm_channel is None:
                     return ReminderInformation(CreateReminderResponse.INVALID_TAG)
 
                 else:
