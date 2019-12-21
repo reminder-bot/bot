@@ -538,12 +538,13 @@ class BotClient(discord.AutoShardedClient):
         if time > ut + MAX_TIME:
             return ReminderInformation(CreateReminderResponse.LONG_TIME)
 
-        elif ut > time > ut - DAY_LENGTH: # assume intended time is the following day
-            print('D: Applied +86\'400 to time {} at {}'.format(time, ut))
-            time += DAY_LENGTH
-
         elif time < ut:
-            return ReminderInformation(CreateReminderResponse.PAST_TIME)
+
+            if (ut - time) < 10:
+                time = ut
+
+            else:
+                return ReminderInformation(CreateReminderResponse.PAST_TIME)
 
         url: typing.Optional[str] = None
         channel: typing.Optional[discord.Channel] = None
