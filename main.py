@@ -270,6 +270,11 @@ class BotClient(discord.AutoShardedClient):
             command = message.content.split(' ')[1]
             stripped = (message.content + ' ').split(' ', 2)[-1].strip()
 
+        elif isinstance(message.channel, discord.DMChannel):
+
+            command = message.content.split(' ')[0]
+            stripped = message.content[len(command) + 1:]
+
         else:
             return False
 
