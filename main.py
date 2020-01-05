@@ -866,13 +866,28 @@ class BotClient(discord.AutoShardedClient):
 
     async def look(self, message, stripped, prefs):
 
+        for s in stripped.split(' '):
+            try:
+                limit = int(s)
+                break
+
+            except:
+                limit = None
+
         channel = message.channel_mentions[0] if len(message.channel_mentions) > 0 else message.channel
         channel = channel.id
 
-        reminders = session.query(Reminder).filter(Reminder.channel == channel)
+        if limit is not None:
+            reminders = session.query(Reminder).filter(Reminder.channel == channel).order_by(Reminder.time).limit(limit)
+        else:
+            reminders = session.query(Reminder).filter(Reminder.channel == channel).order_by(Reminder.time)
 
         if reminders.count() > 0:
-            await message.channel.send(prefs.language.get_string('look/listing'))
+            if limit is not None:
+                await message.channel.send(prefs.language.get_string('look/listing_limited').format(reminders.count()))
+
+            else:
+                await message.channel.send(prefs.language.get_string('look/listing'))
 
             s = ''
             for rem in reminders:
