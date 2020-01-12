@@ -32,7 +32,7 @@ class TimeExtractor():
         return int(self._process_spaceless())
 
     def extract_displacement(self) -> int: # produce a relative time
-        return int(self._process_spaceless() - unix_time())
+        return int(round(self._process_spaceless() - unix_time()))
 
     def _process_spaceless(self) -> float:
         if self.process_type == TimeExtractionTypes.EXPLICIT:
