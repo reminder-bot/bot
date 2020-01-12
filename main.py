@@ -450,7 +450,7 @@ class BotClient(discord.AutoShardedClient):
             elif await self.is_patron(message.author.id):
                 recurring = True
 
-                interval = abs((interval - datetime.utcnow()).total_seconds())
+                interval = abs((interval - datetime.now()).total_seconds())
 
                 message_crop = message_crop.rsplit(server.language.get_string('natural/every'), 1)[0]
 
