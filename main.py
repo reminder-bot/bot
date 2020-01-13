@@ -183,6 +183,8 @@ class BotClient(discord.AutoShardedClient):
         if self.config.patreon:
             print('Patreon is enabled. Will look for servers {}'.format(self.config.patreon_server))
 
+        print('Local timezone set to *{}*'.format(self.config.localzone))
+
 
     async def on_guild_join(self, guild):
         await self.send()
@@ -423,7 +425,7 @@ class BotClient(discord.AutoShardedClient):
 
         time_crop = stripped.split(server.language.get_string('natural/send'))[0]
         message_crop = stripped.split(server.language.get_string('natural/send'), 1)[1]
-        datetime_obj = await self.do_blocking( partial(dateparser.parse, time_crop, settings={'TIMEZONE': server.timezone}) )
+        datetime_obj = await self.do_blocking( partial(dateparser.parse, time_crop, settings={'TIMEZONE': server.timezone, 'TO_TIMEZONE': self.config.localzone}) )
 
         if datetime_obj is None:
             await message.channel.send(embed=discord.Embed(description=server.language.get_string('natural/invalid_time')))

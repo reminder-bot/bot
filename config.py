@@ -13,3 +13,5 @@ class Config():
 
         self.patreon: bool = config.get('DEFAULT', 'patreon_enabled') == 'yes'
         self.patreon_server: int = int(config.get('DEFAULT', 'patreon_server'))
+
+        self.localzone: str = config.get('DEFAULT', 'local_timezone')
