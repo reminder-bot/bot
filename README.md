@@ -31,9 +31,11 @@ CREATE DATABASE reminders;
 [DEFAULT]
 token =
 dbl_token =
-patreon_server =
 patreon_enabled = no
+patreon_server =
+patreon_role =
 strings_location = ./languages/
+local_timezone = UTC
 
 [MYSQL]
 user = 
@@ -43,6 +45,7 @@ database = reminders
 ```
 
 * Insert values into `token` and `user` for your MySQL setup and your bot's authorization token (can be found at https://discordapp.com/developers/applications)
+* Set `local_timezone` to a time region that is representative of your local time. For example, for the UK this is *Europe/London*
 * `python3 main.py` to test all that's okay
 
 * Clone down the postman (https://github.com/reminder-bot/postman-rs)
