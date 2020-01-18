@@ -1,4 +1,4 @@
-from models import Reminder, Guild, User, Strings, Todo, RoleRestrict, Blacklist, Interval, Timer, session, Language, ChannelNudge, ENGLISH_STRINGS
+from models import Reminder, Guild, User, Strings, Todo, RoleRestrict, Blacklist, Timer, session, Language, ChannelNudge, ENGLISH_STRINGS
 from config import Config
 from time_extractor import TimeExtractor
 from enums import CreateReminderResponse, PermissionLevels, TimeExtractionTypes
@@ -548,7 +548,7 @@ class BotClient(discord.AutoShardedClient):
         elif time < ut:
 
             if (ut - time) < 10:
-                time = ut
+                time = int( ut )
 
             else:
                 return ReminderInformation(CreateReminderResponse.PAST_TIME)
@@ -593,13 +593,9 @@ class BotClient(discord.AutoShardedClient):
                     time=time,
                     webhook=url,
                     enabled=True,
-                    position=0,
-                    method=method)
+                    method=method,
+                    interval=interval)
                 session.add(reminder)
-                session.commit()
-
-                i = Interval(reminder=reminder.id, period=interval, position=0)
-                session.add(i)
                 session.commit()
 
         else:
@@ -609,7 +605,6 @@ class BotClient(discord.AutoShardedClient):
                 time=time,
                 webhook=url,
                 enabled=True,
-                position=None,
                 method=method)
             session.add(r)
             session.commit()

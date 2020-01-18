@@ -25,13 +25,12 @@ class Reminder(Base):
     webhook = Column(String(256))
     enabled = Column(Boolean, nullable=False, default=True)
     
-    position = Column(Integer)
-
     avatar = Column(String(512), default='https://raw.githubusercontent.com/reminder-bot/logos/master/Remind_Me_Bot_Logo_PPic.jpg', nullable=False)
     username = Column(String(32), default='Reminder', nullable=False)
     embed = Column(Integer, nullable=True)
 
     method = Column(String(9))
+    interval = Column(Integer)
 
     @staticmethod
     def create_uid() -> str:
@@ -40,16 +39,6 @@ class Reminder(Base):
             full += secrets.choice(ALL_CHARACTERS)
 
         return full
-
-
-class Interval(Base):
-    __tablename__ = 'intervals'
-
-    id = Column(Integer, primary_key=True, unique=True)
-
-    reminder = Column(Integer, ForeignKey('reminders.id'))
-    period = Column(Integer)
-    position = Column(Integer)
 
 
 class Guild(Base):
