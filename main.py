@@ -1,4 +1,4 @@
-from models import Reminder, Guild, User, Strings, Todo, RoleRestrict, Blacklist, Timer, session, Language, ChannelNudge, ENGLISH_STRINGS
+from models import Reminder, Guild, User, Strings, Todo, Blacklist, Timer, session, Language, ChannelNudge, CommandRestriction, ENGLISH_STRINGS
 from config import Config
 from time_extractor import TimeExtractor
 from enums import CreateReminderResponse, PermissionLevels, TimeExtractionTypes
@@ -11,21 +11,21 @@ import asyncio
 import aiohttp
 import dateparser
 
-from datetime import datetime
-from time import time as unix_time
-import os
-from json import dumps as json_dump
 import concurrent.futures
-from functools import partial
-from types import FunctionType
 import typing
+import re
+
+from datetime import datetime
+from functools import partial
+from json import dumps as json_dump
+from time import time as unix_time
 
 
 class BotClient(discord.AutoShardedClient):
     def __init__(self, *args, **kwargs):
         self.start_time: float = unix_time()
 
-        self.commands: dict = {
+        self.commands: typing.Dict[str, Command] = {
 
             'help' : Command(self.help),
             'info' : Command(self.info),
@@ -56,6 +56,9 @@ class BotClient(discord.AutoShardedClient):
 
             'ping' : Command(self.time_stats),
         }
+
+        # used in restrict command for filtration
+        self.max_command_length = max(len(x) for x in self.commands.keys())
 
         self.config: Config = Config()
 
@@ -302,7 +305,9 @@ class BotClient(discord.AutoShardedClient):
                         await message.channel.send(info.language.get_string('no_perms_restricted'))
 
                 elif server is not None and command_form.permission_level == PermissionLevels.MANAGED:
-                    restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
+                    restrict = server.command_restrictions \
+                        .filter(CommandRestriction.command == command) \
+                        .filter(CommandRestriction.role.in_([x.id for x in message.author.roles]))
 
                     if restrict.count() == 0 and not message.author.guild_permissions.manage_messages:
                         permission_check_status = False
@@ -714,34 +719,59 @@ class BotClient(discord.AutoShardedClient):
         session.commit()
 
 
-    async def restrict(self, message, stripped, server):
+    async def restrict(self, message, stripped, prefs):
 
-        disengage_all = True
-        args = False
+        args = [x.strip() for x in stripped.split(' ')]
 
-        all_roles = [x.role for x in session.query(RoleRestrict).filter(RoleRestrict.server == message.guild.id)]
+        role_tag = re.search(r'<@&([0-9]+)>', stripped)
 
-        for role in message.role_mentions:
-            args = True
-            if role.id not in all_roles:
-                disengage_all = False
-                r = RoleRestrict(role=role.id, server=message.guild.id)
-                session.add(r)
+        args: typing.List[str] = re.findall(r'([a-z]+)', stripped)
 
-        if disengage_all and args:
-            roles = [x.id for x in message.role_mentions]
-            session.query(RoleRestrict).filter(RoleRestrict.role.in_(roles)).delete(synchronize_session='fetch')
+        if len(args) == 0:
+            if role_tag is None:
+                # no parameters given so just show existing
+                await message.channel.send(
+                    embed=discord.Embed(
+                        description=prefs.language.get_string('restrict/allowed')
+                            .format(
+                                '\n'.join(
+                                    ['<@&{}> can use `{}`'.format(r.role, r.command) for r in prefs.command_restrictions]
+                                    )
+                                )
+                        )
+                    )
 
-            await message.channel.send(embed=discord.Embed(description=server.language.get_string('restrict/disabled')))
+            else:
+                # only a role is given so delete all the settings for this role
+                prefs.command_restrictions.filter(CommandRestriction.role == int(role_tag.group(1))).delete(synchronize_session='fetch')
+                await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('restrict/disabled')))
 
-        elif args:
-            await message.channel.send(embed=discord.Embed(description=server.language.get_string('restrict/enabled')))
-
-        elif stripped:
-            await message.channel.send(embed=discord.Embed(description=server.language.get_string('restrict/help')))
+        elif role_tag is None:
+            # misused- show help
+            await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('restrict/help')))
 
         else:
-            await message.channel.send(embed=discord.Embed(description=server.language.get_string('restrict/allowed').format(' '.join(['<@&{}>'.format(i) for i in all_roles]))))
+            # enable permissions for role for selected commands
+            role_id: int = int(role_tag.group(1))
+
+            for command in filter(lambda x: len(x) <= 9, args):
+                c: typing.Optional[Command] = self.commands.get(command)
+
+                if c is not None and c.permission_level == PermissionLevels.MANAGED:
+                    q = prefs.command_restrictions \
+                        .filter(CommandRestriction.command == command) \
+                        .filter(CommandRestriction.role == role_id)
+
+                    if q.first() is None:
+                        new_restriction = CommandRestriction(guild_id=message.guild.id, command=command, role=role_id)
+
+                        session.add(new_restriction)
+
+                else:
+                    await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('restrict/failure').format(command=command)))
+
+
+            await message.channel.send(embed=discord.Embed(description=prefs.language.get_string('restrict/enabled')))
 
         session.commit()
 

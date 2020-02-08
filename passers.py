@@ -27,11 +27,14 @@ class Preferences():
         self._timezone: str = timezone_code
         self._server_timezone: str = server_timezone_code
         self._prefix: str = '$'
+        self.command_restrictions = None
 
         if server is not None:
             self._prefix = server.prefix
+            self.command_restrictions = server.command_restrictions
 
         self._allowed_dm: bool = user.allowed_dm
+
 
     @property
     def language(self):

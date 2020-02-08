@@ -1,7 +1,7 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, BigInteger, String, Text, Boolean, Table, ForeignKey
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker, scoped_session, relationship
 import configparser
 import os
 import time
@@ -46,8 +46,10 @@ class Guild(Base):
 
     guild = Column( BigInteger, primary_key=True, autoincrement=False )
     
-    prefix = Column( String(5), default="$", nullable=False )
-    timezone = Column( String(32), default="UTC", nullable=False )
+    prefix = Column( String(5), default='$', nullable=False )
+    timezone = Column( String(32), default='UTC', nullable=False )
+
+    command_restrictions = relationship('CommandRestriction', backref='guild', lazy='dynamic')
 
 
 class User(Base):
@@ -55,12 +57,12 @@ class User(Base):
 
     user = Column(BigInteger, primary_key=True, nullable=False, autoincrement=False)
 
-    language = Column( String(2), default="EN", nullable=False )
+    language = Column( String(2), default='EN', nullable=False )
     timezone = Column( String(32), nullable=True )
     allowed_dm = Column( Boolean, default=True, nullable=False )
 
     dm_channel = Column(BigInteger)
-    name = Column(String(37))
+    name = Column(String(37)) # sized off 32 char usern + # + 4 char discrim
 
     def __repr__(self):
         return self.name or str(self.user)
@@ -81,15 +83,8 @@ class Blacklist(Base):
     __tablename__ = 'blacklists'
 
     id = Column(Integer, primary_key=True)
+    
     channel = Column(BigInteger, nullable=False, unique=True)
-    server = Column(BigInteger, nullable=False)
-
-
-class RoleRestrict(Base):
-    __tablename__ = 'roles'
-
-    id = Column(Integer, primary_key=True)
-    role = Column(BigInteger, nullable=False, unique=True)
     server = Column(BigInteger, nullable=False)
 
 
@@ -97,6 +92,7 @@ class Timer(Base):
     __tablename__ = 'timers'
 
     id = Column(Integer, primary_key=True)
+    
     start_time = Column(Integer, default=time.time, nullable=False)
     name = Column( String(32), nullable=False )
     owner = Column( BigInteger, nullable=False )
@@ -106,8 +102,9 @@ class Language(Base):
     __tablename__ = 'languages'
 
     id = Column(Integer, primary_key=True)
-    name = Column( String(20), nullable=False )
-    code = Column( String(2), nullable=False )
+    
+    name = Column( String(20), nullable=False, unique=True )
+    code = Column( String(2), nullable=False, unique=True )
 
     def get_string(self, string):
         s = session.query(Strings).filter(Strings.c.name == string)
@@ -120,8 +117,19 @@ class ChannelNudge(Base):
     __tablename__ = 'nudge_channels'
 
     id = Column(Integer, primary_key=True)
+    
     channel = Column(BigInteger, unique=True, nullable=False)
     time = Column(Integer, nullable=False)
+
+
+class CommandRestriction(Base):
+    __tablename__ = 'command_restrictions'
+
+    id = Column(Integer, primary_key=True)
+
+    guild_id = Column(BigInteger, ForeignKey(Guild.guild, ondelete='CASCADE'), nullable=False)
+    role = Column(BigInteger, nullable=False)
+    command = Column(String(16))
 
 
 config = configparser.SafeConfigParser()
