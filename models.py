@@ -85,7 +85,7 @@ class Blacklist(Base):
     id = Column(Integer, primary_key=True)
     
     channel = Column(BigInteger, nullable=False, unique=True)
-    server = Column(BigInteger, nullable=False)
+    guild_id = Column(BigInteger, ForeignKey(Guild.guild, ondelete='CASCADE'), nullable=False)
 
 
 class Timer(Base):

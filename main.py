@@ -683,7 +683,7 @@ class BotClient(discord.AutoShardedClient):
         if len(message.channel_mentions) > 0:
             disengage_all = True
 
-            all_channels = set([x.channel for x in session.query(Blacklist).filter(Blacklist.server == message.guild.id)])
+            all_channels = set([x.channel for x in session.query(Blacklist).filter(Blacklist.guild_id == message.guild.id)])
             c = set([x.id for x in message.channel_mentions])
 
             for mention in message.channel_mentions:
@@ -699,7 +699,7 @@ class BotClient(discord.AutoShardedClient):
             else:
                 channels = [x for x in c if x not in all_channels]
                 for channel in channels:
-                    blacklist = Blacklist(channel=channel, server=message.guild.id)
+                    blacklist = Blacklist(channel=channel, guild_id=message.guild.id)
                     session.add(blacklist)
 
                 await message.channel.send(embed=discord.Embed(description=server.language.get_string('blacklist/added_from')))
@@ -712,7 +712,7 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(embed=discord.Embed(description=server.language.get_string('blacklist/removed')))
 
             else:
-                blacklist = Blacklist(channel=message.channel.id, server=message.guild.id)
+                blacklist = Blacklist(channel=message.channel.id, guild_id=message.guild.id)
                 session.add(blacklist)
                 await message.channel.send(embed=discord.Embed(description=server.language.get_string('blacklist/added')))
 

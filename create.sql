@@ -5,7 +5,8 @@ CREATE TABLE reminders.reminders (
     message VARCHAR(2000) NOT NULL,
     channel BIGINT UNSIGNED NOT NULL,
     `time` INT UNSIGNED DEFAULT 0 NOT NULL,
-    position INT UNSIGNED DEFAULT NULL,
+
+    `interval` INT UNSIGNED DEFAULT NULL,
     webhook VARCHAR(256),
     enabled BOOLEAN DEFAULT 1 NOT NULL,
 
@@ -13,34 +14,18 @@ CREATE TABLE reminders.reminders (
     username VARCHAR(32) DEFAULT "Reminder" NOT NULL,
     embed MEDIUMINT UNSIGNED,
 
-    method TEXT,
+    method VARCHAR(9),
 
     PRIMARY KEY (id)
 );
 
-CREATE TABLE reminders.intervals (
-    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
-
-    reminder INT UNSIGNED NOT NULL,
-    period INT UNSIGNED NOT NULL,
-    position TINYINT UNSIGNED NOT NULL DEFAULT 0,
-
-    CONSTRAINT reminder_period_cx
-    FOREIGN KEY reminder_period_fk (reminder)
-    REFERENCES reminders (id)
-    ON DELETE CASCADE,
-
-    PRIMARY KEY (id)
-);
-
-CREATE TABLE reminders.servers (
-    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
-    server BIGINT UNSIGNED UNIQUE NOT NULL,
+CREATE TABLE reminders.guilds (
+    guild BIGINT UNSIGNED UNIQUE NOT NULL,
 
     prefix VARCHAR(5) DEFAULT "$" NOT NULL,
     timezone VARCHAR(32) DEFAULT "UTC" NOT NULL,
 
-    PRIMARY KEY (id)
+    PRIMARY KEY (guild)
 );
 
 CREATE TABLE reminders.users (
@@ -50,6 +35,9 @@ CREATE TABLE reminders.users (
     language VARCHAR(2) DEFAULT "EN" NOT NULL,
     timezone VARCHAR(32),
     allowed_dm BOOLEAN DEFAULT 1 NOT NULL,
+
+    dm_channel BIGINT UNSIGNED UNIQUE,
+    name VARCHAR(37) UNIQUE,
 
     PRIMARY KEY (id)
 );
@@ -64,18 +52,23 @@ CREATE TABLE reminders.todos (
 
 CREATE TABLE reminders.blacklists (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
-    channel BIGINT UNSIGNED UNIQUE NOT NULL,
-    server BIGINT UNSIGNED NOT NULL,
 
-    PRIMARY KEY (id)
+    channel BIGINT UNSIGNED UNIQUE NOT NULL,
+    guild_id BIGINT UNSIGNED NOT NULL,
+
+    PRIMARY KEY (id),
+    FOREIGN KEY (guild_id) REFERENCES guilds(guild) ON DELETE CASCADE
 );
 
-CREATE TABLE reminders.roles (
+CREATE TABLE reminders.command_restrictions (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
-    role BIGINT UNSIGNED UNIQUE NOT NULL,
-    server BIGINT UNSIGNED NOT NULL,
+    
+    guild_id BIGINT UNSIGNED NOT NULL,
+    role BIGINT UNSIGNED NOT NULL,
+    command VARCHAR(16) NOT NULL,
 
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    FOREIGN KEY (guild_id) REFERENCES guilds(guild) ON DELETE CASCADE
 );
 
 CREATE TABLE reminders.timers (
