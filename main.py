@@ -570,8 +570,6 @@ class BotClient(discord.AutoShardedClient):
                 hook = hooks[0] if len(hooks) > 0 else await channel.create_webhook(name='Reminders')
                 url = hook.url
 
-                restrict = session.query(RoleRestrict).filter(RoleRestrict.role.in_([x.id for x in message.author.roles]))
-
             else:
                 member = await self.find_member(location, message.guild)
 
