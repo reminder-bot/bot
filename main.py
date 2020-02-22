@@ -428,8 +428,8 @@ class BotClient(discord.AutoShardedClient):
         err: bool = False
         location_ids: typing.List[int] = [message.channel.id]
 
-        time_crop = stripped.split(server.language.get_string(self.session, 'natural/send'))[0]
-        message_crop = stripped.split(server.language.get_string(self.session, 'natural/send'), 1)[1]
+        time_crop = stripped.split(server.language.get_string('natural/send'))[0]
+        message_crop = stripped.split(server.language.get_string('natural/send'), 1)[1]
         datetime_obj = await self.do_blocking( partial(dateparser.parse, time_crop, settings =
             {
              'TIMEZONE': server.timezone,
