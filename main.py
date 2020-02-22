@@ -405,7 +405,7 @@ class BotClient(discord.AutoShardedClient):
             prefs.language = new_lang.code
 
             await message.channel.send(embed=discord.Embed(description=new_lang.get_string('lang/set_p')))
-    
+
             session.commit()
 
         else:
@@ -428,9 +428,15 @@ class BotClient(discord.AutoShardedClient):
         err: bool = False
         location_ids: typing.List[int] = [message.channel.id]
 
-        time_crop = stripped.split(server.language.get_string('natural/send'))[0]
-        message_crop = stripped.split(server.language.get_string('natural/send'), 1)[1]
-        datetime_obj = await self.do_blocking( partial(dateparser.parse, time_crop, settings={'TIMEZONE': server.timezone, 'TO_TIMEZONE': self.config.localzone}) )
+        time_crop = stripped.split(server.language.get_string(self.session, 'natural/send'))[0]
+        message_crop = stripped.split(server.language.get_string(self.session, 'natural/send'), 1)[1]
+        datetime_obj = await self.do_blocking( partial(dateparser.parse, time_crop, settings =
+            {
+             'TIMEZONE': server.timezone,
+             'TO_TIMEZONE': self.config.localzone,
+             'RELATIVE_BASE': datetime.now(pytz.timezone(server.timezone)),
+             'PREFER_DATES_FROM': 'future'
+            }))
 
         if datetime_obj is None:
             await message.channel.send(embed=discord.Embed(description=server.language.get_string('natural/invalid_time')))
@@ -816,7 +822,7 @@ class BotClient(discord.AutoShardedClient):
                 try:
                     a = session.query(Todo).filter(Todo.id == todos[int(splits[1])-1].id).first()
                     session.query(Todo).filter(Todo.id == todos[int(splits[1])-1].id).delete(synchronize_session='fetch')
-                    
+
                     await message.channel.send(server.language.get_string('todo/removed').format(a.value))
 
                 except ValueError:
