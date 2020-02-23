@@ -1,21 +1,22 @@
 import discord
 
-from types import FunctionType
+from typing import Coroutine
 from enums import PermissionLevels, CreateReminderResponse
 from models import Guild, User, Language, session, ENGLISH_STRINGS
 import typing
 
 
 # wrapper for command functions
-class Command():
-    def __init__(self, func_call: FunctionType, dm_allowed: bool = True, permission_level: PermissionLevels = PermissionLevels.UNRESTRICTED):
+class Command:
+    def __init__(self, func_call: Coroutine[discord.Message, str, 'Preferences'], dm_allowed: bool = True,
+                 permission_level: PermissionLevels = PermissionLevels.UNRESTRICTED):
         self.func = func_call
         self.allowed_dm = dm_allowed
         self.permission_level = permission_level
 
-class Preferences():
-    def __init__(self, server: Guild, user: User):
 
+class Preferences:
+    def __init__(self, server: Guild, user: User):
         self._user: User = user
         self._server: Guild = server
 
@@ -23,7 +24,8 @@ class Preferences():
         timezone_code: str = user.timezone or ('UTC' if server is None else server.timezone)
         server_timezone_code = None if server is None else server.timezone
 
-        self._language: typing.Optional[Language] = session.query(Language).filter(Language.code == language_code).first() or ENGLISH_STRINGS
+        self._language: typing.Optional[Language] = session.query(Language).filter(
+            Language.code == language_code).first() or ENGLISH_STRINGS
         self._timezone: str = timezone_code
         self._server_timezone: str = server_timezone_code
         self._prefix: str = '$'
@@ -34,7 +36,6 @@ class Preferences():
             self.command_restrictions = server.command_restrictions
 
         self._allowed_dm: bool = user.allowed_dm
-
 
     @property
     def language(self):
@@ -73,7 +74,7 @@ class Preferences():
         self._prefix = value
 
 
-class ReminderInformation():
+class ReminderInformation:
     def __init__(self, status: CreateReminderResponse, channel: discord.TextChannel = None, time: float = 0):
         self.status: CreateReminderResponse = status
         self.time: typing.Optional[float] = time
@@ -85,12 +86,12 @@ class ReminderInformation():
             self.location = NoneChannel()
 
 
-class NoneChannel():
+class NoneChannel:
     def __init__(self):
         self.mention: str = ''
 
 
-class DMChannelId():
-    def __init__(self, id, user):
-        self.id: int = id
+class DMChannelId:
+    def __init__(self, channel_id: int, user):
+        self.id: int = channel_id
         self.mention: str = '<@{}>'.format(user)

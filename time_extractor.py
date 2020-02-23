@@ -4,10 +4,12 @@ from time import time as unix_time
 
 from enums import TimeExtractionTypes
 
+
 class InvalidTime(Exception):
     pass
 
-class TimeExtractor():
+
+class TimeExtractor:
     def __init__(self, string, timezone=None):
         self.timezone: str = timezone
 
@@ -28,10 +30,10 @@ class TimeExtractor():
         else:
             self.process_type = TimeExtractionTypes.DISPLACEMENT
 
-    def extract_exact(self) -> int: # produce a timestamp
+    def extract_exact(self) -> int:  # produce a timestamp
         return int(self._process_spaceless())
 
-    def extract_displacement(self) -> int: # produce a relative time
+    def extract_displacement(self) -> int:  # produce a relative time
         return int(round(self._process_spaceless() - unix_time()))
 
     def _process_spaceless(self) -> float:
@@ -43,7 +45,7 @@ class TimeExtractor():
             d = self._process_displacement()
             return unix_time() + d
 
-    def _process_explicit(self) -> float: # processing times that dictate a specific time
+    def _process_explicit(self) -> float:  # processing times that dictate a specific time
         date = datetime.now(pytz.timezone(self.timezone))
 
         for clump in self.time_string.split('-'):
@@ -68,7 +70,7 @@ class TimeExtractor():
 
         return date.timestamp()
 
-    def _process_displacement(self) -> int: # processing times that dictate a time relative to now
+    def _process_displacement(self) -> int:  # processing times that dictate a time relative to now
         current_buffer = '0'
         seconds = 0
         minutes = 0
