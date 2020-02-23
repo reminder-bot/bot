@@ -67,6 +67,7 @@ class BotClient(discord.AutoShardedClient):
         super(BotClient, self).__init__(*args, **kwargs)
 
     async def do_blocking(self, method):
+        # perform a long running process within a threadpool
         a, _ = await asyncio.wait([self.loop.run_in_executor(self.executor, method)])
         return [x.result() for x in a][0]
 
@@ -440,7 +441,7 @@ class BotClient(discord.AutoShardedClient):
         datetime_obj = await self.do_blocking(partial(dateparser.parse, time_crop, settings={
             'TIMEZONE': server.timezone,
             'TO_TIMEZONE': self.config.localzone,
-            'RELATIVE_BASE': datetime.now(pytz.timezone(server.timezone)),
+            'RELATIVE_BASE': datetime.now(pytz.timezone(server.timezone)).replace(tzinfo=None),
             'PREFER_DATES_FROM': 'future'
         }))
 
