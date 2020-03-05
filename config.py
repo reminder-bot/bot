@@ -1,7 +1,7 @@
-from configparser import SafeConfigParser as ConfigParser
-import typing
+from configparser import ConfigParser
 
-class Config():
+
+class Config:
     def __init__(self):
         config = ConfigParser()
         config.read('config.ini')

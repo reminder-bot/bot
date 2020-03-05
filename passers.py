@@ -8,7 +8,7 @@ import typing
 
 # wrapper for command functions
 class Command:
-    def __init__(self, func_call: Coroutine[discord.Message, str, 'Preferences'], dm_allowed: bool = True,
+    def __init__(self, func_call: (discord.Message, str, 'Preferences'), dm_allowed: bool = True,
                  permission_level: PermissionLevels = PermissionLevels.UNRESTRICTED):
         self.func = func_call
         self.allowed_dm = dm_allowed

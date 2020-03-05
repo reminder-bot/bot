@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 # enumerate possible error types from the remind and natural commands
 class CreateReminderResponse(Enum):
     OK = 0

@@ -1,7 +1,6 @@
 import asyncio
 import concurrent.futures
 import re
-import typing
 from datetime import datetime
 from functools import partial
 from json import dumps as json_dump
@@ -9,7 +8,6 @@ from time import time as unix_time
 
 import aiohttp
 import dateparser
-import discord
 import pytz
 
 from config import Config
