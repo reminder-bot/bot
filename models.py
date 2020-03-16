@@ -12,13 +12,35 @@ from consts import ALL_CHARACTERS
 Base = declarative_base()
 
 
+class Embed(Base):
+    __tablename__ = 'embeds'
+
+    id = Column(Integer, primary_key=True)
+
+    title = Column(String(256))
+    description = Column(String(2048))
+    color = Column(Integer)
+
+
+class Message(Base):
+    __tablename__ = 'messages'
+
+    id = Column(Integer, primary_key=True)
+
+    content = Column(String(2048), nullable=False)
+
+    embed = Column(Integer, ForeignKey(Embed.id))
+
+
 class Reminder(Base):
     __tablename__ = 'reminders'
 
     id = Column(Integer, primary_key=True)
     uid = Column(String(64), default=lambda: Reminder.create_uid(), unique=True)
 
-    message = Column(String(2000))
+    message_id = Column(Integer, ForeignKey(Message.id), nullable=False)
+    message = relationship(Message)
+
     channel = Column(BigInteger)
     time = Column(BigInteger)
     webhook = Column(String(256))
@@ -28,7 +50,6 @@ class Reminder(Base):
                     default='https://raw.githubusercontent.com/reminder-bot/logos/master/Remind_Me_Bot_Logo_PPic.jpg',
                     nullable=False)
     username = Column(String(32), default='Reminder', nullable=False)
-    embed = Column(Integer, nullable=True)
 
     method = Column(String(9))
     interval = Column(Integer)

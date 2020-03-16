@@ -1,8 +1,28 @@
+CREATE TABLE reminders.embeds (
+    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
+
+    title VARCHAR(256),
+    description VARCHAR(2048),
+    color MEDIUMINT UNSIGNED,
+
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE reminders.messages (
+    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
+
+    content VARCHAR(2048) NOT NULL,
+    embed INT UNSIGNED,
+
+    PRIMARY KEY (id),
+    FOREIGN KEY (embed) REFERENCES reminders.embeds(id)
+);
+
 CREATE TABLE reminders.reminders (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
     uid VARCHAR(64) UNIQUE NOT NULL,
     
-    message VARCHAR(2000) NOT NULL,
+    message_id INT UNSIGNED NOT NULL,
     channel BIGINT UNSIGNED NOT NULL,
     `time` INT UNSIGNED DEFAULT 0 NOT NULL,
 
@@ -10,20 +30,20 @@ CREATE TABLE reminders.reminders (
     webhook VARCHAR(256),
     enabled BOOLEAN DEFAULT 1 NOT NULL,
 
-    avatar VARCHAR(512) DEFAULT "https://raw.githubusercontent.com/reminder-bot/logos/master/Remind_Me_Bot_Logo_PPic.jpg" NOT NULL,
-    username VARCHAR(32) DEFAULT "Reminder" NOT NULL,
-    embed MEDIUMINT UNSIGNED,
+    avatar VARCHAR(512) DEFAULT 'https://raw.githubusercontent.com/reminder-bot/logos/master/Remind_Me_Bot_Logo_PPic.jpg' NOT NULL,
+    username VARCHAR(32) DEFAULT 'Reminder' NOT NULL,
 
     method VARCHAR(9),
 
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    FOREIGN KEY (message_id) REFERENCES reminders.messages(id)
 );
 
 CREATE TABLE reminders.guilds (
     guild BIGINT UNSIGNED UNIQUE NOT NULL,
 
-    prefix VARCHAR(5) DEFAULT "$" NOT NULL,
-    timezone VARCHAR(32) DEFAULT "UTC" NOT NULL,
+    prefix VARCHAR(5) DEFAULT '$' NOT NULL,
+    timezone VARCHAR(32) DEFAULT 'UTC' NOT NULL,
 
     PRIMARY KEY (guild)
 );
@@ -32,7 +52,7 @@ CREATE TABLE reminders.users (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
     user BIGINT UNSIGNED UNIQUE NOT NULL,
 
-    language VARCHAR(2) DEFAULT "EN" NOT NULL,
+    language VARCHAR(2) DEFAULT 'EN' NOT NULL,
     timezone VARCHAR(32),
     allowed_dm BOOLEAN DEFAULT 1 NOT NULL,
 
@@ -57,7 +77,7 @@ CREATE TABLE reminders.blacklists (
     guild_id BIGINT UNSIGNED NOT NULL,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (guild_id) REFERENCES guilds(guild) ON DELETE CASCADE
+    FOREIGN KEY (guild_id) REFERENCES reminders.guilds(guild) ON DELETE CASCADE
 );
 
 CREATE TABLE reminders.command_restrictions (
@@ -68,7 +88,7 @@ CREATE TABLE reminders.command_restrictions (
     command VARCHAR(16) NOT NULL,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (guild_id) REFERENCES guilds(guild) ON DELETE CASCADE
+    FOREIGN KEY (guild_id) REFERENCES reminders.guilds(guild) ON DELETE CASCADE
 );
 
 CREATE TABLE reminders.timers (
