@@ -11,7 +11,7 @@ CREATE TABLE reminders.embeds (
 CREATE TABLE reminders.messages (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
 
-    content VARCHAR(2048) NOT NULL,
+    content VARCHAR(2048),
     embed INT UNSIGNED,
 
     PRIMARY KEY (id),

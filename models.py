@@ -27,7 +27,7 @@ class Message(Base):
 
     id = Column(Integer, primary_key=True)
 
-    content = Column(String(2048), nullable=False)
+    content = Column(String(2048))
 
     embed = Column(Integer, ForeignKey(Embed.id))
 
