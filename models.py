@@ -17,8 +17,8 @@ class Embed(Base):
 
     id = Column(Integer, primary_key=True)
 
-    title = Column(String(256))
-    description = Column(String(2048))
+    title = Column(String(256), nullable=False, default='')
+    description = Column(String(2048), nullable=False, default='')
     color = Column(Integer)
 
 
@@ -27,7 +27,7 @@ class Message(Base):
 
     id = Column(Integer, primary_key=True)
 
-    content = Column(String(2048))
+    content = Column(String(2048), nullable=False, default='')
 
     embed = Column(Integer, ForeignKey(Embed.id))
 

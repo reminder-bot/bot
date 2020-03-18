@@ -1,8 +1,8 @@
 CREATE TABLE reminders.embeds (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
 
-    title VARCHAR(256),
-    description VARCHAR(2048),
+    title VARCHAR(256) NOT NULL DEFAULT '',
+    description VARCHAR(2048) NOT NULL DEFAULT '',
     color MEDIUMINT UNSIGNED,
 
     PRIMARY KEY (id)
@@ -11,7 +11,7 @@ CREATE TABLE reminders.embeds (
 CREATE TABLE reminders.messages (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
 
-    content VARCHAR(2048),
+    content VARCHAR(2048) NOT NULL DEFAULT '',
     embed INT UNSIGNED,
 
     PRIMARY KEY (id),
