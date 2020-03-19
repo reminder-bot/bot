@@ -3,7 +3,7 @@ CREATE TABLE reminders.embeds (
 
     title VARCHAR(256) NOT NULL DEFAULT '',
     description VARCHAR(2048) NOT NULL DEFAULT '',
-    color MEDIUMINT UNSIGNED,
+    color MEDIUMINT UNSIGNED NOT NULL DEFAULT 0x0,
 
     PRIMARY KEY (id)
 );
