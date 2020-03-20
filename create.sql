@@ -1,3 +1,5 @@
+USE reminders;
+
 CREATE TABLE reminders.embeds (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
 
@@ -38,6 +40,14 @@ CREATE TABLE reminders.reminders (
     PRIMARY KEY (id),
     FOREIGN KEY (message_id) REFERENCES reminders.messages(id)
 );
+
+CREATE TRIGGER message_cleanup AFTER DELETE ON reminders.reminders
+FOR EACH ROW
+    DELETE FROM reminders.messages WHERE id = OLD.message_id;
+
+CREATE TRIGGER embed_cleanup AFTER DELETE ON reminders.messages
+FOR EACH ROW
+    DELETE FROM reminders.embeds WHERE id = OLD.embed_id;
 
 CREATE TABLE reminders.guilds (
     guild BIGINT UNSIGNED UNIQUE NOT NULL,
