@@ -15,7 +15,7 @@ CREATE TABLE reminders.messages (
     embed_id INT UNSIGNED,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (embed) REFERENCES reminders.embeds(id)
+    FOREIGN KEY (embed_id) REFERENCES reminders.embeds(id)
 );
 
 CREATE TABLE reminders.reminders (
