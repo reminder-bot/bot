@@ -29,7 +29,7 @@ class Message(Base):
 
     content = Column(String(2048), nullable=False, default='')
 
-    embed = Column(Integer, ForeignKey(Embed.id))
+    embed_id = Column(Integer, ForeignKey(Embed.id))
 
 
 class Reminder(Base):

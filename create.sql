@@ -12,7 +12,7 @@ CREATE TABLE reminders.messages (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
 
     content VARCHAR(2048) NOT NULL DEFAULT '',
-    embed INT UNSIGNED,
+    embed_id INT UNSIGNED,
 
     PRIMARY KEY (id),
     FOREIGN KEY (embed) REFERENCES reminders.embeds(id)
