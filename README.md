@@ -8,8 +8,9 @@
 
 * Python 3.6+
 * MySQL 8+
+* libmysqlclient21 and libmysqlclient-dev
 * pymysql, discord.py>=1.3.0a, pytz, dateparser, sqlalchemy
-* Rust 1.31 with Cargo (for compilation only)
+* Rust 1.42 with Cargo (for compilation only)
 
 #### Optional Deps:
 
@@ -54,10 +55,11 @@ database = reminders
 
 ```
 DISCORD_TOKEN="auth token as above"
-SQL_URL="mysql://user:passwd@localhost/reminders"
+DATABASE_URL="mysql://user:passwd@localhost/reminders"
 INTERVAL=15
-THREADS=1
 ```
-N: You can change `INTERVAL` to be higher for less CPU usage or lower for reminders that are more on time. Any value less than 15 is fairly excessive; the live bot uses 5. Modifying the `THREADS` value is NOT recommended. This increases the amount of threads used for sending reminders. If you're sending many reminders in a single interval, increase this value. The live bot uses 1.
+N: You can change `INTERVAL` to be higher for less CPU usage or lower for reminders that are more on time. Any value less than 15 is fairly excessive; the live bot uses 5. Interval is the number of seconds between checking for reminders.
+
+N: **ON OLDER VERSIONS ONLY** Modifying the `THREADS` value is NOT recommended. This increases the amount of threads used for sending reminders. If you're sending many reminders in a single interval, increase this value. The live bot uses 1. New versions only run on one thread with asynchronous capability provided by Tokio and Reqwest
 
 * Run the release binary in `./target/release` alongside the python file.
