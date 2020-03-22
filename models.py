@@ -30,6 +30,7 @@ class Message(Base):
     content = Column(String(2048), nullable=False, default='')
 
     embed_id = Column(Integer, ForeignKey(Embed.id))
+    embed = relationship(Embed)
 
 
 class Reminder(Base):
@@ -61,6 +62,16 @@ class Reminder(Base):
             full += secrets.choice(ALL_CHARACTERS)
 
         return full
+
+    def message_content(self):
+        if len(self.message.content) > 0:
+            return self.message.content
+
+        elif self.message.embed is not None:
+            return self.message.embed.description
+
+        else:
+            return ''
 
 
 class Guild(Base):
