@@ -893,7 +893,7 @@ class BotClient(discord.AutoShardedClient):
         for reminder in reminders:
             string = '''**{}**: '{}' *<#{}>*\n'''.format(
                 n,
-                await self.clean_string(reminder.message, message.guild),
+                await self.clean_string(reminder.message.content, message.guild),
                 reminder.channel)
 
             if len(s) + len(string) > 2000:
@@ -957,11 +957,11 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(prefs.language.get_string('look/listing'))
 
             s = ''
-            for rem in reminders:
+            for reminder in reminders:
                 string = '\'{}\' *{}* **{}**\n'.format(
-                    await self.clean_string(rem.message, message.guild),
+                    await self.clean_string(reminder.message.content, message.guild),
                     prefs.language.get_string('look/inter'),
-                    datetime.fromtimestamp(rem.time, pytz.timezone(prefs.timezone)).strftime('%Y-%m-%d %H:%M:%S'))
+                    datetime.fromtimestamp(reminder.time, pytz.timezone(prefs.timezone)).strftime('%Y-%m-%d %H:%M:%S'))
 
                 if len(s) + len(string) > 2000:
                     await message.channel.send(s)
