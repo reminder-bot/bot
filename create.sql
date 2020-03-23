@@ -16,6 +16,8 @@ CREATE TABLE reminders.messages (
     content VARCHAR(2048) NOT NULL DEFAULT '',
     embed_id INT UNSIGNED,
 
+    on_demand BOOL NOT NULL DEFAULT 1,
+
     PRIMARY KEY (id),
     FOREIGN KEY (embed_id) REFERENCES reminders.embeds(id)
 );
@@ -43,11 +45,11 @@ CREATE TABLE reminders.reminders (
 
 CREATE TRIGGER message_cleanup AFTER DELETE ON reminders.reminders
 FOR EACH ROW
-    DELETE FROM reminders.messages WHERE id = OLD.message_id;
+    DELETE FROM reminders.messages WHERE id = OLD.message_id AND on_demand = 1;
 
 CREATE TRIGGER embed_cleanup AFTER DELETE ON reminders.messages
 FOR EACH ROW
-    DELETE FROM reminders.embeds WHERE id = OLD.embed_id;
+    DELETE FROM reminders.embeds WHERE id = OLD.embed_id AND OLD.on_demand = 1;
 
 CREATE TABLE reminders.guilds (
     guild BIGINT UNSIGNED UNIQUE NOT NULL,
