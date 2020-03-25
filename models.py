@@ -34,6 +34,8 @@ class Message(Base):
 
     on_demand = Column(Boolean, nullable=False, default=True)
 
+    owner_id = Column(Integer, ForeignKey('User.id'))
+
 
 class Reminder(Base):
     __tablename__ = 'reminders'
@@ -90,12 +92,14 @@ class Guild(Base):
 class User(Base):
     __tablename__ = 'users'
 
-    user = Column(BigInteger, primary_key=True, nullable=False, autoincrement=False)
+    id = Column(Integer, primary_key=True, nullable=False)
+    user = Column(BigInteger, nullable=False)
 
     language = Column( String(2), default='EN', nullable=False )
     timezone = Column( String(32), nullable=True )
     allowed_dm = Column( Boolean, default=True, nullable=False )
 
+    patreon = Column( Boolean, nullable=False, default=False )
     dm_channel = Column(BigInteger)
     name = Column(String(37))  # sized off 32 char username + # + 4 char discriminator
 

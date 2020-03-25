@@ -1,5 +1,20 @@
 USE reminders;
 
+CREATE TABLE reminders.users (
+    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
+    user BIGINT UNSIGNED UNIQUE NOT NULL,
+
+    language VARCHAR(2) DEFAULT 'EN' NOT NULL,
+    timezone VARCHAR(32),
+    allowed_dm BOOLEAN DEFAULT 1 NOT NULL,
+
+    patreon BOOL NOT NULL DEFAULT 0,
+    dm_channel BIGINT UNSIGNED UNIQUE,
+    name VARCHAR(37) UNIQUE,
+
+    PRIMARY KEY (id)
+);
+
 CREATE TABLE reminders.embeds (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
 
@@ -18,8 +33,11 @@ CREATE TABLE reminders.messages (
 
     on_demand BOOL NOT NULL DEFAULT 1,
 
+    owner_id INT UNSIGNED,
+
     PRIMARY KEY (id),
-    FOREIGN KEY (embed_id) REFERENCES reminders.embeds(id)
+    FOREIGN KEY (embed_id) REFERENCES reminders.embeds(id),
+    FOREIGN KEY (owner_id) REFERENCES reminders.users(id)
 );
 
 CREATE TABLE reminders.reminders (
@@ -58,20 +76,6 @@ CREATE TABLE reminders.guilds (
     timezone VARCHAR(32) DEFAULT 'UTC' NOT NULL,
 
     PRIMARY KEY (guild)
-);
-
-CREATE TABLE reminders.users (
-    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
-    user BIGINT UNSIGNED UNIQUE NOT NULL,
-
-    language VARCHAR(2) DEFAULT 'EN' NOT NULL,
-    timezone VARCHAR(32),
-    allowed_dm BOOLEAN DEFAULT 1 NOT NULL,
-
-    dm_channel BIGINT UNSIGNED UNIQUE,
-    name VARCHAR(37) UNIQUE,
-
-    PRIMARY KEY (id)
 );
 
 CREATE TABLE reminders.todos (

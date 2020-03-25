@@ -113,10 +113,10 @@ class BotClient(discord.AutoShardedClient):
 
             return ''.join(new).replace('@everyone', '`@everyone`').replace('@here', '`@here`')
 
-    async def is_patron(self, memberid) -> bool:
+    async def is_patron(self, member_id) -> bool:
         if self.config.patreon:
 
-            url = 'https://discordapp.com/api/v6/guilds/{}/members/{}'.format(self.config.patreon_server, memberid)
+            url = 'https://discordapp.com/api/v6/guilds/{}/members/{}'.format(self.config.patreon_server, member_id)
 
             head = {
                 'authorization': 'Bot {}'.format(self.config.token),
@@ -207,7 +207,7 @@ class BotClient(discord.AutoShardedClient):
         if message.author.bot or message.content is None:
             return
 
-        if session.query(User).get(message.author.id) is None:
+        if session.query(User).filter(User.user == message.author.id).first() is None:
 
             user = User(user=message.author.id, name='{}'.format(message.author),
                         dm_channel=(await message.author.create_dm()).id)
@@ -231,7 +231,7 @@ class BotClient(discord.AutoShardedClient):
                 return
 
         server = None if message.guild is None else session.query(Guild).get(message.guild.id)
-        user = session.query(User).get(message.author.id)
+        user = session.query(User).filter(User.user == message.author.id).first()
 
         user.name = '{}'.format(message.author)
 
