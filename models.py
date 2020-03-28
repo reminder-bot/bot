@@ -32,10 +32,6 @@ class Message(Base):
     embed_id = Column(Integer, ForeignKey(Embed.id))
     embed = relationship(Embed)
 
-    on_demand = Column(Boolean, nullable=False, default=True)
-
-    owner_id = Column(Integer, ForeignKey('User.id'))
-
 
 class Reminder(Base):
     __tablename__ = 'reminders'

@@ -31,13 +31,8 @@ CREATE TABLE reminders.messages (
     content VARCHAR(2048) NOT NULL DEFAULT '',
     embed_id INT UNSIGNED,
 
-    on_demand BOOL NOT NULL DEFAULT 1,
-
-    owner_id INT UNSIGNED,
-
     PRIMARY KEY (id),
     FOREIGN KEY (embed_id) REFERENCES reminders.embeds(id),
-    FOREIGN KEY (owner_id) REFERENCES reminders.users(id)
 );
 
 CREATE TABLE reminders.reminders (
