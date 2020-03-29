@@ -70,7 +70,7 @@ class BotClient(discord.AutoShardedClient):
         return [x.result() for x in a][0]
 
     async def find_member(self, member_id: int, context_guild: typing.Optional[discord.Guild]):
-        u: User = session.query(User).get(member_id)
+        u: User = session.query(User).filter(User.user == member_id).first()
 
         if u is None and context_guild is not None:
             m = context_guild.get_member(member_id) or self.get_user(member_id)
@@ -219,7 +219,7 @@ class BotClient(discord.AutoShardedClient):
             except:
                 return
 
-        if message.guild is not None and session.query(Guild).get(message.guild.id) is None:
+        if message.guild is not None and session.query(Guild).filter(Guild.guild == message.guild.id).first() is None:
 
             server = Guild(guild=message.guild.id)
 
@@ -230,7 +230,7 @@ class BotClient(discord.AutoShardedClient):
             except:
                 return
 
-        server = None if message.guild is None else session.query(Guild).get(message.guild.id)
+        server = None if message.guild is None else session.query(Guild).filter(Guild.guild == message.guild.id).first()
         user = session.query(User).filter(User.user == message.author.id).first()
 
         user.name = '{}'.format(message.author)
