@@ -952,14 +952,15 @@ class BotClient(discord.AutoShardedClient):
         reminder_query = session.query(Reminder).filter(Reminder.channel == channel).order_by(Reminder.time)
 
         if not show_disabled:
-            reminder_query = reminder_query.filter(Reminder.enabled == True)
+            reminder_query = reminder_query.filter(Reminder.enabled)
 
         if limit is not None:
             reminder_query = reminder_query.limit(limit)
 
         if reminder_query.count() > 0:
             if limit is not None:
-                await message.channel.send(prefs.language.get_string('look/listing_limited').format(reminders.count()))
+                await message.channel.send(prefs.language.get_string('look/listing_limited').format(
+                    reminder_query.count()))
 
             else:
                 await message.channel.send(prefs.language.get_string('look/listing'))
