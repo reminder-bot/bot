@@ -38,7 +38,10 @@ class TimeExtractor:
 
     def _process_spaceless(self) -> float:
         if self.process_type == TimeExtractionTypes.EXPLICIT:
-            d = self._process_explicit()
+            try:
+                d = self._process_explicit()
+            except ValueError:
+                raise InvalidTime()
             return d
 
         else:
