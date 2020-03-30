@@ -32,7 +32,7 @@ CREATE TABLE reminders.messages (
     embed_id INT UNSIGNED,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (embed_id) REFERENCES reminders.embeds(id),
+    FOREIGN KEY (embed_id) REFERENCES reminders.embeds(id)
 );
 
 CREATE TABLE reminders.reminders (
@@ -58,11 +58,11 @@ CREATE TABLE reminders.reminders (
 
 CREATE TRIGGER message_cleanup AFTER DELETE ON reminders.reminders
 FOR EACH ROW
-    DELETE FROM reminders.messages WHERE id = OLD.message_id AND on_demand = 1;
+    DELETE FROM reminders.messages WHERE id = OLD.message_id;
 
 CREATE TRIGGER embed_cleanup AFTER DELETE ON reminders.messages
 FOR EACH ROW
-    DELETE FROM reminders.embeds WHERE id = OLD.embed_id AND OLD.on_demand = 1;
+    DELETE FROM reminders.embeds WHERE id = OLD.embed_id;
 
 CREATE TABLE reminders.guilds (
     guild BIGINT UNSIGNED UNIQUE NOT NULL,

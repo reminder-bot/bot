@@ -941,15 +941,23 @@ class BotClient(discord.AutoShardedClient):
         if r is not None:
             limit = int(r.groups()[0])
 
+        if 'enabled' in stripped:
+            show_disabled = False
+        else:
+            show_disabled = True
+
         channel = message.channel_mentions[0] if len(message.channel_mentions) > 0 else message.channel
         channel = channel.id
 
-        if limit is not None:
-            reminders = session.query(Reminder).filter(Reminder.channel == channel).order_by(Reminder.time).limit(limit)
-        else:
-            reminders = session.query(Reminder).filter(Reminder.channel == channel).order_by(Reminder.time)
+        reminder_query = session.query(Reminder).filter(Reminder.channel == channel).order_by(Reminder.time)
 
-        if reminders.count() > 0:
+        if not show_disabled:
+            reminder_query = reminder_query.filter(Reminder.enabled == True)
+
+        if limit is not None:
+            reminder_query = reminder_query.limit(limit)
+
+        if reminder_query.count() > 0:
             if limit is not None:
                 await message.channel.send(prefs.language.get_string('look/listing_limited').format(reminders.count()))
 
@@ -957,7 +965,7 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(prefs.language.get_string('look/listing'))
 
             s = ''
-            for reminder in reminders:
+            for reminder in reminder_query:
                 string = '\'{}\' *{}* **{}** {}\n'.format(
                     await self.clean_string(reminder.message_content(), message.guild),
                     prefs.language.get_string('look/inter'),
