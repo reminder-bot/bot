@@ -958,7 +958,7 @@ class BotClient(discord.AutoShardedClient):
 
             s = ''
             for reminder in reminders:
-                string = '\'{}\' *{}* **{}**\n {}'.format(
+                string = '\'{}\' *{}* **{}** {}\n'.format(
                     await self.clean_string(reminder.message_content(), message.guild),
                     prefs.language.get_string('look/inter'),
                     datetime.fromtimestamp(reminder.time, pytz.timezone(prefs.timezone)).strftime('%Y-%m-%d %H:%M:%S'),
