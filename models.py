@@ -2,6 +2,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, BigInteger, String, Text, Boolean, Table, ForeignKey
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session, relationship
+from sqlalchemy.dialects.mysql import BIGINT, MEDIUMINT, INTEGER as INT
 import configparser
 import time
 import typing
@@ -12,77 +13,40 @@ from consts import ALL_CHARACTERS
 Base = declarative_base()
 
 
-class Embed(Base):
-    __tablename__ = 'embeds'
-
-    id = Column(Integer, primary_key=True)
-
-    title = Column(String(256), nullable=False, default='')
-    description = Column(String(2048), nullable=False, default='')
-    color = Column(Integer)
-
-
-class Message(Base):
-    __tablename__ = 'messages'
-
-    id = Column(Integer, primary_key=True)
-
-    content = Column(String(2048), nullable=False, default='')
-
-    embed_id = Column(Integer, ForeignKey(Embed.id))
-    embed = relationship(Embed)
-
-
-class Reminder(Base):
-    __tablename__ = 'reminders'
-
-    id = Column(Integer, primary_key=True)
-    uid = Column(String(64), default=lambda: Reminder.create_uid(), unique=True)
-
-    message_id = Column(Integer, ForeignKey(Message.id), nullable=False)
-    message = relationship(Message)
-
-    channel = Column(BigInteger)
-    time = Column(BigInteger)
-    webhook = Column(String(256))
-    enabled = Column(Boolean, nullable=False, default=True)
-
-    avatar = Column(String(512),
-                    default='https://raw.githubusercontent.com/reminder-bot/logos/master/Remind_Me_Bot_Logo_PPic.jpg',
-                    nullable=False)
-    username = Column(String(32), default='Reminder', nullable=False)
-
-    method = Column(String(9))
-    interval = Column(Integer)
-
-    @staticmethod
-    def create_uid() -> str:
-        full: str = ''
-        while len(full) < 64:
-            full += secrets.choice(ALL_CHARACTERS)
-
-        return full
-
-    def message_content(self):
-        if len(self.message.content) > 0:
-            return self.message.content
-
-        elif self.message.embed is not None:
-            return self.message.embed.description
-
-        else:
-            return ''
-
-
 class Guild(Base):
     __tablename__ = 'guilds'
 
-    guild = Column( BigInteger, primary_key=True, autoincrement=False )
+    id = Column(INT(unsigned=True), primary_key=True)
+    guild = Column(BIGINT(unsigned=True), unique=True)
 
     prefix = Column( String(5), default='$', nullable=False )
     timezone = Column( String(32), default='UTC', nullable=False )
 
     command_restrictions = relationship('CommandRestriction', backref='guild', lazy='dynamic')
+
+
+class Channel(Base):
+    __tablename__ = 'channels'
+
+    id = Column(INT(unsigned=True), primary_key=True)
+    channel = Column(BIGINT(unsigned=True), unique=True)
+    name = Column(String(100))
+
+    webhook_id = Column(BIGINT(unsigned=True), unique=True)
+    webhook_token = Column(Text)
+
+    guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id, ondelete='CASCADE'), nullable=False)
+    guild = relationship(Guild)
+
+
+class Role(Base):
+    __tablename__ = 'roles'
+
+    id = Column(INT(unsigned=True), primary_key=True)
+    role = Column(BIGINT(unsigned=True), unique=True, nullable=False)
+    guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id), nullable=False)
+
+    name = Column(String(100))
 
 
 class User(Base):
@@ -104,6 +68,72 @@ class User(Base):
 
     def __str__(self):
         return self.name or str(self.user)
+
+
+class Embed(Base):
+    __tablename__ = 'embeds'
+
+    id = Column(INT(unsigned=True), primary_key=True)
+
+    title = Column(String(256), nullable=False, default='')
+    description = Column(String(2048), nullable=False, default='')
+    color = Column(MEDIUMINT(unsigned=True))
+
+
+class Message(Base):
+    __tablename__ = 'messages'
+
+    id = Column(INT(unsigned=True), primary_key=True)
+
+    content = Column(String(2048), nullable=False, default='')
+
+    embed_id = Column(INT(unsigned=True), ForeignKey(Embed.id))
+    embed = relationship(Embed)
+
+
+class Reminder(Base):
+    __tablename__ = 'reminders'
+
+    id = Column(INT(unsigned=True), primary_key=True)
+    uid = Column(String(64), default=lambda: Reminder.create_uid(), unique=True)
+
+    message_id = Column(INT(unsigned=True), ForeignKey(Message.id), nullable=False)
+    message = relationship(Message)
+
+    channel_id = Column(INT(unsigned=True), ForeignKey(Channel.id), nullable=False)
+    channel = relationship(Channel, backref='reminders')
+
+    user_id = Column(INT(unsigned=True), ForeignKey(User.id), nullable=False)
+    user = relationship(User)
+
+    time = Column(BIGINT(unsigned=True))
+    enabled = Column(Boolean, nullable=False, default=True)
+
+    avatar = Column(String(512),
+                    default='https://raw.githubusercontent.com/reminder-bot/logos/master/Remind_Me_Bot_Logo_PPic.jpg',
+                    nullable=False)
+    username = Column(String(32), default='Reminder', nullable=False)
+
+    method = Column(String(9))
+    interval = Column(INT(unsigned=True))
+
+    @staticmethod
+    def create_uid() -> str:
+        full: str = ''
+        while len(full) < 64:
+            full += secrets.choice(ALL_CHARACTERS)
+
+        return full
+
+    def message_content(self):
+        if len(self.message.content) > 0:
+            return self.message.content
+
+        elif self.message.embed is not None:
+            return self.message.embed.description
+
+        else:
+            return ''
 
 
 class Todo(Base):

@@ -1,5 +1,17 @@
 USE reminders;
 
+CREATE TABLE reminders.guilds (
+    id INT UNSIGNED UNIQUE NOT NULL AUTO_INCREMENT,
+    guild BIGINT UNSIGNED UNIQUE NOT NULL,
+
+    prefix VARCHAR(5) DEFAULT '$' NOT NULL,
+    timezone VARCHAR(32) DEFAULT 'UTC' NOT NULL,
+
+    name VARCHAR(100),
+
+    PRIMARY KEY (id)
+);
+
 CREATE TABLE reminders.users (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
     user BIGINT UNSIGNED UNIQUE NOT NULL,
@@ -13,6 +25,33 @@ CREATE TABLE reminders.users (
     name VARCHAR(37) UNIQUE,
 
     PRIMARY KEY (id)
+);
+
+CREATE TABLE reminders.roles (
+    id INT UNSIGNED UNIQUE NOT NULL AUTO_INCREMENT,
+    role BIGINT UNSIGNED UNIQUE NOT NULL,
+
+    guild_id INT UNSIGNED NOT NULL,
+
+    name VARCHAR(100),
+
+    PRIMARY KEY (id),
+    FOREIGN KEY (guild_id) REFERENCES reminders.guilds(id) ON DELETE CASCADE
+);
+
+CREATE TABLE reminders.channels (
+    id INT UNSIGNED UNIQUE NOT NULL AUTO_INCREMENT,
+    channel BIGINT UNSIGNED UNIQUE NOT NULL,
+
+    name VARCHAR(100),
+
+    webhook_id BIGINT UNSIGNED UNIQUE,
+    webhook_token TEXT,
+
+    guild_id INT UNSIGNED NOT NULL,
+
+    PRIMARY KEY (id),
+    FOREIGN KEY (guild_id) REFERENCES reminders.guilds(id) ON DELETE CASCADE
 );
 
 CREATE TABLE reminders.embeds (
@@ -40,11 +79,13 @@ CREATE TABLE reminders.reminders (
     uid VARCHAR(64) UNIQUE NOT NULL,
     
     message_id INT UNSIGNED NOT NULL,
-    channel BIGINT UNSIGNED NOT NULL,
-    `time` INT UNSIGNED DEFAULT 0 NOT NULL,
 
+    channel_id INT UNSIGNED,
+    user_id INT UNSIGNED,
+
+    `time` INT UNSIGNED DEFAULT 0 NOT NULL,
     `interval` INT UNSIGNED DEFAULT NULL,
-    webhook VARCHAR(256),
+
     enabled BOOLEAN DEFAULT 1 NOT NULL,
 
     avatar VARCHAR(512) DEFAULT 'https://raw.githubusercontent.com/reminder-bot/logos/master/Remind_Me_Bot_Logo_PPic.jpg' NOT NULL,
@@ -63,15 +104,6 @@ FOR EACH ROW
 CREATE TRIGGER embed_cleanup AFTER DELETE ON reminders.messages
 FOR EACH ROW
     DELETE FROM reminders.embeds WHERE id = OLD.embed_id;
-
-CREATE TABLE reminders.guilds (
-    guild BIGINT UNSIGNED UNIQUE NOT NULL,
-
-    prefix VARCHAR(5) DEFAULT '$' NOT NULL,
-    timezone VARCHAR(32) DEFAULT 'UTC' NOT NULL,
-
-    PRIMARY KEY (guild)
-);
 
 CREATE TABLE reminders.todos (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,

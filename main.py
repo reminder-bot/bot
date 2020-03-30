@@ -13,7 +13,7 @@ import pytz
 from config import Config
 from consts import *
 from models import Reminder, Todo, Blacklist, Timer, ChannelNudge, \
-    CommandRestriction, Message
+    CommandRestriction, Message, Channel
 from passers import *
 from time_extractor import TimeExtractor, InvalidTime
 
@@ -219,18 +219,34 @@ class BotClient(discord.AutoShardedClient):
             except:
                 return
 
-        if message.guild is not None and session.query(Guild).filter(Guild.guild == message.guild.id).first() is None:
+        if message.guild is not None:
+            if session.query(Guild).filter(Guild.guild == message.guild.id).first() is None:
 
-            server = Guild(guild=message.guild.id)
+                guild = Guild(guild=message.guild.id)
 
-            session.add(server)
-            try:
-                session.commit()
+                session.add(guild)
 
-            except:
-                return
+                for channel in message.guild.channels:
+                    db_channel = Channel(channel=channel.id, name=channel.name, guild=guild)
+                    session.add(db_channel)
 
-        server = None if message.guild is None else session.query(Guild).filter(Guild.guild == message.guild.id).first()
+                try:
+                    session.commit()
+                except:
+                    return
+
+            if session.query(Channel).filter(Channel.channel == message.channel.id).first() is None:
+
+                db_channel = Channel(channel=message.channel.id, name=message.channel.name, guild_id=message.guild.id)
+
+                session.add(db_channel)
+
+                try:
+                    session.commit()
+                except:
+                    return
+
+        guild = None if message.guild is None else session.query(Guild).filter(Guild.guild == message.guild.id).first()
         user = session.query(User).filter(User.user == message.author.id).first()
 
         user.name = '{}'.format(message.author)
@@ -240,7 +256,7 @@ class BotClient(discord.AutoShardedClient):
 
         if message.guild is None or message.channel.permissions_for(message.guild.me).send_messages:
             try:
-                if await self.get_cmd(message, server, user):
+                if await self.get_cmd(message, guild, user):
                     print('Command: {}'.format(message.content))
 
             except discord.errors.Forbidden:
