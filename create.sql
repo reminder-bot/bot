@@ -45,6 +45,9 @@ CREATE TABLE reminders.channels (
 
     name VARCHAR(100),
 
+    nudge SMALLINT NOT NULL DEFAULT 0,
+    blacklisted BOOL NOT NULL DEFAULT FALSE,
+
     webhook_id BIGINT UNSIGNED UNIQUE,
     webhook_token TEXT,
 
@@ -109,20 +112,13 @@ FOR EACH ROW
 
 CREATE TABLE reminders.todos (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
-    owner BIGINT UNSIGNED NOT NULL,
-    value TEXT,
-
-    PRIMARY KEY (id)
-);
-
-CREATE TABLE reminders.blacklists (
-    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
-
-    channel BIGINT UNSIGNED UNIQUE NOT NULL,
-    guild_id BIGINT UNSIGNED NOT NULL,
+    guild_id INT UNSIGNED,
+    user_id INT UNSIGNED,
+    value VARCHAR(2000) NOT NULL,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (guild_id) REFERENCES reminders.guilds(guild) ON DELETE CASCADE
+    FOREIGN KEY (guild_id) REFERENCES reminders.guilds(id),
+    FOREIGN KEY (user_id) REFERENCES reminders.users(id)
 );
 
 CREATE TABLE reminders.command_restrictions (

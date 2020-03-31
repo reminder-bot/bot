@@ -2,7 +2,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, BigInteger, String, Text, Boolean, Table, ForeignKey
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session, relationship
-from sqlalchemy.dialects.mysql import BIGINT, MEDIUMINT, INTEGER as INT
+from sqlalchemy.dialects.mysql import BIGINT, MEDIUMINT, SMALLINT, INTEGER as INT
 import configparser
 import time
 import typing
@@ -22,8 +22,6 @@ class Guild(Base):
     prefix = Column( String(5), default='$', nullable=False )
     timezone = Column( String(32), default='UTC', nullable=False )
 
-    command_restrictions = relationship('CommandRestriction', backref='guild', lazy='dynamic')
-
 
 class Channel(Base):
     __tablename__ = 'channels'
@@ -32,11 +30,20 @@ class Channel(Base):
     channel = Column(BIGINT(unsigned=True), unique=True)
     name = Column(String(100))
 
+    nudge = Column(SMALLINT, nullable=False, default=0)
+    blacklisted = Column(Boolean, nullable=False, default=False)
+
     webhook_id = Column(BIGINT(unsigned=True), unique=True)
     webhook_token = Column(Text)
 
     guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id, ondelete='CASCADE'), nullable=False)
-    guild = relationship(Guild)
+    guild = relationship(Guild, backref='channels')
+
+    def __repr__(self):
+        return '<#{}>'.format(self.channel)
+
+    def __str__(self):
+        return '<#{}>'.format(self.channel)
 
     @classmethod
     async def get_or_create(cls, finding_channel) -> ('Channel', bool):
@@ -137,7 +144,6 @@ class Reminder(Base):
     message = relationship(Message)
 
     channel_id = Column(INT(unsigned=True), ForeignKey(Channel.id), nullable=False)
-    channel = relationship(Channel, backref='reminders')
 
     user_id = Column(INT(unsigned=True), ForeignKey(User.id), nullable=False)
     user = relationship(User)
@@ -172,21 +178,20 @@ class Reminder(Base):
             return ''
 
 
+Channel.reminders = relationship(Reminder, backref='channel', lazy='dynamic')
+
+
 class Todo(Base):
     __tablename__ = 'todos'
 
-    id = Column(Integer, primary_key=True)
-    owner = Column(BigInteger, nullable=False)
-    value = Column(Text, nullable=False)
+    id = Column(INT(unsigned=True), primary_key=True)
 
+    user_id = Column(INT(unsigned=True))
+    user = relationship(User, backref='todo_list')
+    guild_id = Column(INT(unsigned=True))
+    guild = relationship(Guild, backref='todo_list')
 
-class Blacklist(Base):
-    __tablename__ = 'blacklists'
-
-    id = Column(Integer, primary_key=True)
-
-    channel = Column(BigInteger, nullable=False, unique=True)
-    guild_id = Column(BigInteger, ForeignKey(Guild.guild, ondelete='CASCADE'), nullable=False)
+    value = Column(String(2000), nullable=False)
 
 
 class Timer(Base):
@@ -214,15 +219,6 @@ class Language(Base):
         return req if req is not None else s.first().value_EN
 
 
-class ChannelNudge(Base):
-    __tablename__ = 'nudge_channels'
-
-    id = Column(Integer, primary_key=True)
-
-    channel = Column(BigInteger, unique=True, nullable=False)
-    time = Column(Integer, nullable=False)
-
-
 class CommandRestriction(Base):
     __tablename__ = 'command_restrictions'
 
@@ -231,6 +227,9 @@ class CommandRestriction(Base):
     guild_id = Column(BigInteger, ForeignKey(Guild.guild, ondelete='CASCADE'), nullable=False)
     role = Column(BigInteger, nullable=False)
     command = Column(String(16))
+
+
+Guild.command_restrictions = relationship(CommandRestriction, backref='guild', lazy='dynamic')
 
 
 config = configparser.ConfigParser()
