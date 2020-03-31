@@ -92,6 +92,6 @@ class NoneChannel:
 
 
 class DMChannelId:
-    def __init__(self, channel_id: int, user):
+    def __init__(self, channel_id: int, user_id: int):
         self.id: int = channel_id
-        self.mention: str = '<@{}>'.format(user)
+        self.mention: str = '<@{}>'.format(user_id)

@@ -38,6 +38,19 @@ class Channel(Base):
     guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id, ondelete='CASCADE'), nullable=False)
     guild = relationship(Guild)
 
+    @classmethod
+    async def get_or_create(cls, finding_channel) -> ('Channel', bool):
+        c = session.query(cls).filter(cls.channel == finding_channel.id).first()
+        new = False
+
+        if c is None:
+            hook = await finding_channel.create_webhook(name='Reminders')
+            c = Channel(channel=finding_channel.id, name=finding_channel.name, webhook_id=hook.id, webhook_token=hook.token)
+            session.add(c)
+            new = True
+
+        return c, new
+
 
 class Role(Base):
     __tablename__ = 'roles'
@@ -68,6 +81,29 @@ class User(Base):
 
     def __str__(self):
         return self.name or str(self.user)
+
+    @classmethod
+    def from_discord(cls, finding_user):
+        return session.query(cls).filter(cls.user == finding_user.id).first()
+
+    @classmethod
+    async def get_or_create(cls, finding_user) -> ('User', bool):
+        u = session.query(cls).filter(cls.user == finding_user.id).first()
+        new = False
+
+        if u is None:
+            u = User(user=finding_user.id, dm_channel=(await finding_user.create_dm()).id, name='{}#{}'.format(
+                finding_user.name, finding_user.discriminator))
+            session.add(u)
+            new = True
+
+        return u, new
+
+    async def update_details(self, new_details):
+        self.name = '{}#{}'.format(new_details.name, new_details.discriminator)
+
+        if self.dm_channel is None:
+            self.dm_channel = (await new_details.create_dm()).id
 
 
 class Embed(Base):

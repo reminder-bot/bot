@@ -69,7 +69,7 @@ class BotClient(discord.AutoShardedClient):
         a, _ = await asyncio.wait([self.loop.run_in_executor(self.executor, method)])
         return [x.result() for x in a][0]
 
-    async def find_member(self, member_id: int, context_guild: typing.Optional[discord.Guild]):
+    async def find_member(self, member_id: int, context_guild: typing.Optional[discord.Guild]) -> typing.Optional[User]:
         u: User = session.query(User).filter(User.user == member_id).first()
 
         if u is None and context_guild is not None:
@@ -207,18 +207,6 @@ class BotClient(discord.AutoShardedClient):
         if message.author.bot or message.content is None:
             return
 
-        if session.query(User).filter(User.user == message.author.id).first() is None:
-
-            user = User(user=message.author.id, name='{}'.format(message.author),
-                        dm_channel=(await message.author.create_dm()).id)
-
-            session.add(user)
-            try:
-                session.commit()
-
-            except:
-                return
-
         if message.guild is not None:
             if session.query(Guild).filter(Guild.guild == message.guild.id).first() is None:
 
@@ -247,12 +235,10 @@ class BotClient(discord.AutoShardedClient):
                     return
 
         guild = None if message.guild is None else session.query(Guild).filter(Guild.guild == message.guild.id).first()
-        user = session.query(User).filter(User.user == message.author.id).first()
+        user, just_created = await User.get_or_create(message.author)
 
-        user.name = '{}'.format(message.author)
-
-        if user.dm_channel is None:
-            user.dm_channel = (await message.author.create_dm()).id
+        if not just_created:
+            await user.update_details(message.author)
 
         if message.guild is None or message.channel.permissions_for(message.guild.me).send_messages:
             try:
@@ -599,30 +585,32 @@ class BotClient(discord.AutoShardedClient):
             else:
                 return ReminderInformation(CreateReminderResponse.PAST_TIME)
 
-        url: typing.Optional[str] = None
+        channel: typing.Optional[Channel] = None
+        user: typing.Optional[User] = None
+
         # noinspection PyUnusedLocal
-        channel: typing.Optional[typing.Union[discord.TextChannel, DMChannelId]] = None
+        discord_channel: typing.Optional[typing.Union[discord.TextChannel, DMChannelId]] = None
 
+        # command fired inside a guild
         if message.guild is not None:
-            channel = message.guild.get_channel(location)
+            discord_channel = message.guild.get_channel(location)
 
-            if channel is not None:  # if not a DM reminder
+            if discord_channel is not None:  # if not a DM reminder
 
-                hooks = [x for x in await channel.webhooks() if x.user.id == self.user.id]
-                hook = hooks[0] if len(hooks) > 0 else await channel.create_webhook(name='Reminders')
-                url = hook.url
+                channel, _ = await Channel.get_or_create(message.channel)
 
             else:
-                member = await self.find_member(location, message.guild)
+                user = await self.find_member(location, message.guild)
 
-                if member is None or member.dm_channel is None:
+                if user is None or user.dm_channel is None:
                     return ReminderInformation(CreateReminderResponse.INVALID_TAG)
 
-                else:
-                    channel = DMChannelId(member.dm_channel, member.user)
+                discord_channel = DMChannelId(user.dm_channel, user.user)
 
+        # command fired in a DM; only possible target is the DM itself
         else:
-            channel = message.channel
+            user, _ = await User.get_or_create(message.author)
+            discord_channel = DMChannelId(user.dm_channel, user.user)
 
         if interval is not None:
             if MIN_INTERVAL > interval:
@@ -634,9 +622,9 @@ class BotClient(discord.AutoShardedClient):
             else:
                 reminder = Reminder(
                     message=Message(content=text),
-                    channel=channel.id,
+                    channel=channel,
+                    user=user,
                     time=time,
-                    webhook=url,
                     enabled=True,
                     method=method,
                     interval=interval)
@@ -646,15 +634,15 @@ class BotClient(discord.AutoShardedClient):
         else:
             r = Reminder(
                 message=Message(content=text),
-                channel=channel.id,
+                channel=channel,
+                user=user,
                 time=time,
-                webhook=url,
                 enabled=True,
                 method=method)
             session.add(r)
             session.commit()
 
-        return ReminderInformation(CreateReminderResponse.OK, channel=channel, time=time)
+        return ReminderInformation(CreateReminderResponse.OK, channel=discord_channel, time=time)
 
     @staticmethod
     async def timer(message, stripped, preferences):
@@ -903,7 +891,7 @@ class BotClient(discord.AutoShardedClient):
 
         n = 1
 
-        reminders = session.query(Reminder).filter(Reminder.channel.in_(li)).all()
+        reminders = session.query(Reminder).filter(Reminder.channel_id.in_(li)).all()
 
         s = ''
         for reminder in reminders:
@@ -1023,7 +1011,7 @@ class BotClient(discord.AutoShardedClient):
                     description=preferences.language.get_string('offset/help').format(prefix=preferences.prefix)))
 
             else:
-                reminders = session.query(Reminder).filter(Reminder.channel.in_(channels))
+                reminders = session.query(Reminder).filter(Reminder.channel_id.in_(channels))
 
                 for r in reminders:
                     r.time += time

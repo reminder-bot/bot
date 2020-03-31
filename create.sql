@@ -94,7 +94,9 @@ CREATE TABLE reminders.reminders (
     method VARCHAR(9),
 
     PRIMARY KEY (id),
-    FOREIGN KEY (message_id) REFERENCES reminders.messages(id)
+    FOREIGN KEY (message_id) REFERENCES reminders.messages(id),
+    FOREIGN KEY (channel_id) REFERENCES reminders.channels(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES reminders.users(id) ON DELETE CASCADE
 );
 
 CREATE TRIGGER message_cleanup AFTER DELETE ON reminders.reminders
