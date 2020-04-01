@@ -18,12 +18,13 @@ CREATE TABLE reminders.users (
 
     name VARCHAR(37) NOT NULL,
 
+    dm_channel BIGINT UNSIGNED UNIQUE NOT NULL,
+
     language VARCHAR(2) DEFAULT 'EN' NOT NULL,
     timezone VARCHAR(32), # nullable s.t it can default to server timezone
     allowed_dm BOOLEAN DEFAULT 1 NOT NULL,
 
     patreon BOOL NOT NULL DEFAULT 0,
-    dm_channel BIGINT UNSIGNED UNIQUE NOT NULL,
 
     PRIMARY KEY (id)
 );
