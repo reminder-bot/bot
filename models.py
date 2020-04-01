@@ -146,7 +146,6 @@ class Reminder(Base):
     channel_id = Column(INT(unsigned=True), ForeignKey(Channel.id), nullable=False)
 
     user_id = Column(INT(unsigned=True), ForeignKey(User.id), nullable=False)
-    user = relationship(User)
 
     time = Column(BIGINT(unsigned=True))
     enabled = Column(Boolean, nullable=False, default=True)
@@ -179,6 +178,7 @@ class Reminder(Base):
 
 
 Channel.reminders = relationship(Reminder, backref='channel', lazy='dynamic')
+User.reminders = relationship(Reminder, backref='user', lazy='dynamic')
 
 
 class Todo(Base):
@@ -186,9 +186,9 @@ class Todo(Base):
 
     id = Column(INT(unsigned=True), primary_key=True)
 
-    user_id = Column(INT(unsigned=True))
+    user_id = Column(INT(unsigned=True), ForeignKey(User.id))
     user = relationship(User, backref='todo_list')
-    guild_id = Column(INT(unsigned=True))
+    guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id))
     guild = relationship(Guild, backref='todo_list')
 
     value = Column(String(2000), nullable=False)

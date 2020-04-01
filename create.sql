@@ -141,14 +141,6 @@ CREATE TABLE reminders.timers (
     PRIMARY KEY (id)
 );
 
-CREATE TABLE reminders.nudge_channels (
-    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
-    channel BIGINT UNSIGNED UNIQUE NOT NULL,
-    `time` INT NOT NULL,
-
-    PRIMARY KEY (id)
-);
-
 CREATE TABLE reminders.languages (
     id SMALLINT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
     name VARCHAR(20) NOT NULL,

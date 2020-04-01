@@ -781,27 +781,27 @@ class BotClient(discord.AutoShardedClient):
     @staticmethod
     async def todo(message, stripped, preferences):
         if 'todos' in message.content.split(' ')[0]:
-            location = message.guild.id
+            location = preferences.guild
             name = message.guild.name
             command = 'todos'
         else:
-            location = message.author.id
+            location = preferences.user
             name = message.author.name
             command = 'todo'
 
-        todos = session.query(Todo).filter(Todo.owner == location).all()
+        todos = location.todo_list
 
         splits = stripped.split(' ')
 
         if len(splits) == 1 and splits[0] == '':
-            msg = ['\n{}: {}'.format(i + 1, todo.value) for i, todo in enumerate(todos)]
+            msg = ['\n{}: {}'.format(i, todo.value) for i, todo in enumerate(todos, start=1)]
             if len(msg) == 0:
                 msg.append(preferences.language.get_string('todo/add').format(
                     prefix=preferences.prefix, command=command))
 
             s = ''
             for item in msg:
-                if len(item) + len(s) < 2000:
+                if len(item) + len(s) < 2048:
                     s += item
                 else:
                     await message.channel.send(
@@ -818,8 +818,8 @@ class BotClient(discord.AutoShardedClient):
             if splits[0] == 'add':
                 a = ' '.join(splits[1:])
 
-                todo = Todo(owner=location, value=a)
-                session.add(todo)
+                todo = Todo(value=a)
+                location.todo_list.append(todo)
                 await message.channel.send(preferences.language.get_string('todo/added').format(name=a))
 
             elif splits[0] == 'remove':
@@ -844,7 +844,7 @@ class BotClient(discord.AutoShardedClient):
 
         else:
             if stripped == 'clear':
-                session.query(Todo).filter(Todo.owner == location).delete(synchronize_session='fetch')
+                todos.delete(synchronize_session='fetch')
                 await message.channel.send(preferences.language.get_string('todo/cleared'))
 
             else:
@@ -856,14 +856,14 @@ class BotClient(discord.AutoShardedClient):
     async def delete(self, message, _stripped, preferences):
         if message.guild is not None:
             channels = preferences.guild.channels
-            reminders = itertools.chain(c.reminders for c in channels)
+            reminders = itertools.chain(*[c.reminders for c in channels])
 
         else:
             reminders = preferences.user.reminders
 
         await message.channel.send(preferences.language.get_string('del/listing'))
 
-        enumerated_reminders = enumerate(reminders, start=1)
+        enumerated_reminders = [x for x in enumerate(reminders, start=1)]
 
         s = ''
         for count, reminder in enumerated_reminders:
@@ -885,7 +885,8 @@ class BotClient(discord.AutoShardedClient):
 
         num = await client.wait_for('message',
                                     check=lambda m: m.author == message.author and m.channel == message.channel)
-        nums = set([n.strip() for n in num.content.split(',')])
+
+        nums = set([int(x) for x in re.findall(r'(?:,| |^)(\d+)(?:,| |$)', num.content)])
 
         removal_ids: typing.Set[int] = set()
 
