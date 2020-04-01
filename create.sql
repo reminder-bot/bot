@@ -4,10 +4,10 @@ CREATE TABLE reminders.guilds (
     id INT UNSIGNED UNIQUE NOT NULL AUTO_INCREMENT,
     guild BIGINT UNSIGNED UNIQUE NOT NULL,
 
+    name VARCHAR(100),
+
     prefix VARCHAR(5) DEFAULT '$' NOT NULL,
     timezone VARCHAR(32) DEFAULT 'UTC' NOT NULL,
-
-    name VARCHAR(100),
 
     PRIMARY KEY (id)
 );
@@ -16,13 +16,14 @@ CREATE TABLE reminders.users (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
     user BIGINT UNSIGNED UNIQUE NOT NULL,
 
+    name VARCHAR(37) NOT NULL,
+
     language VARCHAR(2) DEFAULT 'EN' NOT NULL,
-    timezone VARCHAR(32),
+    timezone VARCHAR(32), # nullable s.t it can default to server timezone
     allowed_dm BOOLEAN DEFAULT 1 NOT NULL,
 
     patreon BOOL NOT NULL DEFAULT 0,
-    dm_channel BIGINT UNSIGNED UNIQUE,
-    name VARCHAR(37) UNIQUE,
+    dm_channel BIGINT UNSIGNED UNIQUE NOT NULL,
 
     PRIMARY KEY (id)
 );
@@ -31,9 +32,9 @@ CREATE TABLE reminders.roles (
     id INT UNSIGNED UNIQUE NOT NULL AUTO_INCREMENT,
     role BIGINT UNSIGNED UNIQUE NOT NULL,
 
-    guild_id INT UNSIGNED NOT NULL,
-
     name VARCHAR(100),
+
+    guild_id INT UNSIGNED NOT NULL,
 
     PRIMARY KEY (id),
     FOREIGN KEY (guild_id) REFERENCES reminders.guilds(id) ON DELETE CASCADE

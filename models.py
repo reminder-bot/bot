@@ -28,6 +28,7 @@ class Channel(Base):
 
     id = Column(INT(unsigned=True), primary_key=True)
     channel = Column(BIGINT(unsigned=True), unique=True)
+
     name = Column(String(100))
 
     nudge = Column(SMALLINT, nullable=False, default=0)
@@ -63,25 +64,26 @@ class Role(Base):
     __tablename__ = 'roles'
 
     id = Column(INT(unsigned=True), primary_key=True)
+    name = Column(String(100))
+
     role = Column(BIGINT(unsigned=True), unique=True, nullable=False)
     guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id), nullable=False)
-
-    name = Column(String(100))
 
 
 class User(Base):
     __tablename__ = 'users'
 
-    id = Column(Integer, primary_key=True, nullable=False)
-    user = Column(BigInteger, nullable=False)
+    id = Column(INT(unsigned=True), primary_key=True, nullable=False)
+    user = Column(BIGINT(unsigned=True), nullable=False, unique=True)
+
+    name = Column(String(37), nullable=False)  # sized off 32 char username + # + 4 char discriminator
 
     language = Column( String(2), default='EN', nullable=False )
-    timezone = Column( String(32), nullable=True )
+    timezone = Column( String(32) )
     allowed_dm = Column( Boolean, default=True, nullable=False )
 
     patreon = Column( Boolean, nullable=False, default=False )
-    dm_channel = Column(BigInteger)
-    name = Column(String(37))  # sized off 32 char username + # + 4 char discriminator
+    dm_channel = Column(BIGINT(unsigned=True), nullable=False)
 
     def __repr__(self):
         return self.name or str(self.user)
