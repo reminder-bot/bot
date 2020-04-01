@@ -29,7 +29,6 @@ class BotClient(discord.AutoShardedClient):
             'donate': Command(self.donate),
 
             'prefix': Command(self.change_prefix, False, PermissionLevels.RESTRICTED),
-            # TODO: remodel blacklist table with FKs for channel table
             'blacklist': Command(self.blacklist, False, PermissionLevels.RESTRICTED),
             # TODO: remodel restriction table with FKs for role table
             'restrict': Command(self.restrict, False, PermissionLevels.RESTRICTED),
@@ -38,9 +37,7 @@ class BotClient(discord.AutoShardedClient):
             'lang': Command(self.set_language),
             'clock': Command(self.clock),
 
-            # TODO: fix for new db model
             'offset': Command(self.offset_reminders, True, PermissionLevels.RESTRICTED),
-            # TODO: fix for new db model
             'nudge': Command(self.nudge_channel, True, PermissionLevels.RESTRICTED),
 
             'natural': Command(self.natural, True, PermissionLevels.MANAGED),
@@ -709,7 +706,7 @@ class BotClient(discord.AutoShardedClient):
 
         target_channel = message.channel_mentions[0] if len(message.channel_mentions) > 0 else message.channel
 
-        channel = Channel.get_or_create(target_channel)
+        channel, _ = await Channel.get_or_create(target_channel)
 
         channel.blacklisted = not channel.blacklisted
 
@@ -886,7 +883,9 @@ class BotClient(discord.AutoShardedClient):
         num = await client.wait_for('message',
                                     check=lambda m: m.author == message.author and m.channel == message.channel)
 
-        nums = set([int(x) for x in re.findall(r'(?:,| |^)(\d+)(?:,| |$)', num.content)])
+        num_content = num.content.replace(',', ' ')
+
+        nums = set([int(x) for x in re.findall(r'(\d+)(?:\s|$)', num_content)])
 
         removal_ids: typing.Set[int] = set()
 
@@ -942,7 +941,8 @@ class BotClient(discord.AutoShardedClient):
                     string = '\'{}\' *{}* **{}** {}\n'.format(
                         await self.clean_string(reminder.message_content(), message.guild),
                         preferences.language.get_string('look/inter'),
-                        datetime.fromtimestamp(reminder.time, pytz.timezone(preferences.timezone)).strftime('%Y-%m-%d %H:%M:%S'),
+                        datetime.fromtimestamp(reminder.time, pytz.timezone(preferences.timezone)).strftime(
+                            '%Y-%m-%d %H:%M:%S'),
                         '' if reminder.enabled else '`disabled`')
 
                     if len(s) + len(string) > 2000:
@@ -960,9 +960,9 @@ class BotClient(discord.AutoShardedClient):
     async def offset_reminders(message, stripped, preferences):
 
         if message.guild is None:
-            channels = [message.channel.id]
+            reminders = preferences.user.reminders
         else:
-            channels = [x.id for x in message.guild.channels]
+            reminders = itertools.chain(*[channel.reminders for channel in preferences.guild.channels])
 
         time_parser = TimeExtractor(stripped, preferences.timezone)
 
@@ -979,8 +979,6 @@ class BotClient(discord.AutoShardedClient):
                     description=preferences.language.get_string('offset/help').format(prefix=preferences.prefix)))
 
             else:
-                reminders = session.query(Reminder).filter(Reminder.channel_id.in_(channels))
-
                 for r in reminders:
                     r.time += time
 
@@ -1002,7 +1000,7 @@ class BotClient(discord.AutoShardedClient):
                 description=preferences.language.get_string('nudge/invalid_time')))
 
         else:
-            channel = Channel.get_or_create(message.channel)
+            channel, _ = await Channel.get_or_create(message.channel)
 
             channel.nudge = t
 
