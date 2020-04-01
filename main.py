@@ -207,6 +207,8 @@ class BotClient(discord.AutoShardedClient):
     # noinspection PyBroadException
     async def on_message(self, message):
 
+        channel = None
+
         if message.author.bot or message.content is None:
             return
 
@@ -226,10 +228,10 @@ class BotClient(discord.AutoShardedClient):
                 except:
                     return
 
-        channel, just_created = await Channel.get_or_create(message.channel)
+            channel, just_created = await Channel.get_or_create(message.channel)
 
-        if not just_created:
-            channel.name = message.channel.name
+            if not just_created:
+                channel.name = message.channel.name
 
         guild = None if message.guild is None else session.query(Guild).filter(Guild.guild == message.guild.id).first()
         user, just_created = await User.get_or_create(message.author)
@@ -247,7 +249,7 @@ class BotClient(discord.AutoShardedClient):
             except discord.errors.Forbidden:
                 await message.channel.send('Insufficient permissions for command')
 
-    async def get_cmd(self, message: discord.Message, guild: Guild, channel: Channel, user: User) -> bool:
+    async def get_cmd(self, message: discord.Message, guild: Guild, channel: typing.Optional[Channel], user: User) -> bool:
 
         info: Preferences = Preferences(guild, user)
         prefix: str = info.prefix
@@ -841,7 +843,7 @@ class BotClient(discord.AutoShardedClient):
 
         else:
             if stripped == 'clear':
-                todos.delete(synchronize_session='fetch')
+                todos.clear()
                 await message.channel.send(preferences.language.get_string('todo/cleared'))
 
             else:
