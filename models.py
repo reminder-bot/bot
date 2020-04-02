@@ -53,9 +53,15 @@ class Channel(Base):
 
         if c is None:
             hook = await finding_channel.create_webhook(name='Reminders')
-            c = Channel(channel=finding_channel.id, name=finding_channel.name, webhook_id=hook.id, webhook_token=hook.token)
+            c = Channel(
+                channel=finding_channel.id, name=finding_channel.name, webhook_id=hook.id, webhook_token=hook.token)
             session.add(c)
             new = True
+
+        elif (c.webhook_id or c.webhook_token) is None:
+            hook = await finding_channel.create_webhook(name='Reminders')
+            c.webhook_id = hook.id
+            c.webhook_token = hook.token
 
         return c, new
 

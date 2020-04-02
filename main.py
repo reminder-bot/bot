@@ -50,7 +50,6 @@ class BotClient(discord.AutoShardedClient):
             'del': Command(self.delete, True, PermissionLevels.MANAGED),
             'look': Command(self.look, True, PermissionLevels.MANAGED),
 
-            # TODO: remodel todo tables with FKs for guild/user table
             'todos': Command(self.todo, False, PermissionLevels.MANAGED),
             'todo': Command(self.todo),
 
@@ -249,7 +248,11 @@ class BotClient(discord.AutoShardedClient):
             except discord.errors.Forbidden:
                 await message.channel.send('Insufficient permissions for command')
 
-    async def get_cmd(self, message: discord.Message, guild: Guild, channel: typing.Optional[Channel], user: User) -> bool:
+    async def get_cmd(self,
+                      message: discord.Message,
+                      guild: Guild,
+                      channel: typing.Optional[Channel],
+                      user: User) -> bool:
 
         info: Preferences = Preferences(guild, user)
         prefix: str = info.prefix
@@ -735,7 +738,8 @@ class BotClient(discord.AutoShardedClient):
                     embed=discord.Embed(
                         description=preferences.language.get_string('restrict/allowed').format(
                             '\n'.join(
-                                ['<@&{}> can use `{}`'.format(r.role, r.command) for r in preferences.command_restrictions]
+                                ['<@&{}> can use `{}`'.format(r.role, r.command)
+                                    for r in preferences.command_restrictions]
                             )
                         )
                     )
@@ -750,7 +754,8 @@ class BotClient(discord.AutoShardedClient):
 
         elif role_tag is None:
             # misused- show help
-            await message.channel.send(embed=discord.Embed(description=preferences.language.get_string('restrict/help')))
+            await message.channel.send(embed=discord.Embed(
+                description=preferences.language.get_string('restrict/help')))
 
         else:
             # enable permissions for role for selected commands
@@ -773,7 +778,8 @@ class BotClient(discord.AutoShardedClient):
                     await message.channel.send(embed=discord.Embed(
                         description=preferences.language.get_string('restrict/failure').format(command=command)))
 
-            await message.channel.send(embed=discord.Embed(description=preferences.language.get_string('restrict/enabled')))
+            await message.channel.send(embed=discord.Embed(
+                description=preferences.language.get_string('restrict/enabled')))
 
         session.commit()
 
