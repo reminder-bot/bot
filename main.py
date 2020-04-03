@@ -71,7 +71,15 @@ class BotClient(discord.AutoShardedClient):
         a, _ = await asyncio.wait([self.loop.run_in_executor(self.executor, method)])
         return [x.result() for x in a][0]
 
-    async def find_member(self, member_id: int, context_guild: typing.Optional[discord.Guild]) -> typing.Optional[User]:
+    def find_member_name(self, member_id: int, context_guild: discord.Guild):
+        u: User = session.query(User).filter(User.user == member_id).first()
+
+        if u is None:
+            u: typing.Union[discord.User, discord.Member] = context_guild.get_member(member_id) or self.get_user(member_id)
+
+        return u.name if u is not None else None
+
+    async def find_and_create_member(self, member_id: int, context_guild: typing.Optional[discord.Guild]) -> typing.Optional[User]:
         u: User = session.query(User).filter(User.user == member_id).first()
 
         if u is None and context_guild is not None:
@@ -85,35 +93,24 @@ class BotClient(discord.AutoShardedClient):
 
         return u
 
-    async def clean_string(self, string: str, guild: discord.Guild) -> str:
+    def clean_string(self, string: str, guild: typing.Optional[discord.Guild]) -> str:
+
+        def id_processor(regex_match) -> str:
+            prefix, mention_content = regex_match.groups()
+
+            if prefix == '&':
+                return '@{}'.format(guild.get_role(int(mention_content)))
+
+            else:
+                return '@{}'.format(self.find_member_name(int(mention_content), guild))
+
         if guild is None:
             return string
 
         else:
-            parts = ['']
-            for char in string:
-                if char in '<>':
-                    parts.append(char)
-                else:
-                    parts[-1] += char
-
-            new = []
-            for piece in parts:
-                new_piece = piece
-                if len(piece) > 3 and piece[1] == '@' and all(x in '0123456789' for x in piece[3:]):
-                    if piece[2] in '0123456789!':
-                        uid = int(''.join(x for x in piece if x in '0123456789'))
-                        user = await self.find_member(uid, guild)
-                        new_piece = '`@{}`'.format(user)
-
-                    elif piece[2] == '&':
-                        rid = int(''.join(x for x in piece if x in '0123456789'))
-                        role = guild.get_role(rid)
-                        new_piece = '`@@{}`'.format(role)
-
-                new.append(new_piece)
-
-            return ''.join(new).replace('@everyone', '`@everyone`').replace('@here', '`@here`')
+            return re.sub(r'<@([&!]?)(\d+)>', id_processor, string) \
+                .replace('@everyone', '@\u200Beveryone') \
+                .replace('@here', '@\u200Bhere')
 
     async def is_patron(self, member_id) -> bool:
         if self.config.patreon:
@@ -599,7 +596,7 @@ class BotClient(discord.AutoShardedClient):
                 time += channel.nudge
 
             else:
-                user = await self.find_member(location, message.guild)
+                user = await self.find_and_create_member(location, message.guild)
 
                 if user is None or user.dm_channel is None:
                     return ReminderInformation(CreateReminderResponse.INVALID_TAG)
@@ -874,7 +871,7 @@ class BotClient(discord.AutoShardedClient):
         for count, reminder in enumerated_reminders:
             string = '''**{}**: '{}' *{}*\n'''.format(
                 count,
-                await self.clean_string(reminder.message_content(), message.guild),
+                self.clean_string(reminder.message_content(), message.guild),
                 reminder.channel)
 
             if len(s) + len(string) > 2000:
@@ -947,7 +944,7 @@ class BotClient(discord.AutoShardedClient):
                 s = ''
                 for reminder in reminder_query:
                     string = '\'{}\' *{}* **{}** {}\n'.format(
-                        await self.clean_string(reminder.message_content(), message.guild),
+                        self.clean_string(reminder.message_content(), message.guild),
                         preferences.language.get_string('look/inter'),
                         datetime.fromtimestamp(reminder.time, pytz.timezone(preferences.timezone)).strftime(
                             '%Y-%m-%d %H:%M:%S'),
