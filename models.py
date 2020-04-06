@@ -1,7 +1,7 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, BigInteger, String, Text, Boolean, Table, ForeignKey
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, scoped_session, relationship
+from sqlalchemy.orm import sessionmaker, scoped_session, relationship, backref
 from sqlalchemy.dialects.mysql import BIGINT, MEDIUMINT, SMALLINT, INTEGER as INT
 import configparser
 import time
@@ -12,6 +12,11 @@ from consts import ALL_CHARACTERS
 
 Base = declarative_base()
 
+guild_users = Table('guild_users',
+                    Column('guild', INT(unsigned=True), ForeignKey('guilds.id')),
+                    Column('user', INT(unsigned=True), ForeignKey('users.id')),
+                    )
+
 
 class Guild(Base):
     __tablename__ = 'guilds'
@@ -19,8 +24,15 @@ class Guild(Base):
     id = Column(INT(unsigned=True), primary_key=True)
     guild = Column(BIGINT(unsigned=True), unique=True)
 
-    prefix = Column( String(5), default='$', nullable=False )
-    timezone = Column( String(32), default='UTC', nullable=False )
+    prefix = Column(String(5), default='$', nullable=False)
+    timezone = Column(String(32), default='UTC', nullable=False)
+
+    users = relationship(
+        'User', secondary=guild_users,
+        primaryjoin=(guild_users.c.guild == id),
+        secondaryjoin='(guild_users.c.user == User.id)',
+        backref=backref('guilds', lazy='dynamic'), lazy='dynamic'
+    )
 
 
 class Channel(Base):
@@ -84,11 +96,11 @@ class User(Base):
 
     name = Column(String(37), nullable=False)  # sized off 32 char username + # + 4 char discriminator
 
-    language = Column( String(2), default='EN', nullable=False )
-    timezone = Column( String(32) )
-    allowed_dm = Column( Boolean, default=True, nullable=False )
+    language = Column(String(2), default='EN', nullable=False)
+    timezone = Column(String(32))
+    allowed_dm = Column(Boolean, default=True, nullable=False)
 
-    patreon = Column( Boolean, nullable=False, default=False )
+    patreon = Column(Boolean, nullable=False, default=False)
     dm_channel = Column(BIGINT(unsigned=True), nullable=False)
 
     def __repr__(self):
@@ -208,8 +220,8 @@ class Timer(Base):
     id = Column(Integer, primary_key=True)
 
     start_time = Column(Integer, default=time.time, nullable=False)
-    name = Column( String(32), nullable=False )
-    owner = Column( BigInteger, nullable=False )
+    name = Column(String(32), nullable=False)
+    owner = Column(BigInteger, nullable=False)
 
 
 class Language(Base):
@@ -217,8 +229,8 @@ class Language(Base):
 
     id = Column(Integer, primary_key=True)
 
-    name = Column( String(20), nullable=False, unique=True )
-    code = Column( String(2), nullable=False, unique=True )
+    name = Column(String(20), nullable=False, unique=True)
+    code = Column(String(2), nullable=False, unique=True)
 
     def get_string(self, string):
         s = session.query(Strings).filter(Strings.c.name == string)
@@ -238,7 +250,6 @@ class CommandRestriction(Base):
 
 
 Guild.command_restrictions = relationship(CommandRestriction, backref='guild', lazy='dynamic')
-
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -266,7 +277,6 @@ Base.metadata.create_all(bind=engine)
 session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
 session = Session()
-
 
 languages = session.query(Language.code).all()
 
