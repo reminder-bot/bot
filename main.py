@@ -215,7 +215,7 @@ class BotClient(discord.AutoShardedClient):
 
                 session.add(guild)
 
-                for channel in message.guild.channels:
+                for channel in message.guild.text_channels:
                     db_channel = Channel(channel=channel.id, name=channel.name, guild=guild)
                     session.add(db_channel)
 
@@ -591,7 +591,7 @@ class BotClient(discord.AutoShardedClient):
 
             if discord_channel is not None:  # if not a DM reminder
 
-                channel, _ = await Channel.get_or_create(message.channel)
+                channel, _ = await Channel.get_or_create(discord_channel)
 
                 time += channel.nudge
 
