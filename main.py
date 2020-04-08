@@ -209,6 +209,10 @@ class BotClient(discord.AutoShardedClient):
         if not just_created:
             await user.update_details(message.author)
 
+        # temporary to fill out guild IDs for channels
+        if channel is not None and channel.guild_id is None:
+            channel.guild_id = guild.id
+
         if user not in guild.users:
             guild.users.append(user)
 

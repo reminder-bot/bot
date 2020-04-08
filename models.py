@@ -50,7 +50,7 @@ class Channel(Base):
     webhook_id = Column(BIGINT(unsigned=True), unique=True)
     webhook_token = Column(Text)
 
-    guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id, ondelete='CASCADE'), nullable=False)
+    guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id, ondelete='CASCADE'))
     guild = relationship(Guild, backref='channels')
 
     def __repr__(self):
@@ -65,9 +65,20 @@ class Channel(Base):
         new = False
 
         if c is None:
+            g = session.query(Guild).filter(Guild.guild == finding_channel.guild.id).first()
+
+            gid = None if g is None else g.id
+
             hook = await finding_channel.create_webhook(name='Reminders')
+
             c = Channel(
-                channel=finding_channel.id, name=finding_channel.name, webhook_id=hook.id, webhook_token=hook.token)
+                channel=finding_channel.id,
+                name=finding_channel.name,
+                webhook_id=hook.id,
+                webhook_token=hook.token,
+                guild_id=gid
+            )
+
             session.add(c)
             new = True
 
@@ -164,9 +175,9 @@ class Reminder(Base):
     message_id = Column(INT(unsigned=True), ForeignKey(Message.id), nullable=False)
     message = relationship(Message)
 
-    channel_id = Column(INT(unsigned=True), ForeignKey(Channel.id), nullable=False)
+    channel_id = Column(INT(unsigned=True), ForeignKey(Channel.id), nullable=True)
 
-    user_id = Column(INT(unsigned=True), ForeignKey(User.id), nullable=False)
+    user_id = Column(INT(unsigned=True), ForeignKey(User.id), nullable=True)
 
     time = Column(BIGINT(unsigned=True))
     enabled = Column(Boolean, nullable=False, default=True)

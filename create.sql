@@ -53,7 +53,7 @@ CREATE TABLE reminders.channels (
     webhook_id BIGINT UNSIGNED UNIQUE,
     webhook_token TEXT,
 
-    guild_id INT UNSIGNED NOT NULL,
+    guild_id INT UNSIGNED,
 
     PRIMARY KEY (id),
     FOREIGN KEY (guild_id) REFERENCES reminders.guilds(id) ON DELETE CASCADE
@@ -76,7 +76,7 @@ CREATE TABLE reminders.messages (
     embed_id INT UNSIGNED,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (embed_id) REFERENCES reminders.embeds(id)
+    FOREIGN KEY (embed_id) REFERENCES reminders.embeds(id) ON DELETE SET NULL
 );
 
 CREATE TABLE reminders.reminders (
@@ -99,7 +99,7 @@ CREATE TABLE reminders.reminders (
     method VARCHAR(9),
 
     PRIMARY KEY (id),
-    FOREIGN KEY (message_id) REFERENCES reminders.messages(id),
+    FOREIGN KEY (message_id) REFERENCES reminders.messages(id) ON DELETE RESTRICT,
     FOREIGN KEY (channel_id) REFERENCES reminders.channels(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES reminders.users(id) ON DELETE CASCADE
 );
@@ -119,8 +119,8 @@ CREATE TABLE reminders.todos (
     value VARCHAR(2000) NOT NULL,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (guild_id) REFERENCES reminders.guilds(id),
-    FOREIGN KEY (user_id) REFERENCES reminders.users(id)
+    FOREIGN KEY (guild_id) REFERENCES reminders.guilds(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES reminders.users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE reminders.command_restrictions (
