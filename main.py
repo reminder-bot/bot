@@ -189,10 +189,6 @@ class BotClient(discord.AutoShardedClient):
 
                 session.add(guild)
 
-                for channel in message.guild.text_channels:
-                    db_channel = Channel(channel=channel.id, name=channel.name, guild=guild)
-                    session.add(db_channel)
-
                 try:
                     session.commit()
                 except:
@@ -209,9 +205,15 @@ class BotClient(discord.AutoShardedClient):
         if not just_created:
             await user.update_details(message.author)
 
-        # temporary to fill out guild IDs for channels
-        if channel is not None and channel.guild_id is None:
-            channel.guild_id = guild.id
+        if guild is not None:
+            if guild.channels.count() < 1:
+                for channel in message.guild.text_channels:
+                    db_channel = Channel(channel=channel.id, name=channel.name, guild=guild)
+                    session.add(db_channel)
+
+            # temporary to fill out guild IDs for channels
+            if channel is not None and channel.guild_id is None:
+                channel.guild_id = guild.id
 
         if user not in guild.users:
             guild.users.append(user)
