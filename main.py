@@ -71,15 +71,8 @@ class BotClient(discord.AutoShardedClient):
         a, _ = await asyncio.wait([self.loop.run_in_executor(self.executor, method)])
         return [x.result() for x in a][0]
 
-    def find_member_name(self, member_id: int, context_guild: discord.Guild):
-        u: User = session.query(User).filter(User.user == member_id).first()
-
-        if u is None:
-            u: typing.Union[discord.User, discord.Member] = context_guild.get_member(member_id) or self.get_user(member_id)
-
-        return u.name if u is not None else None
-
-    async def find_and_create_member(self, member_id: int, context_guild: typing.Optional[discord.Guild]) -> typing.Optional[User]:
+    async def find_and_create_member(self, member_id: int, context_guild: typing.Optional[discord.Guild]) \
+            -> typing.Optional[User]:
         u: User = session.query(User).filter(User.user == member_id).first()
 
         if u is None and context_guild is not None:
@@ -92,25 +85,6 @@ class BotClient(discord.AutoShardedClient):
                 session.commit()
 
         return u
-
-    def clean_string(self, string: str, guild: typing.Optional[discord.Guild]) -> str:
-
-        def id_processor(regex_match) -> str:
-            prefix, mention_content = regex_match.groups()
-
-            if prefix == '&':
-                return '@{}'.format(guild.get_role(int(mention_content)))
-
-            else:
-                return '@{}'.format(self.find_member_name(int(mention_content), guild))
-
-        if guild is None:
-            return string
-
-        else:
-            return re.sub(r'<@([&!]?)(\d+)>', id_processor, string) \
-                .replace('@everyone', '@\u200Beveryone') \
-                .replace('@here', '@\u200Bhere')
 
     async def is_patron(self, member_id) -> bool:
         if self.config.patreon:
@@ -858,7 +832,8 @@ class BotClient(discord.AutoShardedClient):
 
         session.commit()
 
-    async def delete(self, message, _stripped, preferences):
+    @staticmethod
+    async def delete(message, _stripped, preferences):
         if message.guild is not None:
             channels = preferences.guild.channels
             reminders = itertools.chain(*[c.reminders for c in channels])
@@ -874,17 +849,17 @@ class BotClient(discord.AutoShardedClient):
         for count, reminder in enumerated_reminders:
             string = '''**{}**: '{}' *{}*\n'''.format(
                 count,
-                self.clean_string(reminder.message_content(), message.guild),
+                reminder.message_content(),
                 reminder.channel)
 
             if len(s) + len(string) > 2000:
-                await message.channel.send(s)
+                await message.channel.send(s, allowed_mentions=NoMention)
                 s = string
             else:
                 s += string
 
         if s:
-            await message.channel.send(s)
+            await message.channel.send(s, allowed_mentions=NoMention)
 
         await message.channel.send(preferences.language.get_string('del/listed'))
 
@@ -907,7 +882,8 @@ class BotClient(discord.AutoShardedClient):
 
         await message.channel.send(preferences.language.get_string('del/count').format(len(removal_ids)))
 
-    async def look(self, message, stripped, preferences):
+    @staticmethod
+    async def look(message, stripped, preferences):
 
         r = re.search(r'(\d+)', stripped)
 
@@ -947,19 +923,19 @@ class BotClient(discord.AutoShardedClient):
                 s = ''
                 for reminder in reminder_query:
                     string = '\'{}\' *{}* **{}** {}\n'.format(
-                        self.clean_string(reminder.message_content(), message.guild),
+                        reminder.message_content(),
                         preferences.language.get_string('look/inter'),
                         datetime.fromtimestamp(reminder.time, pytz.timezone(preferences.timezone)).strftime(
                             '%Y-%m-%d %H:%M:%S'),
                         '' if reminder.enabled else '`disabled`')
 
                     if len(s) + len(string) > 2000:
-                        await message.channel.send(s)
+                        await message.channel.send(s, allowed_mentions=NoMention)
                         s = string
                     else:
                         s += string
 
-                await message.channel.send(s)
+                await message.channel.send(s, allowed_mentions=NoMention)
 
             else:
                 await message.channel.send(preferences.language.get_string('look/no_reminders'))

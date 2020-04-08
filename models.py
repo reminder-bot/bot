@@ -13,6 +13,7 @@ from consts import ALL_CHARACTERS
 Base = declarative_base()
 
 guild_users = Table('guild_users',
+                    Base.metadata,
                     Column('guild', INT(unsigned=True), ForeignKey('guilds.id')),
                     Column('user', INT(unsigned=True), ForeignKey('users.id')),
                     )
