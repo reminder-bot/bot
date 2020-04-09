@@ -45,6 +45,15 @@ class Blacklist(Base):
     guild_id = Column(BigInteger, ForeignKey(Guild.guild, ondelete='CASCADE'), nullable=False)
 
 
+class ChannelNudge(Base):
+    __tablename__ = 'nudge_channels'
+
+    id = Column(Integer, primary_key=True)
+
+    channel = Column(BigInteger, unique=True, nullable=False)
+    time = Column(Integer, nullable=False)
+
+
 class User(Base):
     __tablename__ = 'users'
 
@@ -145,7 +154,7 @@ session = Session()
 
 for todo in session.query(TodoOld):
     u = session.query(User).filter(User.user == todo.owner).first() or \
-        session.query(User).filter(Guild.guild == todo.owner).first()
+        session.query(Guild).filter(Guild.guild == todo.owner).first()
 
     if u is not None:
         if isinstance(u, User):
@@ -165,14 +174,69 @@ for blacklist in session.query(Blacklist):
         g = session.query(Guild).filter(Guild.guild == blacklist.guild_id).first()
 
         if g is not None:
-            c = Channel(channel=blacklist.channel, guild_id=g.id)
+            c = Channel(channel=blacklist.channel, guild_id=g.id, blacklisted=True)
             session.add(c)
         else:
             continue
+    else:
+        c.blacklisted = True
 
-    c.blacklisted = True
+session.commit()
+
+for nudge in session.query(ChannelNudge):
+
+    c = session.query(Channel).filter(Channel.channel == nudge.channel).first()
+
+    if c is None:
+        c = Channel(channel=nudge.channel, nudge=nudge.time)
+        session.add(c)
+    else:
+        c.nudge = nudge.time
 
 session.commit()
 
 for reminder in session.query(ReminderOld):
-    pass
+
+    if reminder.webhook is not None:
+        c = session.query(Channel).filter(Channel.channel == reminder.channel).first()
+
+        _, webhook_id, webhook_token = reminder.webhook.rsplit('/', 2)
+
+        if c is None:
+            c = Channel(channel=reminder.channel, webhook_id=webhook_id, webhook_token=webhook_token)
+            session.add(c)
+            session.commit()
+
+        new_reminder = Reminder(
+            uid=reminder.uid,
+            message_id=reminder.message_id,
+            channel_id=c.id,
+            time=reminder.time,
+            enabled=reminder.enabled,
+            avatar=reminder.avatar,
+            username=reminder.username,
+            method=reminder.method,
+            interval=reminder.interval
+        )
+
+        session.add(new_reminder)
+
+    else:
+        # this is guaranteed to be valid
+        u = session.query(User).filter(User.user == reminder.user).first()
+
+        new_reminder = Reminder(
+            uid=reminder.uid,
+            message_id=reminder.message_id,
+            user_id=u.id,
+            time=reminder.time,
+            enabled=reminder.enabled,
+            avatar=reminder.avatar,
+            username=reminder.username,
+            method=reminder.method,
+            interval=reminder.interval
+        )
+
+        session.add(new_reminder)
+
+    session.commit()
