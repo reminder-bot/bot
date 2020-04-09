@@ -1,10 +1,10 @@
 import sys
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, BigInteger, String, Text, Boolean, Table, ForeignKey
-from sqlalchemy.dialects.mysql import BIGINT, MEDIUMINT, SMALLINT, INTEGER as INT
+from sqlalchemy import Column, Integer, BigInteger, String, Text, Boolean, ForeignKey
+from sqlalchemy.dialects.mysql import BIGINT, SMALLINT, INTEGER as INT
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, scoped_session, relationship
+from sqlalchemy.orm import sessionmaker, scoped_session
 
 Base = declarative_base()
 
