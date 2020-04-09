@@ -206,7 +206,9 @@ class BotClient(discord.AutoShardedClient):
             await user.update_details(message.author)
 
         if guild is not None:
-            if guild.channels.count() < 1:
+            guild.name = message.guild.name
+
+            if len(guild.channels) < 1:
                 for channel in message.guild.text_channels:
                     db_channel = Channel(channel=channel.id, name=channel.name, guild=guild)
                     session.add(db_channel)
@@ -215,8 +217,8 @@ class BotClient(discord.AutoShardedClient):
             if channel is not None and channel.guild_id is None:
                 channel.guild_id = guild.id
 
-        if user not in guild.users:
-            guild.users.append(user)
+            if user not in guild.users:
+                guild.users.append(user)
 
         session.commit()
 
@@ -581,7 +583,7 @@ class BotClient(discord.AutoShardedClient):
             else:
                 user = await self.find_and_create_member(location, message.guild)
 
-                if user is None or user.dm_channel is None:
+                if user is None:
                     return ReminderInformation(CreateReminderResponse.INVALID_TAG)
 
                 discord_channel = DMChannelId(user.dm_channel, user.user)
@@ -602,8 +604,7 @@ class BotClient(discord.AutoShardedClient):
                 # noinspection PyArgumentList
                 reminder = Reminder(
                     message=Message(content=text),
-                    channel=channel,
-                    user=user,
+                    channel=channel or user.channel,
                     time=time,
                     enabled=True,
                     method=method,
@@ -615,8 +616,7 @@ class BotClient(discord.AutoShardedClient):
             # noinspection PyArgumentList
             r = Reminder(
                 message=Message(content=text),
-                channel=channel,
-                user=user,
+                channel=channel or user.channel,
                 time=time,
                 enabled=True,
                 method=method)
@@ -845,7 +845,7 @@ class BotClient(discord.AutoShardedClient):
             reminders = itertools.chain(*[c.reminders for c in channels])
 
         else:
-            reminders = preferences.user.reminders
+            reminders = preferences.user.channel.reminders
 
         await message.channel.send(preferences.language.get_string('del/listing'))
 
@@ -859,13 +859,13 @@ class BotClient(discord.AutoShardedClient):
                 reminder.channel)
 
             if len(s) + len(string) > 2000:
-                await message.channel.send(s, allowed_mentions=NoMention)
+                await message.channel.send(s)#, allowed_mentions=NoMention)
                 s = string
             else:
                 s += string
 
         if s:
-            await message.channel.send(s, allowed_mentions=NoMention)
+            await message.channel.send(s)#, allowed_mentions=NoMention)
 
         await message.channel.send(preferences.language.get_string('del/listed'))
 
@@ -902,9 +902,14 @@ class BotClient(discord.AutoShardedClient):
         else:
             show_disabled = True
 
-        discord_channel = message.channel_mentions[0] if len(message.channel_mentions) > 0 else message.channel
+        if message.guild is None:
+            channel = preferences.user.channel
+            new = False
 
-        channel, new = await Channel.get_or_create(discord_channel)
+        else:
+            discord_channel = message.channel_mentions[0] if len(message.channel_mentions) > 0 else message.channel
+
+            channel, new = await Channel.get_or_create(discord_channel)
 
         if new:
             await message.channel.send(preferences.language.get_string('look/no_reminders'))
@@ -936,12 +941,12 @@ class BotClient(discord.AutoShardedClient):
                         '' if reminder.enabled else '`disabled`')
 
                     if len(s) + len(string) > 2000:
-                        await message.channel.send(s, allowed_mentions=NoMention)
+                        await message.channel.send(s)#, allowed_mentions=NoMention)
                         s = string
                     else:
                         s += string
 
-                await message.channel.send(s, allowed_mentions=NoMention)
+                await message.channel.send(s)#, allowed_mentions=NoMention)
 
             else:
                 await message.channel.send(preferences.language.get_string('look/no_reminders'))

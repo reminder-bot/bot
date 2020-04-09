@@ -12,35 +12,6 @@ CREATE TABLE reminders.guilds (
     PRIMARY KEY (id)
 );
 
-CREATE TABLE reminders.users (
-    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
-    user BIGINT UNSIGNED UNIQUE NOT NULL,
-
-    name VARCHAR(37) NOT NULL,
-
-    dm_channel BIGINT UNSIGNED UNIQUE NOT NULL,
-
-    language VARCHAR(2) DEFAULT 'EN' NOT NULL,
-    timezone VARCHAR(32), # nullable s.t it can default to server timezone
-    allowed_dm BOOLEAN DEFAULT 1 NOT NULL,
-
-    patreon BOOL NOT NULL DEFAULT 0,
-
-    PRIMARY KEY (id)
-);
-
-CREATE TABLE reminders.roles (
-    id INT UNSIGNED UNIQUE NOT NULL AUTO_INCREMENT,
-    role BIGINT UNSIGNED UNIQUE NOT NULL,
-
-    name VARCHAR(100),
-
-    guild_id INT UNSIGNED NOT NULL,
-
-    PRIMARY KEY (id),
-    FOREIGN KEY (guild_id) REFERENCES reminders.guilds(id) ON DELETE CASCADE
-);
-
 CREATE TABLE reminders.channels (
     id INT UNSIGNED UNIQUE NOT NULL AUTO_INCREMENT,
     channel BIGINT UNSIGNED UNIQUE NOT NULL,
@@ -54,6 +25,36 @@ CREATE TABLE reminders.channels (
     webhook_token TEXT,
 
     guild_id INT UNSIGNED,
+
+    PRIMARY KEY (id),
+    FOREIGN KEY (guild_id) REFERENCES reminders.guilds(id) ON DELETE CASCADE
+);
+
+CREATE TABLE reminders.users (
+    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
+    user BIGINT UNSIGNED UNIQUE NOT NULL,
+
+    name VARCHAR(37) NOT NULL,
+
+    dm_channel INT UNSIGNED UNIQUE NOT NULL,
+
+    language VARCHAR(2) DEFAULT 'EN' NOT NULL,
+    timezone VARCHAR(32), # nullable s.t it can default to server timezone
+    allowed_dm BOOLEAN DEFAULT 1 NOT NULL,
+
+    patreon BOOL NOT NULL DEFAULT 0,
+
+    PRIMARY KEY (id),
+    FOREIGN KEY (dm_channel) REFERENCES reminders.channels(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE reminders.roles (
+    id INT UNSIGNED UNIQUE NOT NULL AUTO_INCREMENT,
+    role BIGINT UNSIGNED UNIQUE NOT NULL,
+
+    name VARCHAR(100),
+
+    guild_id INT UNSIGNED NOT NULL,
 
     PRIMARY KEY (id),
     FOREIGN KEY (guild_id) REFERENCES reminders.guilds(id) ON DELETE CASCADE
@@ -85,8 +86,7 @@ CREATE TABLE reminders.reminders (
     
     message_id INT UNSIGNED NOT NULL,
 
-    channel_id INT UNSIGNED,
-    user_id INT UNSIGNED,
+    channel_id INT UNSIGNED NOT NULL,
 
     `time` INT UNSIGNED DEFAULT 0 NOT NULL,
     `interval` INT UNSIGNED DEFAULT NULL,
@@ -100,8 +100,7 @@ CREATE TABLE reminders.reminders (
 
     PRIMARY KEY (id),
     FOREIGN KEY (message_id) REFERENCES reminders.messages(id) ON DELETE RESTRICT,
-    FOREIGN KEY (channel_id) REFERENCES reminders.channels(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES reminders.users(id) ON DELETE CASCADE
+    FOREIGN KEY (channel_id) REFERENCES reminders.channels(id) ON DELETE CASCADE
 );
 
 CREATE TRIGGER message_cleanup AFTER DELETE ON reminders.reminders

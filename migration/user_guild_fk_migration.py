@@ -18,6 +18,8 @@ class Guild(Base):
     prefix = Column(String(5), default='$', nullable=False)
     timezone = Column(String(32), default='UTC', nullable=False)
 
+    name = Column(String(100))
+
 
 class Channel(Base):
     __tablename__ = 'channels'
@@ -71,12 +73,12 @@ class User(Base):
 
 
 class ReminderOld(Base):
-    __tablename__ = 'reminders'
+    __tablename__ = 'reminders_old'
 
     id = Column(Integer, primary_key=True)
     uid = Column(String(64), unique=True)
 
-    message_id = Column(Integer, ForeignKey('messages.id'), nullable=False)
+    message_id = Column(Integer, nullable=False)
 
     channel = Column(BigInteger)
     time = Column(BigInteger)
@@ -98,11 +100,9 @@ class Reminder(Base):
     id = Column(INT(unsigned=True), primary_key=True)
     uid = Column(String(64), unique=True)
 
-    message_id = Column(INT(unsigned=True), ForeignKey('messages.id'), nullable=False)
+    message_id = Column(INT(unsigned=True), nullable=False)
 
-    channel_id = Column(INT(unsigned=True), ForeignKey('channels.id'), nullable=True)
-
-    user_id = Column(INT(unsigned=True), ForeignKey('users.id'), nullable=True)
+    channel_id = Column(INT(unsigned=True), ForeignKey('channels.id'), nullable=False)
 
     time = Column(BIGINT(unsigned=True))
     enabled = Column(Boolean, nullable=False, default=True)
@@ -117,7 +117,7 @@ class Reminder(Base):
 
 
 class TodoOld(Base):
-    __tablename__ = 'todos'
+    __tablename__ = 'todos_old'
 
     id = Column(Integer, primary_key=True)
     owner = Column(BigInteger, nullable=False)
@@ -151,7 +151,23 @@ session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
 session = Session()
 
+count = 0
 
+print('Processing users...')
+for user in session.query(User):
+    count += 1
+
+    c = Channel(id=count, channel=user.dm_channel)
+
+    session.add(c)
+
+    user.dm_channel = count
+
+    print(count)
+
+session.commit()
+
+print('Processing todos...')
 for todo in session.query(TodoOld):
     u = session.query(User).filter(User.user == todo.owner).first() or \
         session.query(Guild).filter(Guild.guild == todo.owner).first()
@@ -166,6 +182,7 @@ for todo in session.query(TodoOld):
 
 session.commit()
 
+print('Processing blacklists...')
 for blacklist in session.query(Blacklist):
 
     c = session.query(Channel).filter(Channel.channel == blacklist.channel).first()
@@ -183,21 +200,24 @@ for blacklist in session.query(Blacklist):
 
 session.commit()
 
+print('Processing nudges...')
 for nudge in session.query(ChannelNudge):
 
-    c = session.query(Channel).filter(Channel.channel == nudge.channel).first()
+    if abs(nudge.time) < 2**15:
+        c = session.query(Channel).filter(Channel.channel == nudge.channel).first()
 
-    if c is None:
-        c = Channel(channel=nudge.channel, nudge=nudge.time)
-        session.add(c)
-    else:
-        c.nudge = nudge.time
+        if c is None:
+            c = Channel(channel=nudge.channel, nudge=nudge.time)
+            session.add(c)
+        else:
+            c.nudge = nudge.time
 
 session.commit()
 
+print('Processing reminders...')
 for reminder in session.query(ReminderOld):
 
-    if reminder.webhook is not None:
+    if reminder.webhook is not None and len(reminder.webhook) > 0:
         c = session.query(Channel).filter(Channel.channel == reminder.channel).first()
 
         _, webhook_id, webhook_token = reminder.webhook.rsplit('/', 2)
@@ -205,7 +225,7 @@ for reminder in session.query(ReminderOld):
         if c is None:
             c = Channel(channel=reminder.channel, webhook_id=webhook_id, webhook_token=webhook_token)
             session.add(c)
-            session.commit()
+            session.flush()
 
         new_reminder = Reminder(
             uid=reminder.uid,
@@ -222,13 +242,17 @@ for reminder in session.query(ReminderOld):
         session.add(new_reminder)
 
     else:
-        # this is guaranteed to be valid
-        u = session.query(User).filter(User.user == reminder.user).first()
+        c = session.query(Channel).filter(Channel.channel == reminder.channel).first()
+
+        if c is None:
+            c = Channel(channel=reminder.channel)
+            session.add(c)
+            session.flush()
 
         new_reminder = Reminder(
             uid=reminder.uid,
             message_id=reminder.message_id,
-            user_id=u.id,
+            channel_id=c.id,
             time=reminder.time,
             enabled=reminder.enabled,
             avatar=reminder.avatar,
@@ -239,4 +263,4 @@ for reminder in session.query(ReminderOld):
 
         session.add(new_reminder)
 
-    session.commit()
+session.commit()

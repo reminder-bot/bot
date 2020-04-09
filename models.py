@@ -28,6 +28,8 @@ class Guild(Base):
     prefix = Column(String(5), default='$', nullable=False)
     timezone = Column(String(32), default='UTC', nullable=False)
 
+    name = Column(String(100))
+
     users = relationship(
         'User', secondary=guild_users,
         primaryjoin=(guild_users.c.guild == id),
@@ -87,6 +89,7 @@ class Channel(Base):
             c.webhook_id = hook.id
             c.webhook_token = hook.token
 
+        session.flush()
         return c, new
 
 
@@ -113,7 +116,8 @@ class User(Base):
     allowed_dm = Column(Boolean, default=True, nullable=False)
 
     patreon = Column(Boolean, nullable=False, default=False)
-    dm_channel = Column(BIGINT(unsigned=True), nullable=False)
+    dm_channel = Column(INT(unsigned=True), ForeignKey('channels.id'), nullable=False)
+    channel = relationship(Channel)
 
     def __repr__(self):
         return self.name or str(self.user)
@@ -128,14 +132,23 @@ class User(Base):
     @classmethod
     async def get_or_create(cls, finding_user) -> ('User', bool):
         u = session.query(cls).filter(cls.user == finding_user.id).first()
+        channel_id = (await finding_user.create_dm()).id
         new = False
 
+        c = session.query(Channel).filter(Channel.channel == channel_id).first()
+
+        if c is None:
+            c = Channel(channel=channel_id)
+            session.add(c)
+            session.flush()
+
         if u is None:
-            u = User(user=finding_user.id, dm_channel=(await finding_user.create_dm()).id, name='{}#{}'.format(
+            u = User(user=finding_user.id, dm_channel=c.id, name='{}#{}'.format(
                 finding_user.name, finding_user.discriminator))
             session.add(u)
             new = True
 
+        session.flush()
         return u, new
 
     async def update_details(self, new_details):
@@ -177,8 +190,6 @@ class Reminder(Base):
 
     channel_id = Column(INT(unsigned=True), ForeignKey(Channel.id), nullable=True)
 
-    user_id = Column(INT(unsigned=True), ForeignKey(User.id), nullable=True)
-
     time = Column(BIGINT(unsigned=True))
     enabled = Column(Boolean, nullable=False, default=True)
 
@@ -210,7 +221,6 @@ class Reminder(Base):
 
 
 Channel.reminders = relationship(Reminder, backref='channel', lazy='dynamic')
-User.reminders = relationship(Reminder, backref='user', lazy='dynamic')
 
 
 class Todo(Base):
