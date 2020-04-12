@@ -127,28 +127,6 @@ class User(Base):
     def from_discord(cls, finding_user):
         return session.query(cls).filter(cls.user == finding_user.id).first()
 
-    @classmethod
-    async def get_or_create(cls, finding_user) -> ('User', bool):
-        u = session.query(User).filter(User.user == finding_user.id).first()
-        channel_id = (await finding_user.create_dm()).id
-        new = False
-
-        c = session.query(Channel).filter(Channel.channel == channel_id).first()
-
-        if c is None:
-            c = Channel(channel=channel_id)
-            session.add(c)
-            session.flush()
-
-        if u is None:
-            u = User(user=finding_user.id, dm_channel=c.id, name='{}#{}'.format(
-                finding_user.name, finding_user.discriminator))
-            session.add(u)
-            new = True
-
-        session.flush()
-        return u, new
-
     async def update_details(self, new_details):
         self.name = '{}#{}'.format(new_details.name, new_details.discriminator)
 

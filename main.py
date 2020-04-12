@@ -200,10 +200,24 @@ class BotClient(discord.AutoShardedClient):
                 channel.name = message.channel.name
 
         guild = None if message.guild is None else session.query(Guild).filter(Guild.guild == message.guild.id).first()
-        user, just_created = await User.get_or_create(message.author)
 
-        if not just_created:
-            await user.update_details(message.author)
+        user = session.query(User).filter(User.user == message.author.id).first()
+
+        if user is None:
+            dm_channel_id = (await message.author.create_dm()).id
+
+            c = session.query(Channel).filter(Channel.channel == dm_channel_id).first()
+
+            if c is None:
+                c = Channel(channel=dm_channel_id)
+                session.add(c)
+                session.flush()
+
+                user = User(user=message.author.id, dm_channel=c.id, name='{}#{}'.format(
+                    message.author.name, message.author.discriminator))
+                session.add(user)
+
+        user.name = '{}#{}'.format(message.author.name, message.author.discriminator)
 
         if guild is not None:
             guild.name = message.guild.name
@@ -587,8 +601,8 @@ class BotClient(discord.AutoShardedClient):
 
         # command fired in a DM; only possible target is the DM itself
         else:
-            user, _ = await User.get_or_create(message.author)
-            discord_channel = DMChannelId(user.dm_channel, user.user)
+            user = User.from_discord(message.author)
+            discord_channel = DMChannelId(user.dm_channel, message.author.id)
 
         if interval is not None:
             if MIN_INTERVAL > interval:
