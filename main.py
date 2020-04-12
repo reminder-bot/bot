@@ -209,8 +209,8 @@ class BotClient(discord.AutoShardedClient):
             guild.name = message.guild.name
 
             if len(guild.channels) < 1:
-                for channel in message.guild.text_channels:
-                    db_channel = Channel(channel=channel.id, name=channel.name, guild=guild)
+                for text_channel in message.guild.text_channels:
+                    db_channel = Channel(channel=text_channel.id, name=text_channel.name, guild=guild)
                     session.add(db_channel)
 
             # temporary to fill out guild IDs for channels
