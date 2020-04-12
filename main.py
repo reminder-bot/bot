@@ -578,6 +578,8 @@ class BotClient(discord.AutoShardedClient):
 
                 channel, _ = await Channel.get_or_create(discord_channel)
 
+                await channel.attach_webhook(discord_channel)
+
                 time += channel.nudge
 
             else:

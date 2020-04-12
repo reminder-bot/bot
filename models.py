@@ -71,13 +71,9 @@ class Channel(Base):
 
             gid = None if g is None else g.id
 
-            hook = await finding_channel.create_webhook(name='Reminders')
-
             c = Channel(
                 channel=finding_channel.id,
                 name=finding_channel.name,
-                webhook_id=hook.id,
-                webhook_token=hook.token,
                 guild_id=gid
             )
 
@@ -91,6 +87,13 @@ class Channel(Base):
 
         session.flush()
         return c, new
+
+    async def attach_webhook(self, channel):
+        if (self.webhook_token or self.webhook_id) is None:
+            hook = await channel.create_webhook(name='Reminders')
+
+            self.webhook_token = hook.token
+            self.webhook_id = hook.id
 
 
 class Role(Base):
