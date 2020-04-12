@@ -129,7 +129,7 @@ class User(Base):
 
     @classmethod
     async def get_or_create(cls, finding_user) -> ('User', bool):
-        u = session.query(cls).filter(cls.user == finding_user.id).first()
+        u = session.query(User).filter(User.user == finding_user.id).first()
         channel_id = (await finding_user.create_dm()).id
         new = False
 
