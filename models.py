@@ -80,11 +80,6 @@ class Channel(Base):
             session.add(c)
             new = True
 
-        elif (c.webhook_id or c.webhook_token) is None:
-            hook = await finding_channel.create_webhook(name='Reminders')
-            c.webhook_id = hook.id
-            c.webhook_token = hook.token
-
         session.flush()
         return c, new
 
