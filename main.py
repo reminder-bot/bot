@@ -217,8 +217,8 @@ class BotClient(discord.AutoShardedClient):
             if channel is not None and channel.guild_id is None:
                 channel.guild_id = guild.id
 
-            if user not in guild.users:
-                guild.users.append(user)
+            '''if user not in guild.users:
+                guild.users.append(user)'''
 
         session.commit()
 
