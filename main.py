@@ -208,11 +208,6 @@ class BotClient(discord.AutoShardedClient):
         if guild is not None:
             guild.name = message.guild.name
 
-            if len(guild.channels) < 1:
-                for text_channel in message.guild.text_channels:
-                    db_channel = Channel(channel=text_channel.id, name=text_channel.name, guild=guild)
-                    session.add(db_channel)
-
             # temporary to fill out guild IDs for channels
             if channel is not None and channel.guild_id is None:
                 channel.guild_id = guild.id
