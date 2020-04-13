@@ -217,6 +217,8 @@ class BotClient(discord.AutoShardedClient):
                     message.author.name, message.author.discriminator))
                 session.add(user)
 
+        user = session.query(User).filter(User.user == message.author.id).first()
+
         user.name = '{}#{}'.format(message.author.name, message.author.discriminator)
 
         if guild is not None:
@@ -225,9 +227,6 @@ class BotClient(discord.AutoShardedClient):
             # temporary to fill out guild IDs for channels
             if channel is not None and channel.guild_id is None:
                 channel.guild_id = guild.id
-
-            '''if user not in guild.users:
-                guild.users.append(user)'''
 
         session.commit()
 
