@@ -1,17 +1,16 @@
-from configparser import ConfigParser
+from tinyconf.deserializers import IniDeserializer
+from tinyconf.fields import IntegerField, Field, BooleanField
+from tinyconf.section import Section
 
 
-class Config:
-    def __init__(self):
-        config = ConfigParser()
-        config.read('config.ini')
+class Config(IniDeserializer):
+    patreon_role = IntegerField()
+    patreon_server = IntegerField()
+    patreon_enabled = BooleanField()
 
-        self.donor_role: int = int(config.get('DEFAULT', 'patreon_role'))
+    dbl_token = Field()
+    token = Field(strict=True)
 
-        self.dbl_token: str = config.get('DEFAULT', 'dbl_token')
-        self.token: str = config.get('DEFAULT', 'token')
+    local_timezone = Field(default='UTC')
 
-        self.patreon: bool = config.get('DEFAULT', 'patreon_enabled') == 'yes'
-        self.patreon_server: int = int(config.get('DEFAULT', 'patreon_server'))
-
-        self.localzone: str = config.get('DEFAULT', 'local_timezone')
+    DEFAULT = Section(patreon_role, patreon_server, patreon_enabled, dbl_token, token, local_timezone)

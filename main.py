@@ -59,7 +59,7 @@ class BotClient(discord.AutoShardedClient):
         # used in restrict command for filtration
         self.max_command_length = max(len(x) for x in self.commands.keys())
 
-        self.config: Config = Config()
+        self.config: Config = Config(filename='config.ini')
 
         self.executor: concurrent.futures.ThreadPoolExecutor = concurrent.futures.ThreadPoolExecutor()
         self.c_session: typing.Optional[aiohttp.ClientSession] = None
@@ -87,7 +87,7 @@ class BotClient(discord.AutoShardedClient):
         return u
 
     async def is_patron(self, member_id) -> bool:
-        if self.config.patreon:
+        if self.config.patreon_enabled:
 
             url = 'https://discordapp.com/api/v6/guilds/{}/members/{}'.format(self.config.patreon_server, member_id)
 
@@ -105,7 +105,7 @@ class BotClient(discord.AutoShardedClient):
                 else:
                     return False
 
-            return self.config.donor_role in roles
+            return self.config.patreon_role in roles
 
         else:
             return True
@@ -147,10 +147,10 @@ class BotClient(discord.AutoShardedClient):
 
         self.c_session: aiohttp.client.ClientSession = aiohttp.ClientSession()
 
-        if self.config.patreon:
+        if self.config.patreon_enabled:
             print('Patreon is enabled. Will look for servers {}'.format(self.config.patreon_server))
 
-        print('Local timezone set to *{}*'.format(self.config.localzone))
+        print('Local timezone set to *{}*'.format(self.config.local_timezone))
 
     async def on_guild_join(self, guild):
         await self.send()
@@ -434,7 +434,7 @@ class BotClient(discord.AutoShardedClient):
         message_crop = stripped.split(server.language.get_string('natural/send'), 1)[1]
         datetime_obj = await self.do_blocking(partial(dateparser.parse, time_crop, settings={
             'TIMEZONE': server.timezone,
-            'TO_TIMEZONE': self.config.localzone,
+            'TO_TIMEZONE': self.config.local_timezone,
             'RELATIVE_BASE': datetime.now(pytz.timezone(server.timezone)).replace(tzinfo=None),
             'PREFER_DATES_FROM': 'future'
         }))
