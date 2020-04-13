@@ -62,7 +62,7 @@ class Channel(Base):
         return '<#{}>'.format(self.channel)
 
     @classmethod
-    async def get_or_create(cls, finding_channel) -> ('Channel', bool):
+    def get_or_create(cls, finding_channel) -> ('Channel', bool):
         c = session.query(cls).filter(cls.channel == finding_channel.id).first()
         new = False
 

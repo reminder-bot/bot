@@ -157,6 +157,17 @@ class BotClient(discord.AutoShardedClient):
 
         await self.welcome(guild)
 
+    async def on_guild_channel_create(self, channel):
+        if isinstance(channel, discord.TextChannel):
+            channel, _ = Channel.get_or_create(channel)
+
+            session.commit()
+
+    async def on_guild_channel_delete(self, channel):
+        session.query(Channel).filter(Channel.channel == channel.id).delete(synchronize_session='fetch')
+
+        session.commit()
+
     async def send(self):
         if self.config.dbl_token:
             guild_count = len(self.guilds)
@@ -194,7 +205,7 @@ class BotClient(discord.AutoShardedClient):
                 except:
                     return
 
-            channel, just_created = await Channel.get_or_create(message.channel)
+            channel, just_created = Channel.get_or_create(message.channel)
 
             if not just_created:
                 channel.name = message.channel.name
@@ -584,7 +595,7 @@ class BotClient(discord.AutoShardedClient):
 
             if discord_channel is not None:  # if not a DM reminder
 
-                channel, _ = await Channel.get_or_create(discord_channel)
+                channel, _ = Channel.get_or_create(discord_channel)
 
                 await channel.attach_webhook(discord_channel)
 
@@ -701,7 +712,7 @@ class BotClient(discord.AutoShardedClient):
 
         target_channel = message.channel_mentions[0] if len(message.channel_mentions) > 0 else message.channel
 
-        channel, _ = await Channel.get_or_create(target_channel)
+        channel, _ = Channel.get_or_create(target_channel)
 
         channel.blacklisted = not channel.blacklisted
 
@@ -919,7 +930,7 @@ class BotClient(discord.AutoShardedClient):
         else:
             discord_channel = message.channel_mentions[0] if len(message.channel_mentions) > 0 else message.channel
 
-            channel, new = await Channel.get_or_create(discord_channel)
+            channel, new = Channel.get_or_create(discord_channel)
 
         if new:
             await message.channel.send(preferences.language.get_string('look/no_reminders'))
@@ -1005,7 +1016,7 @@ class BotClient(discord.AutoShardedClient):
                 description=preferences.language.get_string('nudge/invalid_time')))
 
         else:
-            channel, _ = await Channel.get_or_create(message.channel)
+            channel, _ = Channel.get_or_create(message.channel)
 
             channel.nudge = t
 
