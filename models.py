@@ -166,7 +166,7 @@ class Reminder(Base):
 
     channel_id = Column(INT(unsigned=True), ForeignKey(Channel.id), nullable=True)
 
-    time = Column(BIGINT(unsigned=True))
+    time = Column(INT(unsigned=True))
     enabled = Column(Boolean, nullable=False, default=True)
 
     avatar = Column(String(512),
