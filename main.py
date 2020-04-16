@@ -53,6 +53,8 @@ class BotClient(discord.AutoShardedClient):
 
             'todos': Command(self.todo, False, PermissionLevels.MANAGED),
             'todo': Command(self.todo),
+
+            'ping': Command(self.time_stats)
         }
 
         # used in restrict command for filtration
@@ -300,6 +302,20 @@ class BotClient(discord.AutoShardedClient):
 
         else:
             return False
+
+    async def time_stats(self, message, *_):
+        uptime: float = unix_time() - self.start_time
+
+        message_ts: float = message.created_at.timestamp()
+
+        m: discord.Message = await message.channel.send('.')
+
+        ping: float = m.created_at.timestamp() - message_ts
+
+        await m.edit(content='''
+        Uptime: {}s
+        Ping: {}ms
+        '''.format(round(uptime), round(ping * 1000)))
 
     @staticmethod
     async def help(message, _stripped, preferences):
