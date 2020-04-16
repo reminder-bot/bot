@@ -161,6 +161,8 @@ class Reminder(Base):
     id = Column(INT(unsigned=True), primary_key=True)
     uid = Column(String(64), default=lambda: Reminder.create_uid(), unique=True)
 
+    name = Column(String(24), default='Reminder')
+
     message_id = Column(INT(unsigned=True), ForeignKey(Message.id), nullable=False)
     message = relationship(Message)
 

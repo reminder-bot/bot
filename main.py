@@ -48,12 +48,11 @@ class BotClient(discord.AutoShardedClient):
             # TODO: remodel timer table with FKs for guild table
             'timer': Command(self.timer, False, PermissionLevels.MANAGED),
             'del': Command(self.delete, True, PermissionLevels.MANAGED),
+            # TODO: allow looking at reminder attributes in full by name
             'look': Command(self.look, True, PermissionLevels.MANAGED),
 
             'todos': Command(self.todo, False, PermissionLevels.MANAGED),
             'todo': Command(self.todo),
-
-            'ping': Command(self.time_stats),
         }
 
         # used in restrict command for filtration
@@ -121,20 +120,6 @@ class BotClient(discord.AutoShardedClient):
             else:
                 continue
 
-    async def time_stats(self, message, *_):
-        uptime: float = unix_time() - self.start_time
-
-        message_ts: float = message.created_at.timestamp()
-
-        m: discord.Message = await message.channel.send('.')
-
-        ping: float = m.created_at.timestamp() - message_ts
-
-        await m.edit(content='''
-        Uptime: {}s
-        Ping: {}ms
-        '''.format(round(uptime), round(ping * 1000)))
-
     async def on_error(self, *a, **k):
         session.rollback()
         raise
@@ -157,17 +142,6 @@ class BotClient(discord.AutoShardedClient):
 
         await self.welcome(guild)
 
-    async def on_guild_channel_create(self, channel):
-        if isinstance(channel, discord.TextChannel):
-            channel, _ = Channel.get_or_create(channel)
-
-            session.commit()
-
-    async def on_guild_channel_delete(self, channel):
-        session.query(Channel).filter(Channel.channel == channel.id).delete(synchronize_session='fetch')
-
-        session.commit()
-
     async def send(self):
         if self.config.dbl_token:
             guild_count = len(self.guilds)
@@ -188,8 +162,6 @@ class BotClient(discord.AutoShardedClient):
     # noinspection PyBroadException
     async def on_message(self, message):
 
-        channel = None
-
         if message.author.bot or message.content is None:
             return
 
@@ -204,11 +176,6 @@ class BotClient(discord.AutoShardedClient):
                     session.commit()
                 except:
                     return
-
-            channel, just_created = Channel.get_or_create(message.channel)
-
-            if not just_created:
-                channel.name = message.channel.name
 
         guild = None if message.guild is None else session.query(Guild).filter(Guild.guild == message.guild.id).first()
 
@@ -235,15 +202,11 @@ class BotClient(discord.AutoShardedClient):
         if guild is not None:
             guild.name = message.guild.name
 
-            # temporary to fill out guild IDs for channels
-            if channel is not None and channel.guild_id is None:
-                channel.guild_id = guild.id
-
         session.commit()
 
         if message.guild is None or message.channel.permissions_for(message.guild.me).send_messages:
             try:
-                if await self.get_cmd(message, guild, channel, user):
+                if await self.get_cmd(message, guild, user):
                     print('Command: {}'.format(message.content))
 
             except discord.errors.Forbidden:
@@ -252,7 +215,6 @@ class BotClient(discord.AutoShardedClient):
     async def get_cmd(self,
                       message: discord.Message,
                       guild: Guild,
-                      channel: typing.Optional[Channel],
                       user: User) -> bool:
 
         info: Preferences = Preferences(guild, user)
@@ -284,6 +246,11 @@ class BotClient(discord.AutoShardedClient):
         if command in self.commands.keys():
             if guild is not None and not message.content.startswith(
                     ('{}help'.format(prefix), '{}blacklist'.format(prefix))):
+
+                channel, just_created = Channel.get_or_create(message.channel)
+
+                if not just_created:
+                    channel.name = message.channel.name
 
                 if channel.blacklisted:
                     await message.channel.send(embed=discord.Embed(description=info.language.get_string('blacklisted')))

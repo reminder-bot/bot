@@ -83,9 +83,10 @@ CREATE TABLE reminders.messages (
 CREATE TABLE reminders.reminders (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
     uid VARCHAR(64) UNIQUE NOT NULL,
-    
-    message_id INT UNSIGNED NOT NULL,
 
+    name VARCHAR(24) NOT NULL DEFAULT 'Reminder',
+
+    message_id INT UNSIGNED NOT NULL,
     channel_id INT UNSIGNED NOT NULL,
 
     `time` INT UNSIGNED DEFAULT 0 NOT NULL,
@@ -100,7 +101,7 @@ CREATE TABLE reminders.reminders (
 
     PRIMARY KEY (id),
     FOREIGN KEY (message_id) REFERENCES reminders.messages(id) ON DELETE RESTRICT,
-    FOREIGN KEY (channel_id) REFERENCES reminders.channels(id) ON DELETE CASCADE
+    FOREIGN KEY (channel_id) REFERENCES reminders.channels(id) ON DELETE CASCADE,
 );
 
 CREATE TRIGGER message_cleanup AFTER DELETE ON reminders.reminders
