@@ -863,13 +863,13 @@ class BotClient(discord.AutoShardedClient):
                 reminder.channel)
 
             if len(s) + len(string) > 2000:
-                await message.channel.send(s)#, allowed_mentions=NoMention)
+                await message.channel.send(s, allowed_mentions=NoMention)
                 s = string
             else:
                 s += string
 
         if s:
-            await message.channel.send(s)#, allowed_mentions=NoMention)
+            await message.channel.send(s, allowed_mentions=NoMention)
 
         await message.channel.send(preferences.language.get_string('del/listed'))
 

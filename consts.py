@@ -1,5 +1,5 @@
 from enums import CreateReminderResponse
-#from discord import AllowedMentions
+from discord import AllowedMentions
 
 ALL_CHARACTERS: str = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
 
@@ -22,4 +22,4 @@ NATURAL_STRINGS: dict = {
     CreateReminderResponse.LONG_TIME: 'natural/long_time',
 }
 
-#NoMention: AllowedMentions = AllowedMentions(everyone=False, roles=False, users=False)
+NoMention: AllowedMentions = AllowedMentions(everyone=False, roles=False, users=False)
