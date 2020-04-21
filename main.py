@@ -261,6 +261,7 @@ class BotClient(discord.AutoShardedClient):
 
                 if not just_created:
                     channel.name = message.channel.name
+                    channel.guild_id = info.guild.id
 
                 if channel.blacklisted:
                     await message.channel.send(embed=discord.Embed(description=info.language.get_string('blacklisted')))
@@ -953,12 +954,12 @@ class BotClient(discord.AutoShardedClient):
                         '' if reminder.enabled else '`disabled`')
 
                     if len(s) + len(string) > 2000:
-                        await message.channel.send(s)#, allowed_mentions=NoMention)
+                        await message.channel.send(s, allowed_mentions=NoMention)
                         s = string
                     else:
                         s += string
 
-                await message.channel.send(s)#, allowed_mentions=NoMention)
+                await message.channel.send(s, allowed_mentions=NoMention)
 
             else:
                 await message.channel.send(preferences.language.get_string('look/no_reminders'))
@@ -1020,6 +1021,7 @@ class BotClient(discord.AutoShardedClient):
             else:
                 await message.channel.send(
                     embed=discord.Embed(description=preferences.language.get_string('nudge/invalid_time')))
+
 
 client = BotClient(max_messages=100, guild_subscriptions=False, fetch_offline_members=False)
 client.run(client.config.token)
