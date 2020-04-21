@@ -80,7 +80,11 @@ class BotClient(discord.AutoShardedClient):
             m = context_guild.get_member(member_id) or self.get_user(member_id)
 
             if m is not None:
-                u = User(user=m.id, name='{}'.format(m), dm_channel=(await m.create_dm()).id)
+                c = Channel(channel=(await m.create_dm()).id)
+                session.add(c)
+                session.flush()
+
+                u = User(user=m.id, name='{}'.format(m), dm_channel=c.id)
 
                 session.add(u)
                 session.commit()
@@ -1003,15 +1007,19 @@ class BotClient(discord.AutoShardedClient):
                 description=preferences.language.get_string('nudge/invalid_time')))
 
         else:
-            channel, _ = Channel.get_or_create(message.channel)
+            if 2**15 > t > -2**15:
+                channel, _ = Channel.get_or_create(message.channel)
 
-            channel.nudge = t
+                channel.nudge = t
 
-            session.commit()
+                session.commit()
 
-            await message.channel.send(
-                embed=discord.Embed(description=preferences.language.get_string('nudge/success').format(t)))
+                await message.channel.send(
+                    embed=discord.Embed(description=preferences.language.get_string('nudge/success').format(t)))
 
+            else:
+                await message.channel.send(
+                    embed=discord.Embed(description=preferences.language.get_string('nudge/invalid_time')))
 
 client = BotClient(max_messages=100, guild_subscriptions=False, fetch_offline_members=False)
 client.run(client.config.token)
