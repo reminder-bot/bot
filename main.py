@@ -212,6 +212,9 @@ class BotClient(discord.AutoShardedClient):
         if guild is not None:
             guild.name = message.guild.name
 
+            if guild not in user.guilds:
+                guild.users.append(user)
+
         session.commit()
 
         if message.guild is None or message.channel.permissions_for(message.guild.me).send_messages:
