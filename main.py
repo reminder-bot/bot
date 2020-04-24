@@ -217,7 +217,7 @@ class BotClient(discord.AutoShardedClient):
 
         elif message.guild is None:
             # command has been DMed. dont check for prefix :)
-            split = message.split(' ')
+            split = message.content.split(' ')
 
             command_word = split[0]
             args = split[1:]
