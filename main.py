@@ -200,7 +200,7 @@ class BotClient(discord.AutoShardedClient):
 
                     _user = User(user=_message.author.id, dm_channel=c.id, name='{}#{}'.format(
                         _message.author.name, _message.author.discriminator))
-                    session.add(user)
+                    session.add(_user)
                     session.flush()
 
             return _user
