@@ -226,7 +226,9 @@ class BotClient(discord.AutoShardedClient):
                 command = self.commands[command_word]
 
                 if command.allowed_dm:
+                    # get user
                     user = await _get_user(message)
+
                     await command.func(message, args, Preferences(None, user))
                     session.commit()
 
@@ -246,9 +248,13 @@ class BotClient(discord.AutoShardedClient):
                     session.add(guild)
                     session.flush()
 
+                # if none, suggests mention has been provided instead since pattern still matched
                 if (prefix := match.group('prefix')) in (guild.prefix, None):
                     # prefix matched, might as well get the user now since this is a very small subset of messages
                     user = await _get_user(message)
+
+                    if guild not in user.guilds:
+                        guild.users.append(user)
 
                     # create the nice info manager
                     info = Preferences(guild, user)
