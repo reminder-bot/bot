@@ -254,7 +254,7 @@ class BotClient(discord.AutoShardedClient):
                     info = Preferences(guild, user)
 
                     command_word = match.group('cmd')
-                    stripped = match.group('args')
+                    stripped = match.group('args') or ''
                     command = self.commands[command_word]
 
                     # some commands dont get blacklisted e.g help, blacklist
