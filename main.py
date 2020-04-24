@@ -57,6 +57,8 @@ class BotClient(discord.AutoShardedClient):
             'ping': Command('ping', self.time_stats)
         }
 
+        self.match_string = None
+
         self.command_names = set(self.commands.keys())
         self.joined_names = '|'.join(self.command_names)
 
@@ -139,6 +141,10 @@ class BotClient(discord.AutoShardedClient):
         print(self.user.name)
         print(self.user.id)
 
+        self.match_string = \
+            r'(?:(?:<@ID>\s+)|(?:<@!ID>\s+)|(?P<prefix>\S{1,5}))(?P<cmd>COMMANDS)(?:$| (?P<args>.*))' \
+            .replace('ID', str(self.user.id)).replace('COMMANDS', self.joined_names)
+
         self.c_session: aiohttp.client.ClientSession = aiohttp.ClientSession()
 
         if self.config.patreon_enabled:
@@ -180,7 +186,7 @@ class BotClient(discord.AutoShardedClient):
 
             return p.send_messages and p.embed_links
 
-        def _get_user(_message):
+        async def _get_user(_message):
             _user = session.query(User).filter(User.user == message.author.id).first()
             if _user is None:
                 dm_channel_id = (await message.author.create_dm()).id
@@ -199,12 +205,12 @@ class BotClient(discord.AutoShardedClient):
 
             return _user
 
-
         if message.author.bot or \
                 message.content is None or \
                 len(message.content.split(' ')[0]) < 2 or \
                 message.tts or \
-                len(message.attachments) > 0:
+                len(message.attachments) > 0 or \
+                self.match_string is None:
 
             # either a bot or cannot be a command
             return
@@ -220,15 +226,14 @@ class BotClient(discord.AutoShardedClient):
                 command = self.commands[command_word]
 
                 if command.allowed_dm:
-                    user = _get_user(message)
+                    user = await _get_user(message)
                     await command.func(message, args, Preferences(None, user))
                     session.commit()
 
         elif _check_self_permissions(message.channel):
             # command sent in guild. check for prefix & call
             match = re.match(
-                r'(?:(?P<mention><@ID> )|(?P<mention><@!ID> )|(?P<prefix>\S{1,5}))(?P<cmd>COMMANDS) (?P<args>.*)'
-                    .replace('ID', self.user.id).replace('COMMANDS', self.joined_names),
+                self.match_string,
                 message.content
             )
 
@@ -243,7 +248,7 @@ class BotClient(discord.AutoShardedClient):
 
                 if (prefix := match.group('prefix')) in (guild.prefix, None):
                     # prefix matched, might as well get the user now since this is a very small subset of messages
-                    user = _get_user(message)
+                    user = await _get_user(message)
 
                     # create the nice info manager
                     info = Preferences(guild, user)
@@ -276,7 +281,7 @@ class BotClient(discord.AutoShardedClient):
                     else:
                         await message.channel.send(
                             info.language.get_string(
-                                PermissionLevels.Strings[command.permission_level]).format(prefix=prefix))
+                                str(command.permission_level)).format(prefix=prefix))
 
         else:
             return

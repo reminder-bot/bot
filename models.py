@@ -37,6 +37,9 @@ class Guild(Base):
         backref=backref('guilds', lazy='dynamic'), lazy='dynamic'
     )
 
+    # populated later in file
+    command_restrictions = None
+
 
 class Channel(Base):
     __tablename__ = 'channels'

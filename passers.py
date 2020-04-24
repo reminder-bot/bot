@@ -15,16 +15,20 @@ class Command:
         self.permission_level = permission_level
         self.blacklists = blacklists
 
-    def check_permissions(self, member, guild_data):
+    def check_permissions(self, member: discord.Member, guild_data: Guild):
         if self.permission_level == PermissionLevels.UNRESTRICTED:
             return True
 
         elif self.permission_level == PermissionLevels.MANAGED:
-            restrict = guild_data.command_restrictions \
-                .filter(CommandRestriction.command == self.name) \
-                .filter(CommandRestriction.role.in_([x.id for x in member.roles]))
+            if member.guild_permissions.manage_messages:
+                return True
 
-            return restrict.count() == 0 and not member.guild_permissions.manage_messages
+            else:
+                restrict = guild_data.command_restrictions \
+                    .filter(CommandRestriction.command == self.name) \
+                    .filter(CommandRestriction.role.in_([x.id for x in member.roles]))
+
+                return restrict.count() != 0
 
         elif self.permission_level == PermissionLevels.RESTRICTED:
             return member.guild_permissions.manage_guild

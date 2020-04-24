@@ -17,7 +17,10 @@ class PermissionLevels(IntEnum):
     MANAGED = 1
     RESTRICTED = 2
 
-    Strings = ('', 'no_perms_managed', 'no_perms_restricted')
+    def __str__(self):
+        strings = ('', 'no_perms_managed', 'no_perms_restricted')
+
+        return strings[self.value]
 
 
 class TimeExtractionTypes(Enum):
