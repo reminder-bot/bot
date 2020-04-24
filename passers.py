@@ -1,6 +1,5 @@
 import discord
 
-from typing import Coroutine
 from enums import PermissionLevels, CreateReminderResponse
 from models import Guild, User, Language, session, ENGLISH_STRINGS, CommandRestriction
 import typing
