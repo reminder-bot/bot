@@ -80,6 +80,9 @@ class Channel(Base):
             session.add(c)
             new = True
 
+        else:
+            c.name = finding_channel.name
+
         session.flush()
         return c, new
 

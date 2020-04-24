@@ -24,41 +24,44 @@ class BotClient(discord.AutoShardedClient):
 
         self.commands: typing.Dict[str, Command] = {
 
-            'help': Command(self.help),
-            'info': Command(self.info),
-            'donate': Command(self.donate),
+            'help': Command('help', self.help, blacklists=False),
+            'info': Command('info', self.info),
+            'donate': Command('donate', self.donate),
 
-            'prefix': Command(self.change_prefix, False, PermissionLevels.RESTRICTED),
-            'blacklist': Command(self.blacklist, False, PermissionLevels.RESTRICTED),
+            'prefix': Command('prefix', self.change_prefix, False, PermissionLevels.RESTRICTED),
+            'blacklist': Command('blacklist', self.blacklist, False, PermissionLevels.RESTRICTED, blacklists=False),
             # TODO: remodel restriction table with FKs for role table
-            'restrict': Command(self.restrict, False, PermissionLevels.RESTRICTED),
+            'restrict': Command('restrict', self.restrict, False, PermissionLevels.RESTRICTED),
 
-            'timezone': Command(self.set_timezone),
-            'lang': Command(self.set_language),
-            'clock': Command(self.clock),
+            'timezone': Command('timezone', self.set_timezone),
+            'lang': Command('lang', self.set_language),
+            'clock': Command('clock', self.clock),
 
-            'offset': Command(self.offset_reminders, True, PermissionLevels.RESTRICTED),
-            'nudge': Command(self.nudge_channel, True, PermissionLevels.RESTRICTED),
+            'offset': Command('offset', self.offset_reminders, True, PermissionLevels.RESTRICTED),
+            'nudge': Command('nudge', self.nudge_channel, True, PermissionLevels.RESTRICTED),
 
-            'natural': Command(self.natural, True, PermissionLevels.MANAGED),
-            'n': Command(self.natural, True, PermissionLevels.MANAGED),
-            'remind': Command(self.remind, True, PermissionLevels.MANAGED),
-            'r': Command(self.remind, True, PermissionLevels.MANAGED),
-            'interval': Command(self.remind, True, PermissionLevels.MANAGED),
+            'natural': Command('natural', self.natural, True, PermissionLevels.MANAGED),
+            'n': Command('natural', self.natural, True, PermissionLevels.MANAGED),
+            'remind': Command('remind', self.remind, True, PermissionLevels.MANAGED),
+            'r': Command('remind', self.remind, True, PermissionLevels.MANAGED),
+            'interval': Command('interval', self.remind, True, PermissionLevels.MANAGED),
             # TODO: remodel timer table with FKs for guild table
-            'timer': Command(self.timer, False, PermissionLevels.MANAGED),
-            'del': Command(self.delete, True, PermissionLevels.MANAGED),
+            'timer': Command('timer', self.timer, False, PermissionLevels.MANAGED),
+            'del': Command('del', self.delete, True, PermissionLevels.MANAGED),
             # TODO: allow looking at reminder attributes in full by name
-            'look': Command(self.look, True, PermissionLevels.MANAGED),
+            'look': Command('look', self.look, True, PermissionLevels.MANAGED),
 
-            'todos': Command(self.todo, False, PermissionLevels.MANAGED),
-            'todo': Command(self.todo),
+            'todos': Command('todos', self.todo, False, PermissionLevels.MANAGED),
+            'todo': Command('todo', self.todo),
 
-            'ping': Command(self.time_stats)
+            'ping': Command('ping', self.time_stats)
         }
 
+        self.command_names = set(self.commands.keys())
+        self.joined_names = '|'.join(self.command_names)
+
         # used in restrict command for filtration
-        self.max_command_length = max(len(x) for x in self.commands.keys())
+        self.max_command_length = max(len(x) for x in self.command_names)
 
         self.config: Config = Config(filename='config.ini')
 
@@ -172,148 +175,111 @@ class BotClient(discord.AutoShardedClient):
     # noinspection PyBroadException
     async def on_message(self, message):
 
-        if message.author.bot or message.content is None:
+        def _check_self_permissions(_channel):
+            p = _channel.permissions_for(message.guild.me)
+
+            return p.send_messages and p.embed_links
+
+        def _get_user(_message):
+            _user = session.query(User).filter(User.user == message.author.id).first()
+            if _user is None:
+                dm_channel_id = (await message.author.create_dm()).id
+
+                c = session.query(Channel).filter(Channel.channel == dm_channel_id).first()
+
+                if c is None:
+                    c = Channel(channel=dm_channel_id)
+                    session.add(c)
+                    session.flush()
+
+                    _user = User(user=_message.author.id, dm_channel=c.id, name='{}#{}'.format(
+                        _message.author.name, _message.author.discriminator))
+                    session.add(user)
+                    session.flush()
+
+            return _user
+
+
+        if message.author.bot or \
+                message.content is None or \
+                len(message.content.split(' ')[0]) < 2 or \
+                message.tts or \
+                len(message.attachments) > 0:
+
+            # either a bot or cannot be a command
             return
 
-        if message.guild is not None:
-            if session.query(Guild).filter(Guild.guild == message.guild.id).first() is None:
+        elif message.guild is None:
+            # command has been DMed. dont check for prefix :)
+            split = message.split(' ')
 
-                guild = Guild(guild=message.guild.id)
+            command_word = split[0]
+            args = split[1:]
 
-                session.add(guild)
+            if command_word in self.command_names:
+                command = self.commands[command_word]
 
-                try:
+                if command.allowed_dm:
+                    user = _get_user(message)
+                    await command.func(message, args, Preferences(None, user))
                     session.commit()
-                except:
-                    return
 
-        guild = None if message.guild is None else session.query(Guild).filter(Guild.guild == message.guild.id).first()
+        elif _check_self_permissions(message.channel):
+            # command sent in guild. check for prefix & call
+            match = re.match(
+                r'(?:(?P<mention><@ID> )|(?P<mention><@!ID> )|(?P<prefix>\S{1,5}))(?P<cmd>COMMANDS) (?P<args>.*)'
+                    .replace('ID', self.user.id).replace('COMMANDS', self.joined_names),
+                message.content
+            )
 
-        user = session.query(User).filter(User.user == message.author.id).first()
+            if match is not None:
+                # matched command structure; now query for guild to compare prefix
+                guild = session.query(Guild).filter(Guild.guild == message.guild.id).first()
+                if guild is None:
+                    guild = Guild(guild=message.guild.id)
 
-        if user is None:
-            dm_channel_id = (await message.author.create_dm()).id
+                    session.add(guild)
+                    session.flush()
 
-            c = session.query(Channel).filter(Channel.channel == dm_channel_id).first()
+                if (prefix := match.group('prefix')) in (guild.prefix, None):
+                    # prefix matched, might as well get the user now since this is a very small subset of messages
+                    user = _get_user(message)
 
-            if c is None:
-                c = Channel(channel=dm_channel_id)
-                session.add(c)
-                session.flush()
+                    # create the nice info manager
+                    info = Preferences(guild, user)
 
-                user = User(user=message.author.id, dm_channel=c.id, name='{}#{}'.format(
-                    message.author.name, message.author.discriminator))
-                session.add(user)
+                    command_word = match.group('cmd')
+                    stripped = match.group('args')
+                    command = self.commands[command_word]
 
-        user = session.query(User).filter(User.user == message.author.id).first()
+                    # some commands dont get blacklisted e.g help, blacklist
+                    if command.blacklists:
+                        channel, just_created = Channel.get_or_create(message.channel)
 
-        user.name = '{}#{}'.format(message.author.name, message.author.discriminator)
+                        if channel.guild_id is None:
+                            channel.guild_id = guild.id
 
-        if guild is not None:
-            guild.name = message.guild.name
+                        if channel.blacklisted:
+                            await message.channel.send(
+                                embed=discord.Embed(description=info.language.get_string('blacklisted')))
+                            return
 
-            if guild not in user.guilds:
-                guild.users.append(user)
+                    # blacklist checked; now do command permissions
+                    if command.check_permissions(message.author, guild):
+                        if message.guild.me.guild_permissions.manage_webhooks:
+                            await command.func(message, stripped, info)
+                            session.commit()
 
-        session.commit()
+                        else:
+                            await message.channel.send(info.language.get_string('no_perms_webhook'))
 
-        if message.guild is None or message.channel.permissions_for(message.guild.me).send_messages:
-            try:
-                if await self.get_cmd(message, guild, user):
-                    print('Command: {}'.format(message.content))
-
-            except discord.errors.Forbidden:
-                await message.channel.send('Insufficient permissions for command')
-
-    async def get_cmd(self,
-                      message: discord.Message,
-                      guild: Guild,
-                      user: User) -> bool:
-
-        info: Preferences = Preferences(guild, user)
-        prefix: str = info.prefix
-
-        # noinspection PyUnusedLocal
-        command: str = ''
-        # noinspection PyUnusedLocal
-        stripped: str = ''
-
-        if message.content[0:len(prefix)] == prefix:
-
-            command = (message.content + ' ')[len(prefix):message.content.find(' ')]
-            stripped = (message.content + ' ')[message.content.find(' '):].strip()
-
-        elif self.user.id in map(lambda x: x.id, message.mentions) and len(message.content.split(' ')) > 1:
-
-            command = message.content.split(' ')[1]
-            stripped = (message.content + ' ').split(' ', 2)[-1].strip()
-
-        elif isinstance(message.channel, discord.DMChannel):
-
-            command = message.content.split(' ')[0]
-            stripped = message.content[len(command) + 1:]
-
-        else:
-            return False
-
-        if command in self.commands.keys():
-            if guild is not None and not message.content.startswith(
-                    ('{}help'.format(prefix), '{}blacklist'.format(prefix))):
-
-                channel, just_created = Channel.get_or_create(message.channel)
-
-                if not just_created:
-                    channel.name = message.channel.name
-                    channel.guild_id = info.guild.id
-
-                if channel.blacklisted:
-                    await message.channel.send(embed=discord.Embed(description=info.language.get_string('blacklisted')))
-                    return False
-
-            command_form: Command = self.commands[command]
-
-            if command_form.allowed_dm or guild is not None:
-
-                permission_check_status: bool = True
-
-                if guild is not None and command_form.permission_level == PermissionLevels.RESTRICTED:
-                    if not message.author.guild_permissions.manage_guild:
-                        permission_check_status = False
-
-                        await message.channel.send(info.language.get_string('no_perms_restricted'))
-
-                elif guild is not None and command_form.permission_level == PermissionLevels.MANAGED:
-                    # noinspection PyUnresolvedReferences
-                    restrict = guild.command_restrictions \
-                        .filter(CommandRestriction.command == command) \
-                        .filter(CommandRestriction.role.in_([x.id for x in message.author.roles]))
-
-                    if restrict.count() == 0 and not message.author.guild_permissions.manage_messages:
-                        permission_check_status = False
-
+                    else:
                         await message.channel.send(
-                            info.language.get_string('no_perms_managed').format(prefix=info.prefix))
-
-                if permission_check_status:
-                    if guild is not None and not message.guild.me.guild_permissions.manage_webhooks:
-                        await message.channel.send(info.language.get_string('no_perms_webhook'))
-                        return False
-
-                    elif guild is not None and not message.channel.permissions_for(message.guild.me).embed_links:
-                        await message.channel.send(info.language.get_string('no_perms_embed_links'))
-                        return False
-
-                    await command_form.func(message, stripped, info)
-                    return True
-
-                else:
-                    return False
-
-            else:
-                return False
+                            info.language.get_string(
+                                PermissionLevels.Strings[command.permission_level]).format(prefix=prefix))
 
         else:
-            return False
+            return
 
     async def time_stats(self, message, *_):
         uptime: float = unix_time() - self.start_time
@@ -415,7 +381,7 @@ class BotClient(discord.AutoShardedClient):
                 embed=discord.Embed(description=preferences.language.get_string('lang/invalid').format(
                     '\n'.join(
                         ['{} ({})'.format(lang.name.title(), lang.code.upper()) for lang in session.query(Language)])
-                    )
+                )
                 )
             )
 
@@ -735,7 +701,7 @@ class BotClient(discord.AutoShardedClient):
                         description=preferences.language.get_string('restrict/allowed').format(
                             '\n'.join(
                                 ['<@&{}> can use `{}`'.format(r.role, r.command)
-                                    for r in preferences.command_restrictions]
+                                 for r in preferences.command_restrictions]
                             )
                         )
                     )
@@ -1011,7 +977,7 @@ class BotClient(discord.AutoShardedClient):
                 description=preferences.language.get_string('nudge/invalid_time')))
 
         else:
-            if 2**15 > t > -2**15:
+            if 2 ** 15 > t > -2 ** 15:
                 channel, _ = Channel.get_or_create(message.channel)
 
                 channel.nudge = t

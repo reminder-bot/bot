@@ -2,21 +2,37 @@ import discord
 
 from typing import Coroutine
 from enums import PermissionLevels, CreateReminderResponse
-from models import Guild, User, Language, session, ENGLISH_STRINGS
+from models import Guild, User, Language, session, ENGLISH_STRINGS, CommandRestriction
 import typing
 
 
 # wrapper for command functions
 class Command:
-    def __init__(self, func_call: (discord.Message, str, 'Preferences'), dm_allowed: bool = True,
-                 permission_level: PermissionLevels = PermissionLevels.UNRESTRICTED):
+    def __init__(self, name: str, func_call: (discord.Message, str, 'Preferences'), dm_allowed: bool = True,
+                 permission_level: PermissionLevels = PermissionLevels.UNRESTRICTED, *, blacklists: bool = True):
+        self.name = name
         self.func = func_call
         self.allowed_dm = dm_allowed
         self.permission_level = permission_level
+        self.blacklists = blacklists
+
+    def check_permissions(self, member, guild_data):
+        if self.permission_level == PermissionLevels.UNRESTRICTED:
+            return True
+
+        elif self.permission_level == PermissionLevels.MANAGED:
+            restrict = guild_data.command_restrictions \
+                .filter(CommandRestriction.command == self.name) \
+                .filter(CommandRestriction.role.in_([x.id for x in member.roles]))
+
+            return restrict.count() == 0 and not member.guild_permissions.manage_messages
+
+        elif self.permission_level == PermissionLevels.RESTRICTED:
+            return member.guild_permissions.manage_guild
 
 
 class Preferences:
-    def __init__(self, guild: Guild, user: User):
+    def __init__(self, guild: typing.Optional[Guild], user: User):
         self.user: User = user
         self.guild: Guild = guild
 
