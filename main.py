@@ -42,9 +42,9 @@ class BotClient(discord.AutoShardedClient):
 
             'natural': Command('natural', self.natural, True, PermissionLevels.MANAGED),
             'n': Command('natural', self.natural, True, PermissionLevels.MANAGED),
-            'remind': Command('remind', self.remind, True, PermissionLevels.MANAGED),
-            'r': Command('remind', self.remind, True, PermissionLevels.MANAGED),
-            'interval': Command('interval', self.remind, True, PermissionLevels.MANAGED),
+            'remind': Command('remind', self.remind_cmd, True, PermissionLevels.MANAGED),
+            'r': Command('remind', self.remind_cmd, True, PermissionLevels.MANAGED),
+            'interval': Command('interval', self.interval_cmd, True, PermissionLevels.MANAGED),
             # TODO: remodel timer table with FKs for guild table
             'timer': Command('timer', self.timer, False, PermissionLevels.MANAGED),
             'del': Command('del', self.delete, True, PermissionLevels.MANAGED),
@@ -142,7 +142,7 @@ class BotClient(discord.AutoShardedClient):
         print(self.user.id)
 
         self.match_string = \
-            r'(?:(?:<@ID>\s+)|(?:<@!ID>\s+)|(?P<prefix>\S{1,5}))(?P<cmd>COMMANDS)(?:$| (?P<args>.*))' \
+            r'(?:(?:<@ID>\s+)|(?:<@!ID>\s+)|(?P<prefix>\S{1,5}))(?P<cmd>COMMANDS)(?:$|\s+(?P<args>.*))' \
             .replace('ID', str(self.user.id)).replace('COMMANDS', self.joined_names)
 
         self.c_session: aiohttp.client.ClientSession = aiohttp.ClientSession()
@@ -207,7 +207,7 @@ class BotClient(discord.AutoShardedClient):
 
         if message.author.bot or \
                 message.content is None or \
-                len(message.content.split(' ')[0]) < 2 or \
+                (message.guild is not None and len(message.content.split(' ')[0]) < 2) or \
                 message.tts or \
                 len(message.attachments) > 0 or \
                 self.match_string is None:
@@ -220,7 +220,7 @@ class BotClient(discord.AutoShardedClient):
             split = message.content.split(' ')
 
             command_word = split[0]
-            args = split[1:]
+            args = ' '.join(split[1:]).strip()
 
             if command_word in self.command_names:
                 command = self.commands[command_word]
@@ -480,10 +480,15 @@ class BotClient(discord.AutoShardedClient):
             await message.channel.send(
                 embed=discord.Embed(description=server.language.get_string('natural/bulk_set').format(successes)))
 
-    async def remind(self, message, stripped, server):
+    async def remind_cmd(self, message, stripped, server):
+        await self.remind(False, message, stripped, server)
+
+    async def interval_cmd(self, message, stripped, server):
+        await self.remind(True, message, stripped, server)
+
+    async def remind(self, is_interval, message, stripped, server):
 
         args = stripped.split(' ')
-        is_interval = message.content[1] == 'i'
 
         if len(args) < 2:
             if is_interval:
