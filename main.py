@@ -236,7 +236,8 @@ class BotClient(discord.AutoShardedClient):
             # command sent in guild. check for prefix & call
             match = re.match(
                 self.match_string,
-                message.content
+                message.content,
+                re.MULTILINE | re.DOTALL
             )
 
             if match is not None:
