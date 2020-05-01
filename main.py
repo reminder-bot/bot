@@ -142,7 +142,7 @@ class BotClient(discord.AutoShardedClient):
         print(self.user.id)
 
         self.match_string = \
-            r'(?:(?:<@ID>\s+)|(?:<@!ID>\s+)|(?P<prefix>\S{1,5}))(?P<cmd>COMMANDS)(?:$|\s+(?P<args>.*))' \
+            r'(?:(?:<@ID>\s+)|(?:<@!ID>\s+)|(?P<prefix>\S{1,5}?))(?P<cmd>COMMANDS)(?:$|\s+(?P<args>.*))' \
             .replace('ID', str(self.user.id)).replace('COMMANDS', self.joined_names)
 
         self.c_session: aiohttp.client.ClientSession = aiohttp.ClientSession()
@@ -626,7 +626,6 @@ class BotClient(discord.AutoShardedClient):
 
     @staticmethod
     async def timer(message, stripped, preferences):
-
         owner: int = message.guild.id
 
         if message.guild is None:
