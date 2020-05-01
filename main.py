@@ -17,6 +17,8 @@ from models import Reminder, Todo, Timer, Message, Channel
 from passers import *
 from time_extractor import TimeExtractor, InvalidTime
 
+THEME_COLOR = 0x8fb677
+
 
 class BotClient(discord.AutoShardedClient):
     def __init__(self, *args, **kwargs):
@@ -309,15 +311,23 @@ class BotClient(discord.AutoShardedClient):
 
     @staticmethod
     async def help(message, _stripped, preferences):
-        await message.channel.send(embed=discord.Embed(description=preferences.language.get_string('help')))
+        await message.channel.send(embed=discord.Embed(
+            description=preferences.language.get_string('help'),
+            color=THEME_COLOR
+        ))
 
     async def info(self, message, _stripped, preferences):
         await message.channel.send(embed=discord.Embed(
-            description=preferences.language.get_string('info').format(prefix=preferences.prefix, user=self.user.name)))
+            description=preferences.language.get_string('info').format(prefix=preferences.prefix, user=self.user.name),
+            color=THEME_COLOR
+        ))
 
     @staticmethod
     async def donate(message, _stripped, preferences):
-        await message.channel.send(embed=discord.Embed(description=preferences.language.get_string('donate')))
+        await message.channel.send(embed=discord.Embed(
+            description=preferences.language.get_string('donate'),
+            color=THEME_COLOR
+        ))
 
     @staticmethod
     async def change_prefix(message, stripped, preferences):
