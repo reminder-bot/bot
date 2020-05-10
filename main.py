@@ -221,7 +221,7 @@ class BotClient(discord.AutoShardedClient):
             # command has been DMed. dont check for prefix :)
             split = message.content.split(' ')
 
-            command_word = split[0]
+            command_word = split[0].lower()
             args = ' '.join(split[1:]).strip()
 
             if command_word in self.command_names:
@@ -239,7 +239,7 @@ class BotClient(discord.AutoShardedClient):
             match = re.match(
                 self.match_string,
                 message.content,
-                re.MULTILINE | re.DOTALL
+                re.MULTILINE | re.DOTALL | re.IGNORECASE
             )
 
             if match is not None:
@@ -262,7 +262,7 @@ class BotClient(discord.AutoShardedClient):
                     # create the nice info manager
                     info = Preferences(guild, user)
 
-                    command_word = match.group('cmd')
+                    command_word = match.group('cmd').lower()
                     stripped = match.group('args') or ''
                     command = self.commands[command_word]
 
