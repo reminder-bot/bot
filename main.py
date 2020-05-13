@@ -222,6 +222,9 @@ class BotClient(discord.AutoShardedClient):
             split = message.content.split(' ')
 
             command_word = split[0].lower()
+            if command_word[0] == '$':
+                command_word = command_word[1:]
+
             args = ' '.join(split[1:]).strip()
 
             if command_word in self.command_names:
