@@ -186,7 +186,7 @@ class Reminder(Base):
 
     method = Column(ENUM('remind', 'natural', 'dashboard'))
     set_by = Column(INT(unsigned=True), ForeignKey(User.id, ondelete='SET NULL'), nullable=True)
-    set_at = Column(TIMESTAMP, nullable=True, default=datetime.now, server_default='CURRENT_TIMESTAMP')
+    set_at = Column(TIMESTAMP, nullable=True, default=datetime.now, server_default='CURRENT_TIMESTAMP()')
 
     @staticmethod
     def create_uid() -> str:
@@ -228,7 +228,7 @@ class Timer(Base):
 
     id = Column(INT(unsigned=True), primary_key=True)
 
-    start_time = Column(TIMESTAMP, default=datetime.now, server_default='CURRENT_TIMESTAMP', nullable=False)
+    start_time = Column(TIMESTAMP, default=datetime.now, server_default='CURRENT_TIMESTAMP()', nullable=False)
     name = Column(String(32), nullable=False)
     owner = Column(BIGINT(unsigned=True), nullable=False)
 
@@ -237,7 +237,7 @@ class Event(Base):
     __tablename__ = 'events'
 
     id = Column(INT(unsigned=True), primary_key=True)
-    time = Column(TIMESTAMP, default=datetime.now, server_default='CURRENT_TIMESTAMP', nullable=False)
+    time = Column(TIMESTAMP, default=datetime.now, server_default='CURRENT_TIMESTAMP()', nullable=False)
 
     event_name = Column(ENUM('edit', 'enable', 'disable', 'delete'), nullable=False)
     bulk_count = Column(INT(unsigned=True))

@@ -98,7 +98,7 @@ CREATE TABLE reminders.reminders (
     username VARCHAR(32) DEFAULT 'Reminder' NOT NULL,
 
     method ENUM('remind', 'natural', 'dashboard'),
-    set_at TIMESTAMP DEFAULT UNIX_TIMESTAMP(),
+    set_at TIMESTAMP DEFAULT (UNIX_TIMESTAMP()),
     set_by INT UNSIGNED,
 
     PRIMARY KEY (id),
@@ -139,7 +139,7 @@ CREATE TABLE reminders.command_restrictions (
 
 CREATE TABLE reminders.timers (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
-    start_time TIMESTAMP DEFAULT UNIX_TIMESTAMP() NOT NULL,
+    start_time TIMESTAMP NOT NULL DEFAULT (UNIX_TIMESTAMP()),
     name VARCHAR(32) NOT NULL,
     owner BIGINT UNSIGNED NOT NULL,
 
@@ -148,7 +148,7 @@ CREATE TABLE reminders.timers (
 
 CREATE TABLE reminders.events (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
-    `time` TIMESTAMP DEFAULT UNIX_TIMESTAMP() NOT NULL,
+    `time` TIMESTAMP NOT NULL DEFAULT (UNIX_TIMESTAMP()),
 
     event_name ENUM('edit', 'enable', 'disable', 'delete') NOT NULL,
     bulk_count INT UNSIGNED,

@@ -989,11 +989,13 @@ class BotClient(discord.AutoShardedClient):
                     description=preferences.language.get_string('offset/help').format(prefix=preferences.prefix)))
 
             else:
+                c = 0
                 for r in reminders:
+                    c += 1
                     r.time += time
 
                 edit_event = Event(
-                    event_name='edit', bulk_count=len(reminders), guild=preferences.guild, user=preferences.user)
+                    event_name='edit', bulk_count=c, guild=preferences.guild, user=preferences.user)
 
                 session.add(edit_event)
                 session.commit()
