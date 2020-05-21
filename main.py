@@ -601,6 +601,7 @@ class BotClient(discord.AutoShardedClient):
 
         # command fired in a DM; only possible target is the DM itself
         else:
+            user = User.from_discord(message.author)
             discord_channel = DMChannelId(user.dm_channel, message.author.id)
 
         if interval is not None:
