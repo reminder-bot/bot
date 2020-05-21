@@ -2,9 +2,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, BigInteger, String, Text, Boolean, Table, ForeignKey
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session, relationship, backref
-from sqlalchemy.dialects.mysql import BIGINT, MEDIUMINT, SMALLINT, INTEGER as INT
+from sqlalchemy.dialects.mysql import BIGINT, MEDIUMINT, SMALLINT, INTEGER as INT, TIMESTAMP
 import configparser
-import time
+from datetime import datetime
+from time import time as unix_time
 import typing
 import secrets
 
@@ -14,8 +15,8 @@ Base = declarative_base()
 
 guild_users = Table('guild_users',
                     Base.metadata,
-                    Column('guild', INT(unsigned=True), ForeignKey('guilds.id')),
-                    Column('user', INT(unsigned=True), ForeignKey('users.id')),
+                    Column('guild', INT(unsigned=True), ForeignKey('guilds.id', ondelete='CASCADE')),
+                    Column('user', INT(unsigned=True), ForeignKey('users.id', ondelete='CASCADE')),
                     )
 
 
@@ -104,7 +105,7 @@ class Role(Base):
     name = Column(String(100))
 
     role = Column(BIGINT(unsigned=True), unique=True, nullable=False)
-    guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id), nullable=False)
+    guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id, ondelete='CASCADE'), nullable=False)
 
 
 class User(Base):
@@ -120,7 +121,7 @@ class User(Base):
     allowed_dm = Column(Boolean, default=True, nullable=False)
 
     patreon = Column(Boolean, nullable=False, default=False)
-    dm_channel = Column(INT(unsigned=True), ForeignKey('channels.id'), nullable=False)
+    dm_channel = Column(INT(unsigned=True), ForeignKey('channels.id', ondelete='SET NULL'), nullable=False)
     channel = relationship(Channel)
 
     def __repr__(self):
@@ -157,7 +158,7 @@ class Message(Base):
 
     content = Column(String(2048), nullable=False, default='')
 
-    embed_id = Column(INT(unsigned=True), ForeignKey(Embed.id))
+    embed_id = Column(INT(unsigned=True), ForeignKey(Embed.id, ondelete='CASCADE'))
     embed = relationship(Embed)
 
 
@@ -169,10 +170,10 @@ class Reminder(Base):
 
     name = Column(String(24), default='Reminder')
 
-    message_id = Column(INT(unsigned=True), ForeignKey(Message.id), nullable=False)
+    message_id = Column(INT(unsigned=True), ForeignKey(Message.id, ondelete='CASCADE'), nullable=False)
     message = relationship(Message)
 
-    channel_id = Column(INT(unsigned=True), ForeignKey(Channel.id), nullable=True)
+    channel_id = Column(INT(unsigned=True), ForeignKey(Channel.id, ondelete='CASCADE'), nullable=True)
 
     time = Column(INT(unsigned=True))
     enabled = Column(Boolean, nullable=False, default=True)
@@ -182,8 +183,11 @@ class Reminder(Base):
                     nullable=False)
     username = Column(String(32), default='Reminder', nullable=False)
 
-    method = Column(String(9))
     interval = Column(INT(unsigned=True))
+
+    method = Column(String(9))
+    set_by = Column(INT(unsigned=True), ForeignKey(User.id, ondelete='SET NULL'), nullable=True)
+    set_at = Column(TIMESTAMP, nullable=True, default=datetime.now, server_default='CURRENT_TIMESTAMP')
 
     @staticmethod
     def create_uid() -> str:
@@ -212,9 +216,9 @@ class Todo(Base):
 
     id = Column(INT(unsigned=True), primary_key=True)
 
-    user_id = Column(INT(unsigned=True), ForeignKey(User.id))
+    user_id = Column(INT(unsigned=True), ForeignKey(User.id, ondelete='CASCADE'))
     user = relationship(User, backref='todo_list')
-    guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id))
+    guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id, ondelete='CASCADE'))
     guild = relationship(Guild, backref='todo_list')
 
     value = Column(String(2000), nullable=False)
@@ -225,7 +229,7 @@ class Timer(Base):
 
     id = Column(Integer, primary_key=True)
 
-    start_time = Column(Integer, default=time.time, nullable=False)
+    start_time = Column(TIMESTAMP, default=datetime.now, server_default='CURRENT_TIMESTAMP', nullable=False)
     name = Column(String(32), nullable=False)
     owner = Column(BigInteger, nullable=False)
 

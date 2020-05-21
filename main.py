@@ -577,6 +577,8 @@ class BotClient(discord.AutoShardedClient):
         channel: typing.Optional[Channel] = None
         user: typing.Optional[User] = None
 
+        creator: User = User.from_discord(message.author)
+
         # noinspection PyUnusedLocal
         discord_channel: typing.Optional[typing.Union[discord.TextChannel, DMChannelId]] = None
 
@@ -602,7 +604,6 @@ class BotClient(discord.AutoShardedClient):
 
         # command fired in a DM; only possible target is the DM itself
         else:
-            user = User.from_discord(message.author)
             discord_channel = DMChannelId(user.dm_channel, message.author.id)
 
         if interval is not None:
@@ -620,7 +621,8 @@ class BotClient(discord.AutoShardedClient):
                     time=time,
                     enabled=True,
                     method=method,
-                    interval=interval)
+                    interval=interval,
+                    set_by=creator.id)
                 session.add(reminder)
                 session.commit()
 
@@ -631,7 +633,8 @@ class BotClient(discord.AutoShardedClient):
                 channel=channel or user.channel,
                 time=time,
                 enabled=True,
-                method=method)
+                method=method,
+                set_by=creator.id)
             session.add(r)
             session.commit()
 
@@ -649,7 +652,7 @@ class BotClient(discord.AutoShardedClient):
 
             e = discord.Embed(title='Timers')
             for timer in timers:
-                delta = int(unix_time() - timer.start_time)
+                delta = int((datetime.now() - timer.start_time).total_seconds())
                 minutes, seconds = divmod(delta, 60)
                 hours, minutes = divmod(minutes, 60)
                 e.add_field(name=timer.name, value="{:02d}:{:02d}:{:02d}".format(hours, minutes, seconds))
