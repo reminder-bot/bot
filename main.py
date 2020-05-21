@@ -13,7 +13,7 @@ import pytz
 
 from config import Config
 from consts import *
-from models import Reminder, Todo, Timer, Message, Channel
+from models import Reminder, Todo, Timer, Message, Channel, Event
 from passers import *
 from time_extractor import TimeExtractor, InvalidTime
 
@@ -235,7 +235,6 @@ class BotClient(discord.AutoShardedClient):
                     user = await _get_user(message)
 
                     await command.func(message, args, Preferences(None, user))
-                    session.commit()
 
         elif _check_self_permissions(message.channel):
             # command sent in guild. check for prefix & call
@@ -345,6 +344,7 @@ class BotClient(discord.AutoShardedClient):
 
             else:
                 preferences.prefix = new
+                session.commit()
 
                 await message.channel.send(preferences.language.get_string('prefix/success').format(
                     prefix=preferences.prefix))
@@ -352,8 +352,6 @@ class BotClient(discord.AutoShardedClient):
         else:
             await message.channel.send(preferences.language.get_string('prefix/no_argument').format(
                 prefix=preferences.prefix))
-
-        session.commit()
 
     @staticmethod
     async def set_timezone(message, stripped, preferences):
@@ -396,10 +394,9 @@ class BotClient(discord.AutoShardedClient):
 
         if new_lang is not None:
             preferences.language = new_lang.code
+            session.commit()
 
             await message.channel.send(embed=discord.Embed(description=new_lang.get_string('lang/set_p')))
-
-            session.commit()
 
         else:
             await message.channel.send(
@@ -628,14 +625,14 @@ class BotClient(discord.AutoShardedClient):
 
         else:
             # noinspection PyArgumentList
-            r = Reminder(
+            reminder = Reminder(
                 message=Message(content=text),
                 channel=channel or user.channel,
                 time=time,
                 enabled=True,
                 method=method,
                 set_by=creator.id)
-            session.add(r)
+            session.add(reminder)
             session.commit()
 
         return ReminderInformation(CreateReminderResponse.OK, channel=discord_channel, time=time)
@@ -676,8 +673,8 @@ class BotClient(discord.AutoShardedClient):
 
                 else:
                     t = Timer(name=n, owner=owner)
-                    session.add(t)
 
+                    session.add(t)
                     session.commit()
 
                     await message.channel.send(preferences.language.get_string('timer/success'))
@@ -693,9 +690,9 @@ class BotClient(discord.AutoShardedClient):
 
             else:
                 timers.delete(synchronize_session='fetch')
-                await message.channel.send(preferences.language.get_string('timer/deleted'))
-
                 session.commit()
+
+                await message.channel.send(preferences.language.get_string('timer/deleted'))
 
         else:
             await message.channel.send(preferences.language.get_string('timer/help'))
@@ -897,6 +894,10 @@ class BotClient(discord.AutoShardedClient):
                 removal_ids.add(reminder.id)
                 nums.remove(count)
 
+        deletion_event = Event(
+            event_name='delete', bulk_count=len(removal_ids), guild=preferences.guild, user=preferences.user)
+        session.add(deletion_event)
+
         session.query(Reminder).filter(Reminder.id.in_(removal_ids)).delete(synchronize_session='fetch')
         session.commit()
 
@@ -991,6 +992,10 @@ class BotClient(discord.AutoShardedClient):
                 for r in reminders:
                     r.time += time
 
+                edit_event = Event(
+                    event_name='edit', bulk_count=len(reminders), guild=preferences.guild, user=preferences.user)
+
+                session.add(edit_event)
                 session.commit()
 
                 await message.channel.send(

@@ -2,10 +2,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, BigInteger, String, Text, Boolean, Table, ForeignKey
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session, relationship, backref
-from sqlalchemy.dialects.mysql import BIGINT, MEDIUMINT, SMALLINT, INTEGER as INT, TIMESTAMP
+from sqlalchemy.dialects.mysql import BIGINT, MEDIUMINT, SMALLINT, INTEGER as INT, TIMESTAMP, ENUM
 import configparser
 from datetime import datetime
-from time import time as unix_time
 import typing
 import secrets
 
@@ -185,7 +184,7 @@ class Reminder(Base):
 
     interval = Column(INT(unsigned=True))
 
-    method = Column(String(9))
+    method = Column(ENUM('remind', 'natural', 'dashboard'))
     set_by = Column(INT(unsigned=True), ForeignKey(User.id, ondelete='SET NULL'), nullable=True)
     set_at = Column(TIMESTAMP, nullable=True, default=datetime.now, server_default='CURRENT_TIMESTAMP')
 
@@ -227,11 +226,29 @@ class Todo(Base):
 class Timer(Base):
     __tablename__ = 'timers'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(INT(unsigned=True), primary_key=True)
 
     start_time = Column(TIMESTAMP, default=datetime.now, server_default='CURRENT_TIMESTAMP', nullable=False)
     name = Column(String(32), nullable=False)
-    owner = Column(BigInteger, nullable=False)
+    owner = Column(BIGINT(unsigned=True), nullable=False)
+
+
+class Event(Base):
+    __tablename__ = 'events'
+
+    id = Column(INT(unsigned=True), primary_key=True)
+    time = Column(TIMESTAMP, default=datetime.now, server_default='CURRENT_TIMESTAMP', nullable=False)
+
+    event_name = Column(ENUM('edit', 'enable', 'disable', 'delete'), nullable=False)
+    bulk_count = Column(INT(unsigned=True))
+
+    guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id, ondelete='CASCADE'), nullable=False)
+    guild = relationship(Guild)
+
+    user_id = Column(INT(unsigned=True), ForeignKey(User.id, ondelete='SET NULL'))
+    user = relationship(User)
+
+    reminder_id = Column(INT(unsigned=True), ForeignKey(Reminder.id, ondelete='SET NULL'))
 
 
 class Language(Base):

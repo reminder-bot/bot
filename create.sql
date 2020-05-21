@@ -97,7 +97,7 @@ CREATE TABLE reminders.reminders (
     avatar VARCHAR(512) DEFAULT 'https://raw.githubusercontent.com/reminder-bot/logos/master/Remind_Me_Bot_Logo_PPic.jpg' NOT NULL,
     username VARCHAR(32) DEFAULT 'Reminder' NOT NULL,
 
-    method VARCHAR(9),
+    method ENUM('remind', 'natural', 'dashboard'),
     set_at TIMESTAMP DEFAULT UNIX_TIMESTAMP(),
     set_by INT UNSIGNED,
 
@@ -144,6 +144,23 @@ CREATE TABLE reminders.timers (
     owner BIGINT UNSIGNED NOT NULL,
 
     PRIMARY KEY (id)
+);
+
+CREATE TABLE reminders.events (
+    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
+    `time` TIMESTAMP DEFAULT UNIX_TIMESTAMP() NOT NULL,
+
+    event_name ENUM('edit', 'enable', 'disable', 'delete') NOT NULL,
+    bulk_count INT UNSIGNED,
+
+    guild_id INT UNSIGNED NOT NULL,
+    user_id INT UNSIGNED,
+    reminder_id INT UNSIGNED,
+
+    PRIMARY KEY (id),
+    FOREIGN KEY (guild_id) REFERENCES reminders.guilds(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES reminders.users(id) ON DELETE SET NULL,
+    FOREIGN KEY (reminder_id) REFERENCES reminders.reminders(id) ON DELETE SET NULL
 );
 
 CREATE TABLE reminders.languages (
