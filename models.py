@@ -170,7 +170,7 @@ class Reminder(Base):
 
     name = Column(String(24), default='Reminder')
 
-    message_id = Column(INT(unsigned=True), ForeignKey(Message.id, ondelete='CASCADE'), nullable=False)
+    message_id = Column(INT(unsigned=True), ForeignKey(Message.id, ondelete='RESTRICT'), nullable=False)
     message = relationship(Message)
 
     channel_id = Column(INT(unsigned=True), ForeignKey(Channel.id, ondelete='CASCADE'), nullable=True)

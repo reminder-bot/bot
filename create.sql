@@ -98,10 +98,13 @@ CREATE TABLE reminders.reminders (
     username VARCHAR(32) DEFAULT 'Reminder' NOT NULL,
 
     method VARCHAR(9),
+    set_at TIMESTAMP DEFAULT UNIX_TIMESTAMP(),
+    set_by INT UNSIGNED,
 
     PRIMARY KEY (id),
     FOREIGN KEY (message_id) REFERENCES reminders.messages(id) ON DELETE RESTRICT,
     FOREIGN KEY (channel_id) REFERENCES reminders.channels(id) ON DELETE CASCADE,
+    FOREIGN KEY (set_by) REFERENCES reminders.users(id) ON DELETE SET NULL
 );
 
 CREATE TRIGGER message_cleanup AFTER DELETE ON reminders.reminders
@@ -136,7 +139,7 @@ CREATE TABLE reminders.command_restrictions (
 
 CREATE TABLE reminders.timers (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
-    start_time INT UNSIGNED DEFAULT (UNIX_TIMESTAMP()) NOT NULL,
+    start_time TIMESTAMP DEFAULT UNIX_TIMESTAMP() NOT NULL,
     name VARCHAR(32) NOT NULL,
     owner BIGINT UNSIGNED NOT NULL,
 
