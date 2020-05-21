@@ -894,9 +894,10 @@ class BotClient(discord.AutoShardedClient):
                 removal_ids.add(reminder.id)
                 nums.remove(count)
 
-        deletion_event = Event(
-            event_name='delete', bulk_count=len(removal_ids), guild=preferences.guild, user=preferences.user)
-        session.add(deletion_event)
+        if message.guild is not None:
+            deletion_event = Event(
+                event_name='delete', bulk_count=len(removal_ids), guild=preferences.guild, user=preferences.user)
+            session.add(deletion_event)
 
         session.query(Reminder).filter(Reminder.id.in_(removal_ids)).delete(synchronize_session='fetch')
         session.commit()
@@ -994,10 +995,11 @@ class BotClient(discord.AutoShardedClient):
                     c += 1
                     r.time += time
 
-                edit_event = Event(
-                    event_name='edit', bulk_count=c, guild=preferences.guild, user=preferences.user)
+                if message.guild is not None:
+                    edit_event = Event(
+                        event_name='edit', bulk_count=c, guild=preferences.guild, user=preferences.user)
+                    session.add(edit_event)
 
-                session.add(edit_event)
                 session.commit()
 
                 await message.channel.send(
