@@ -271,11 +271,11 @@ class CommandRestriction(Base):
 
     id = Column(Integer, primary_key=True)
 
-    guild_id = Column(BIGINT(unsigned=True), ForeignKey(Guild.guild, ondelete='CASCADE'), nullable=False)
-    role = Column(BIGINT(unsigned=True), nullable=False)
+    guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id, ondelete='CASCADE'), nullable=False)
+    role_id = Column(INT(unsigned=True), nullable=False)
     command = Column(ENUM('todos', 'natural', 'remind', 'interval', 'timer', 'del', 'look'))
 
-    UniqueConstraint('role', 'command')
+    UniqueConstraint('role_id', 'command')
 
 
 Guild.command_restrictions = relationship(CommandRestriction, backref='guild', lazy='dynamic')
