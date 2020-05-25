@@ -1,5 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, BigInteger, String, Text, Boolean, Table, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Boolean, Table, ForeignKey, UniqueConstraint
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session, relationship, backref
 from sqlalchemy.dialects.mysql import BIGINT, MEDIUMINT, SMALLINT, INTEGER as INT, TIMESTAMP, ENUM
@@ -271,9 +271,11 @@ class CommandRestriction(Base):
 
     id = Column(Integer, primary_key=True)
 
-    guild_id = Column(BigInteger, ForeignKey(Guild.guild, ondelete='CASCADE'), nullable=False)
-    role = Column(BigInteger, nullable=False)
-    command = Column(String(16))
+    guild_id = Column(BIGINT(unsigned=True), ForeignKey(Guild.guild, ondelete='CASCADE'), nullable=False)
+    role = Column(BIGINT(unsigned=True), nullable=False)
+    command = Column(ENUM('todos', 'natural', 'remind', 'interval', 'timer', 'del', 'look'))
+
+    UniqueConstraint('role', 'command')
 
 
 Guild.command_restrictions = relationship(CommandRestriction, backref='guild', lazy='dynamic')

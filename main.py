@@ -26,21 +26,18 @@ class BotClient(discord.AutoShardedClient):
 
         self.commands: typing.Dict[str, Command] = {
 
+            'ping': Command('ping', self.time_stats),
+
             'help': Command('help', self.help, blacklists=False),
             'info': Command('info', self.info),
             'donate': Command('donate', self.donate),
-
-            'prefix': Command('prefix', self.change_prefix, False, PermissionLevels.RESTRICTED),
-            'blacklist': Command('blacklist', self.blacklist, False, PermissionLevels.RESTRICTED, blacklists=False),
-            # TODO: remodel restriction table with FKs for role table
-            'restrict': Command('restrict', self.restrict, False, PermissionLevels.RESTRICTED),
 
             'timezone': Command('timezone', self.set_timezone),
             'lang': Command('lang', self.set_language),
             'clock': Command('clock', self.clock),
 
-            'offset': Command('offset', self.offset_reminders, True, PermissionLevels.RESTRICTED),
-            'nudge': Command('nudge', self.nudge_channel, True, PermissionLevels.RESTRICTED),
+            'todo': Command('todo', self.todo),
+            'todos': Command('todos', self.todo, False, PermissionLevels.MANAGED),
 
             'natural': Command('natural', self.natural, True, PermissionLevels.MANAGED),
             'n': Command('natural', self.natural, True, PermissionLevels.MANAGED),
@@ -53,10 +50,13 @@ class BotClient(discord.AutoShardedClient):
             # TODO: allow looking at reminder attributes in full by name
             'look': Command('look', self.look, True, PermissionLevels.MANAGED),
 
-            'todos': Command('todos', self.todo, False, PermissionLevels.MANAGED),
-            'todo': Command('todo', self.todo),
+            'prefix': Command('prefix', self.change_prefix, False, PermissionLevels.RESTRICTED),
+            'blacklist': Command('blacklist', self.blacklist, False, PermissionLevels.RESTRICTED, blacklists=False),
+            # TODO: remodel restriction table with FKs for role table
+            'restrict': Command('restrict', self.restrict, False, PermissionLevels.RESTRICTED),
 
-            'ping': Command('ping', self.time_stats)
+            'offset': Command('offset', self.offset_reminders, True, PermissionLevels.RESTRICTED),
+            'nudge': Command('nudge', self.nudge_channel, True, PermissionLevels.RESTRICTED),
         }
 
         self.match_string = None
@@ -758,11 +758,11 @@ class BotClient(discord.AutoShardedClient):
 
                 if c is not None and c.permission_level == PermissionLevels.MANAGED:
                     q = preferences.command_restrictions \
-                        .filter(CommandRestriction.command == command) \
+                        .filter(CommandRestriction.command == c.name) \
                         .filter(CommandRestriction.role == role_id)
 
                     if q.first() is None:
-                        new_restriction = CommandRestriction(guild_id=message.guild.id, command=command, role=role_id)
+                        new_restriction = CommandRestriction(guild_id=message.guild.id, command=c.name, role=role_id)
 
                         session.add(new_restriction)
 
