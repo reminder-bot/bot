@@ -14,8 +14,9 @@ Base = declarative_base()
 
 guild_users = Table('guild_users',
                     Base.metadata,
-                    Column('guild', INT(unsigned=True), ForeignKey('guilds.id', ondelete='CASCADE')),
-                    Column('user', INT(unsigned=True), ForeignKey('users.id', ondelete='CASCADE')),
+                    Column('guild', INT(unsigned=True), ForeignKey('guilds.id', ondelete='CASCADE'), nullable=False),
+                    Column('user', INT(unsigned=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
+                    UniqueConstraint('guild', 'user'),
                     )
 
 
