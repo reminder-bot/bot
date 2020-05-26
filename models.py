@@ -39,6 +39,7 @@ class Guild(Base):
 
     # populated later in file
     command_restrictions = None
+    roles = None
 
 
 class Channel(Base):
@@ -105,6 +106,19 @@ class Role(Base):
 
     role = Column(BIGINT(unsigned=True), unique=True, nullable=False)
     guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id, ondelete='CASCADE'), nullable=False)
+
+    def __eq__(self, v):
+        if isinstance(v, int):
+            return self.role == v
+
+        elif isinstance(v, Role):
+            return self.id == v.id
+
+        else:
+            return False
+
+    def __str__(self):
+        return '<@&{}>'.format(self.role)
 
 
 class User(Base):
@@ -272,13 +286,15 @@ class CommandRestriction(Base):
     id = Column(Integer, primary_key=True)
 
     guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id, ondelete='CASCADE'), nullable=False)
-    role_id = Column(INT(unsigned=True), nullable=False)
+    role_id = Column(INT(unsigned=True), ForeignKey(Role.id, ondelete='CASCADE'), nullable=False)
+    role = relationship(Role)
     command = Column(ENUM('todos', 'natural', 'remind', 'interval', 'timer', 'del', 'look'))
 
     UniqueConstraint('role_id', 'command')
 
 
 Guild.command_restrictions = relationship(CommandRestriction, backref='guild', lazy='dynamic')
+Guild.roles = relationship(Role, backref='guild', lazy='dynamic')
 
 config = configparser.ConfigParser()
 config.read('config.ini')

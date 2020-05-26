@@ -129,13 +129,14 @@ CREATE TABLE reminders.todos (
 CREATE TABLE reminders.command_restrictions (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
     
-    guild_id BIGINT UNSIGNED NOT NULL,
-    role BIGINT UNSIGNED NOT NULL,
+    guild_id INT UNSIGNED NOT NULL,
+    role_id INT UNSIGNED NOT NULL,
     command ENUM('todos', 'natural', 'remind', 'interval', 'timer', 'del', 'look') NOT NULL,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (guild_id) REFERENCES reminders.guilds(guild) ON DELETE CASCADE,
-    UNIQUE KEY (`role`, `command`)
+    FOREIGN KEY (guild_id) REFERENCES reminders.guilds(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES reminders.roles(id) ON DELETE CASCADE,
+    UNIQUE KEY (`role_id`, `command`)
 );
 
 CREATE TABLE reminders.timers (

@@ -13,7 +13,7 @@ import pytz
 
 from config import Config
 from consts import *
-from models import Reminder, Todo, Timer, Message, Channel, Event
+from models import Reminder, Todo, Timer, Message, Channel, Event, Role
 from passers import *
 from time_extractor import TimeExtractor, InvalidTime
 
@@ -730,7 +730,7 @@ class BotClient(discord.AutoShardedClient):
                     embed=discord.Embed(
                         description=preferences.language.get_string('restrict/allowed').format(
                             '\n'.join(
-                                ['<@&{}> can use `{}`'.format(r.role, r.command)
+                                ['{} can use `{}`'.format(r.role, r.command)
                                  for r in preferences.command_restrictions]
                             )
                         )
@@ -739,8 +739,13 @@ class BotClient(discord.AutoShardedClient):
 
             else:
                 # only a role is given so delete all the settings for this role
-                preferences.command_restrictions.filter(CommandRestriction.role == int(role_tag.group(1))).delete(
-                    synchronize_session='fetch')
+                role_query = preferences.guild.roles.filter(Role.role == int(role_tag.group(1)))
+
+                if (role := role_query.first()) is not None:
+                    preferences.command_restrictions\
+                        .filter(CommandRestriction.role == role)\
+                        .delete(synchronize_session='fetch')
+
                 await message.channel.send(
                     embed=discord.Embed(description=preferences.language.get_string('restrict/disabled')))
 
@@ -757,12 +762,22 @@ class BotClient(discord.AutoShardedClient):
                 c: typing.Optional[Command] = self.commands.get(command)
 
                 if c is not None and c.permission_level == PermissionLevels.MANAGED:
-                    q = preferences.command_restrictions \
-                        .filter(CommandRestriction.command == c.name) \
-                        .filter(CommandRestriction.role == role_id)
+                    role_query = preferences.guild.roles.filter(Role.role == role_id)
 
-                    if q.first() is None:
-                        new_restriction = CommandRestriction(guild_id=message.guild.id, command=c.name, role=role_id)
+                    if (role := role_query.first()) is not None:
+
+                        q = preferences.command_restrictions \
+                            .filter(CommandRestriction.command == c.name) \
+                            .filter(CommandRestriction.role == role)
+
+                        if q.first() is None:
+                            new_restriction = CommandRestriction(guild_id=preferences.guild.id, command=c.name, role=role)
+
+                            session.add(new_restriction)
+
+                    else:
+                        role = Role(role=role_id, guild=preferences.guild)
+                        new_restriction = CommandRestriction(guild_id=preferences.guild.id, command=c.name, role=role)
 
                         session.add(new_restriction)
 
