@@ -16,6 +16,7 @@ guild_users = Table('guild_users',
                     Base.metadata,
                     Column('guild', INT(unsigned=True), ForeignKey('guilds.id', ondelete='CASCADE'), nullable=False),
                     Column('user', INT(unsigned=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
+                    Column('can_access', Boolean, nullable=False, default=False),
                     UniqueConstraint('guild', 'user'),
                     )
 
