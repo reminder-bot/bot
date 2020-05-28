@@ -65,6 +65,9 @@ CREATE TABLE reminders.embeds (
 
     title VARCHAR(256) NOT NULL DEFAULT '',
     description VARCHAR(2048) NOT NULL DEFAULT '',
+    footer VARCHAR(2048) NOT NULL DEFAULT '',
+    footer_icon VARCHAR(512),
+
     color MEDIUMINT UNSIGNED NOT NULL DEFAULT 0x0,
 
     PRIMARY KEY (id)
@@ -74,7 +77,11 @@ CREATE TABLE reminders.messages (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
 
     content VARCHAR(2048) NOT NULL DEFAULT '',
+    tts BOOL NOT NULL DEFAULT 0,
     embed_id INT UNSIGNED,
+
+    attachment MEDIUMBLOB,
+    attachment_name VARCHAR(32),
 
     PRIMARY KEY (id),
     FOREIGN KEY (embed_id) REFERENCES reminders.embeds(id) ON DELETE SET NULL

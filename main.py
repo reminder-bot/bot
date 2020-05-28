@@ -13,7 +13,7 @@ import pytz
 
 from config import Config
 from consts import *
-from models import Reminder, Todo, Timer, Message, Channel, Event, Role
+from models import Reminder, Todo, Timer, Message, Channel, Event
 from passers import *
 from time_extractor import TimeExtractor, InvalidTime
 
