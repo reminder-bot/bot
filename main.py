@@ -208,9 +208,8 @@ class BotClient(discord.AutoShardedClient):
 
             return _user
 
-        if message.author.bot or \
+        if (message.author.bot and self.config.ignore_bots) or \
                 message.content is None or \
-                (message.guild is not None and len(message.content.split(' ')[0]) < 2) or \
                 message.tts or \
                 len(message.attachments) > 0 or \
                 self.match_string is None:

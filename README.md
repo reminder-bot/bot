@@ -37,6 +37,8 @@ patreon_server =
 patreon_role =
 strings_location = ./languages/
 local_timezone = UTC
+local_language = EN
+ignore_bots = 1
 
 [MYSQL]
 user = 

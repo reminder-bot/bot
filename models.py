@@ -348,4 +348,5 @@ Strings = Table('strings', Base.metadata,
                 )
                 )
 
-ENGLISH_STRINGS: typing.Optional[Language] = session.query(Language).filter(Language.code == 'EN').first()
+ENGLISH_STRINGS: typing.Optional[Language] = session.query(Language) \
+    .filter(Language.code == config.get('DEFAULT', 'EN')).first()
