@@ -172,6 +172,16 @@ CREATE TABLE reminders.events (
     FOREIGN KEY (reminder_id) REFERENCES reminders.reminders(id) ON DELETE SET NULL
 );
 
+CREATE TABLE reminders.command_aliases (
+    guild_id INT UNSIGNED NOT NULL,
+    name VARCHAR(12) NOT NULL,
+
+    command VARCHAR(2048) NOT NULL,
+
+    PRIMARY KEY (guild_id, name),
+    FOREIGN KEY (guild_id) REFERENCES reminders.guilds(id) ON DELETE CASCADE
+);
+
 CREATE EVENT reminders.event_cleanup
 ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 DAY
 ON COMPLETION PRESERVE

@@ -102,10 +102,6 @@ ENV/
 
 
 # project specific files
-token
-dbl_token
-DATA/
 config.ini
-terminal.glue
-data.msgpack.zlib
-alembic.ini
+.idea/dataSources
+.idea/dataSources.local.xml

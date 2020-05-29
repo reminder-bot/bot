@@ -13,7 +13,7 @@ import pytz
 
 from config import Config
 from consts import *
-from models import Reminder, Todo, Timer, Message, Channel, Event
+from models import Reminder, Todo, Timer, Message, Channel, Event, CommandAlias
 from passers import *
 from time_extractor import TimeExtractor, InvalidTime
 
@@ -51,8 +51,9 @@ class BotClient(discord.AutoShardedClient):
             'look': Command('look', self.look, True, PermissionLevels.MANAGED),
 
             'prefix': Command('prefix', self.change_prefix, False, PermissionLevels.RESTRICTED),
+            'alias': Command('alias', self.create_alias, False, PermissionLevels.RESTRICTED),
+            'a': Command('alias', self.create_alias, False, PermissionLevels.RESTRICTED),
             'blacklist': Command('blacklist', self.blacklist, False, PermissionLevels.RESTRICTED, blacklists=False),
-            # TODO: remodel restriction table with FKs for role table
             'restrict': Command('restrict', self.restrict, False, PermissionLevels.RESTRICTED),
 
             'offset': Command('offset', self.offset_reminders, True, PermissionLevels.RESTRICTED),
@@ -145,7 +146,7 @@ class BotClient(discord.AutoShardedClient):
 
         self.match_string = \
             r'(?:(?:<@ID>\s+)|(?:<@!ID>\s+)|(?P<prefix>\S{1,5}?))(?P<cmd>COMMANDS)(?:$|\s+(?P<args>.*))' \
-            .replace('ID', str(self.user.id)).replace('COMMANDS', self.joined_names)
+                .replace('ID', str(self.user.id)).replace('COMMANDS', self.joined_names)
 
         self.c_session: aiohttp.client.ClientSession = aiohttp.ClientSession()
 
@@ -352,6 +353,61 @@ class BotClient(discord.AutoShardedClient):
         else:
             await message.channel.send(preferences.language.get_string('prefix/no_argument').format(
                 prefix=preferences.prefix))
+
+    async def create_alias(self, message, stripped, preferences):
+        groups = re.fullmatch(r'(?P<name>[a-zA-Z0-9]{1,12})(?:(?: (?P<cmd>.*)$)|$)', stripped)
+
+        if groups is not None:
+            named_groups = groups.groupdict()
+
+            name = named_groups['name']
+            command = named_groups.get('cmd')
+
+            if name == 'list':
+                alias_concat = ''
+
+                for alias in preferences.guild.aliases:
+                    alias_concat += '**{}**: `{}`\n'.format(alias.name, alias.command)
+
+                await message.channel.send('Aliases: \n{}'.format(alias_concat))
+
+            elif command is None:
+                # command not specified so look for existing alias
+                try:
+                    aliased_command = next(filter(lambda alias: alias.name == name, preferences.guild.aliases))
+
+                except StopIteration:
+                    await message.channel.send(preferences.language['alias/not_found'].format(name=name))
+
+                else:
+                    command = aliased_command.command
+                    split = command.split(' ')
+
+                    command_obj = self.commands[split[0]]
+
+                    if command_obj.check_permissions(message.author, preferences.guild):
+                        await command_obj.func(message, ' '.join(split[1:]), preferences)
+
+                    else:
+                        await message.channel.send(
+                            preferences.language[str(command_obj.permission_level)]
+                            .format(prefix=preferences.guild.prefix))
+
+            else:
+                # command provided so create new alias
+                if (cmd := command.split(' ')[0]) not in self.command_names and cmd not in ['alias', 'a']:
+                    await message.channel.send(preferences.language['alias/invalid_command'])
+
+                else:
+                    alias = CommandAlias(guild=preferences.guild, command=command, name=name)
+                    session.add(alias)
+
+                    session.commit()
+
+                    await message.channel.send(preferences.language['alias/created'].format(name=name))
+
+        else:
+            await message.channel.send(preferences.language['alias/help'].format(prefix=preferences.guild.prefix))
 
     @staticmethod
     async def set_timezone(message, stripped, preferences):
@@ -742,8 +798,8 @@ class BotClient(discord.AutoShardedClient):
                 role_query = preferences.guild.roles.filter(Role.role == int(role_tag.group(1)))
 
                 if (role := role_query.first()) is not None:
-                    preferences.command_restrictions\
-                        .filter(CommandRestriction.role == role)\
+                    preferences.command_restrictions \
+                        .filter(CommandRestriction.role == role) \
                         .delete(synchronize_session='fetch')
 
                 await message.channel.send(
@@ -771,7 +827,8 @@ class BotClient(discord.AutoShardedClient):
                             .filter(CommandRestriction.role == role)
 
                         if q.first() is None:
-                            new_restriction = CommandRestriction(guild_id=preferences.guild.id, command=c.name, role=role)
+                            new_restriction = CommandRestriction(guild_id=preferences.guild.id, command=c.name,
+                                                                 role=role)
 
                             session.add(new_restriction)
 

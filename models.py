@@ -44,6 +44,16 @@ class Guild(Base):
     roles = None
 
 
+class CommandAlias(Base):
+    __tablename__ = 'command_aliases'
+
+    guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id, ondelete='CASCADE'), nullable=False, primary_key=True)
+    guild = relationship(Guild, backref='aliases')
+    name = Column(String(12), nullable=False, primary_key=True)
+
+    command = Column(String(2048), nullable=False)
+
+
 class Channel(Base):
     __tablename__ = 'channels'
 
@@ -280,6 +290,9 @@ class Language(Base):
         req = getattr(s.first(), 'value_{}'.format(self.code))
 
         return req if req is not None else s.first().value_EN
+
+    def __getitem__(self, item):
+        return self.get_string(item)
 
 
 class CommandRestriction(Base):
