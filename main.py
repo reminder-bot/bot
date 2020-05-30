@@ -398,9 +398,12 @@ class BotClient(discord.AutoShardedClient):
                     command = aliased_command.command
                     split = command.split(' ')
 
-                    command_obj = self.commands[split[0]]
+                    command_obj = self.commands.get(split[0])
 
-                    if command_obj.check_permissions(message.author, preferences.guild):
+                    if command_obj is None:
+                        await message.channel.send(preferences.language['alias/invalid_command'])
+
+                    elif command_obj.check_permissions(message.author, preferences.guild):
                         await command_obj.func(message, ' '.join(split[1:]), preferences)
 
                     else:

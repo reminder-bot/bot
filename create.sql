@@ -173,13 +173,16 @@ CREATE TABLE reminders.events (
 );
 
 CREATE TABLE reminders.command_aliases (
+    id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
+
     guild_id INT UNSIGNED NOT NULL,
     name VARCHAR(12) NOT NULL,
 
     command VARCHAR(2048) NOT NULL,
 
-    PRIMARY KEY (guild_id, name),
-    FOREIGN KEY (guild_id) REFERENCES reminders.guilds(id) ON DELETE CASCADE
+    PRIMARY KEY (id),
+    FOREIGN KEY (guild_id) REFERENCES reminders.guilds(id) ON DELETE CASCADE,
+    UNIQUE KEY (`guild_id`, `name`)
 );
 
 CREATE EVENT reminders.event_cleanup

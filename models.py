@@ -47,11 +47,15 @@ class Guild(Base):
 class CommandAlias(Base):
     __tablename__ = 'command_aliases'
 
-    guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id, ondelete='CASCADE'), nullable=False, primary_key=True)
+    id = Column(INT(unsigned=True), primary_key=True)
+
+    guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id, ondelete='CASCADE'), nullable=False)
     guild = relationship(Guild, backref='aliases')
-    name = Column(String(12), nullable=False, primary_key=True)
+    name = Column(String(12), nullable=False)
 
     command = Column(String(2048), nullable=False)
+
+    UniqueConstraint('guild_id', 'name')
 
 
 class Channel(Base):
