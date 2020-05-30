@@ -51,8 +51,10 @@ class BotClient(discord.AutoShardedClient):
             'look': Command('look', self.look, True, PermissionLevels.MANAGED),
 
             'prefix': Command('prefix', self.change_prefix, False, PermissionLevels.RESTRICTED),
+
             'alias': Command('alias', self.create_alias, False, PermissionLevels.RESTRICTED),
             'a': Command('alias', self.create_alias, False, PermissionLevels.RESTRICTED),
+
             'blacklist': Command('blacklist', self.blacklist, False, PermissionLevels.RESTRICTED, blacklists=False),
             'restrict': Command('restrict', self.restrict, False, PermissionLevels.RESTRICTED),
 
@@ -369,6 +371,20 @@ class BotClient(discord.AutoShardedClient):
                     alias_concat += '**{}**: `{}`\n'.format(alias.name, alias.command)
 
                 await message.channel.send('Aliases: \n{}'.format(alias_concat))
+
+            elif name == 'remove':
+                name = command
+
+                query = session.query(CommandAlias) \
+                    .filter(CommandAlias.name == name) \
+                    .filter(CommandAlias.guild == preferences.guild)
+
+                if query.first() is not None:
+                    query.delete(synchronize_session='fetch')
+                    await message.channel.send(preferences.language['alias/removed'].format(count=1))
+
+                else:
+                    await message.channel.send(preferences.language['alias/removed'].format(count=0))
 
             elif command is None:
                 # command not specified so look for existing alias
