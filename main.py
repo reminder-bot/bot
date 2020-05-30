@@ -955,10 +955,12 @@ class BotClient(discord.AutoShardedClient):
 
         s = ''
         for count, reminder in enumerated_reminders:
-            string = '''**{}**: '{}' *{}*\n'''.format(
+            string = '''**{}**: '{}' *{}* at {}\n'''.format(
                 count,
                 reminder.message_content(),
-                reminder.channel)
+                reminder.channel,
+                datetime.fromtimestamp(reminder.time, pytz.timezone(preferences.timezone)).strftime(
+                            '%Y-%m-%d %H:%M:%S'))
 
             if len(s) + len(string) > 2000:
                 await message.channel.send(s, allowed_mentions=NoMention)
