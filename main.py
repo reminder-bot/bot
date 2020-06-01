@@ -831,6 +831,7 @@ class BotClient(discord.AutoShardedClient):
         else:
             # enable permissions for role for selected commands
             role_id: int = int(role_tag.group(1))
+            enabled: bool = False
 
             for command in filter(lambda x: len(x) <= 9, args):
                 c: typing.Optional[Command] = self.commands.get(command)
@@ -848,6 +849,8 @@ class BotClient(discord.AutoShardedClient):
                             new_restriction = CommandRestriction(guild_id=preferences.guild.id, command=c.name,
                                                                  role=role)
 
+                            enabled = True
+
                             session.add(new_restriction)
 
                     else:
@@ -860,8 +863,9 @@ class BotClient(discord.AutoShardedClient):
                     await message.channel.send(embed=discord.Embed(
                         description=preferences.language.get_string('restrict/failure').format(command=command)))
 
-            await message.channel.send(embed=discord.Embed(
-                description=preferences.language.get_string('restrict/enabled')))
+            if enabled:
+                await message.channel.send(embed=discord.Embed(
+                    description=preferences.language.get_string('restrict/enabled')))
 
         session.commit()
 
