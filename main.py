@@ -404,7 +404,7 @@ class BotClient(discord.AutoShardedClient):
 
                     command_obj = self.commands.get(split[0])
 
-                    if command_obj is None:
+                    if command_obj is None or command_obj.name == 'alias':
                         await message.channel.send(preferences.language['alias/invalid_command'])
 
                     elif command_obj.check_permissions(message.author, preferences.guild):
