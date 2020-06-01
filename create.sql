@@ -138,7 +138,7 @@ CREATE TABLE reminders.command_restrictions (
     
     guild_id INT UNSIGNED NOT NULL,
     role_id INT UNSIGNED NOT NULL,
-    command ENUM('todos', 'natural', 'remind', 'interval', 'timer', 'del', 'look') NOT NULL,
+    command ENUM('todos', 'natural', 'remind', 'interval', 'timer', 'del', 'look', 'alias') NOT NULL,
 
     PRIMARY KEY (id),
     FOREIGN KEY (guild_id) REFERENCES reminders.guilds(id) ON DELETE CASCADE,

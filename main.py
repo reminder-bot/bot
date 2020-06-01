@@ -50,10 +50,10 @@ class BotClient(discord.AutoShardedClient):
             # TODO: allow looking at reminder attributes in full by name
             'look': Command('look', self.look, True, PermissionLevels.MANAGED),
 
-            'prefix': Command('prefix', self.change_prefix, False, PermissionLevels.RESTRICTED),
+            'alias': Command('alias', self.create_alias, False, PermissionLevels.MANAGED),
+            'a': Command('alias', self.create_alias, False, PermissionLevels.MANAGED),
 
-            'alias': Command('alias', self.create_alias, False, PermissionLevels.RESTRICTED),
-            'a': Command('alias', self.create_alias, False, PermissionLevels.RESTRICTED),
+            'prefix': Command('prefix', self.change_prefix, False, PermissionLevels.RESTRICTED),
 
             'blacklist': Command('blacklist', self.blacklist, False, PermissionLevels.RESTRICTED, blacklists=False),
             'restrict': Command('restrict', self.restrict, False, PermissionLevels.RESTRICTED),
@@ -156,6 +156,7 @@ class BotClient(discord.AutoShardedClient):
             print('Patreon is enabled. Will look for servers {}'.format(self.config.patreon_server))
 
         print('Local timezone set to *{}*'.format(self.config.local_timezone))
+        print('Local language set to *{}*'.format(self.config.local_language))
 
     async def on_guild_join(self, guild):
         await self.send()
@@ -364,7 +365,10 @@ class BotClient(discord.AutoShardedClient):
             name = named_groups['name']
             command = named_groups.get('cmd')
 
-            if name == 'list':
+            if (name in ['list', 'remove'] or command is not None) and not message.author.guild_permissions.manage_guild:
+                await message.channel.send(preferences.language['no_perms_restricted'])
+
+            elif name == 'list':
                 alias_concat = ''
 
                 for alias in preferences.guild.aliases:

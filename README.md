@@ -6,7 +6,7 @@
 
 #### Deps:
 
-* Python 3.6+
+* Python 3.8+
 * MySQL 8+
 * libmysqlclient21 and libmysqlclient-dev
 * pymysql, discord.py>=1.3.0a, pytz, dateparser, sqlalchemy
