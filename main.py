@@ -2,7 +2,7 @@ import asyncio
 import concurrent.futures
 import itertools
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import partial
 from json import dumps as json_dump
 from time import time as unix_time
@@ -558,7 +558,7 @@ class BotClient(discord.AutoShardedClient):
             string: str = NATURAL_STRINGS.get(result.status, REMIND_STRINGS[result.status])
 
             response = server.language.get_string(string).format(location=result.location.mention,
-                                                                 offset=int(result.time - unix_time()),
+                                                                 offset=timedelta(seconds=int(result.time - unix_time())),
                                                                  min_interval=MIN_INTERVAL, max_time=MAX_TIME_DAYS)
 
             await message.channel.send(embed=discord.Embed(description=response))
@@ -628,8 +628,8 @@ class BotClient(discord.AutoShardedClient):
 
                     result = await self.create_reminder(message, scope_id, text, mtime, interval, method='remind')
 
-                    response = server.language.get_string(REMIND_STRINGS[result.status]).format(
-                        location=result.location.mention, offset=int(result.time - unix_time()),
+                    response = server.language[REMIND_STRINGS[result.status]].format(
+                        location=result.location.mention, offset=timedelta(seconds=int(result.time - unix_time())),
                         min_interval=MIN_INTERVAL, max_time=MAX_TIME_DAYS)
 
                     await message.channel.send(embed=discord.Embed(description=response))
