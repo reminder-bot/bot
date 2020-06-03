@@ -360,10 +360,10 @@ class BotClient(discord.AutoShardedClient):
         groups = re.fullmatch(r'(?P<name>[a-zA-Z0-9]{1,12})(?:(?: (?P<cmd>.*)$)|$)', stripped)
 
         if groups is not None:
-            named_groups = groups.groupdict()
+            named_groups: typing.Dict[str, str] = groups.groupdict()
 
-            name = named_groups['name']
-            command = named_groups.get('cmd')
+            name: str = named_groups['name']
+            command: typing.Optional[str] = named_groups.get('cmd')
 
             if (name in ['list', 'remove'] or command is not None) and not message.author.guild_permissions.manage_guild:
                 await message.channel.send(preferences.language['no_perms_restricted'])
@@ -421,8 +421,14 @@ class BotClient(discord.AutoShardedClient):
                     await message.channel.send(preferences.language['alias/invalid_command'])
 
                 else:
-                    alias = CommandAlias(guild=preferences.guild, command=command, name=name)
-                    session.add(alias)
+                    if (alias := session.query(CommandAlias)
+                            .filter_by(guild=preferences.guild, name=name).first()) is not None:
+
+                        alias.command = command
+
+                    else:
+                        alias = CommandAlias(guild=preferences.guild, command=command, name=name)
+                        session.add(alias)
 
                     session.commit()
 
