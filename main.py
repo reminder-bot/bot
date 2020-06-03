@@ -225,19 +225,20 @@ class BotClient(discord.AutoShardedClient):
             split = message.content.split(' ')
 
             command_word = split[0].lower()
-            if command_word[0] == '$':
-                command_word = command_word[1:]
+            if len(command_word) > 0:
+                if command_word[0] == '$':
+                    command_word = command_word[1:]
 
-            args = ' '.join(split[1:]).strip()
+                args = ' '.join(split[1:]).strip()
 
-            if command_word in self.command_names:
-                command = self.commands[command_word]
+                if command_word in self.command_names:
+                    command = self.commands[command_word]
 
-                if command.allowed_dm:
-                    # get user
-                    user = await _get_user(message)
+                    if command.allowed_dm:
+                        # get user
+                        user = await _get_user(message)
 
-                    await command.func(message, args, Preferences(None, user))
+                        await command.func(message, args, Preferences(None, user))
 
         elif _check_self_permissions(message.channel):
             # command sent in guild. check for prefix & call
