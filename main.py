@@ -164,6 +164,10 @@ class BotClient(discord.AutoShardedClient):
         await self.welcome(guild)
 
     # noinspection PyMethodMayBeStatic
+    async def on_guild_remove(self, guild):
+        session.query(Guild).filter(Guild.guild == guild.id).delete(synchronize_session='fetch')
+
+    # noinspection PyMethodMayBeStatic
     async def on_guild_channel_delete(self, channel):
         session.query(Channel).filter(Channel.channel == channel.id).delete(synchronize_session='fetch')
 
