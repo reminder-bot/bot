@@ -246,11 +246,15 @@ class Todo(Base):
     id = Column(INT(unsigned=True), primary_key=True)
 
     user_id = Column(INT(unsigned=True), ForeignKey(User.id, ondelete='CASCADE'))
-    user = relationship(User, backref='todo_list')
     guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id, ondelete='CASCADE'))
-    guild = relationship(Guild, backref='todo_list')
+    channel_id = Column(INT(unsigned=True), ForeignKey(Channel.id, ondelete='SET NULL'))
 
     value = Column(String(2000), nullable=False)
+
+
+User.todo_list = relationship(Todo, backref='user', lazy='dynamic')
+Guild.todo_list = relationship(Todo, backref='guild', lazy='dynamic')
+Channel.todo_list = relationship(Todo, backref='channel', lazy='dynamic')
 
 
 class Timer(Base):

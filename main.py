@@ -37,7 +37,7 @@ class BotClient(discord.AutoShardedClient):
             'clock': Command('clock', self.clock),
 
             'todo': Command('todo', self.todo),
-            'todos': Command('todos', self.todo, False, PermissionLevels.MANAGED),
+            'todos': Command('todos', self.todos, False, PermissionLevels.MANAGED),
 
             'natural': Command('natural', self.natural, True, PermissionLevels.MANAGED),
             'n': Command('natural', self.natural, True, PermissionLevels.MANAGED),
@@ -880,18 +880,27 @@ class BotClient(discord.AutoShardedClient):
 
         session.commit()
 
+    async def todo(self, message, stripped, preferences):
+        await self.todo_command(message, stripped, preferences, 'todo')
+
+    async def todos(self, message, stripped, preferences):
+        await self.todo_command(message, stripped, preferences, 'todos')
+
     @staticmethod
-    async def todo(message, stripped, preferences):
-        if 'todos' in message.content.split(' ')[0]:
-            location = preferences.guild
-            name = message.guild.name
-            command = 'todos'
+    async def todo_command(message, stripped, preferences, command):
+        if command == 'todos':
+            location, _ = Channel.get_or_create(message.channel)
+            name = 'Channel'
+            todos = location.todo_list.all() + preferences.guild.todo_list.filter(Todo.channel_id.is_(None)).all()
+            channel = location
+            guild = preferences.guild
+
         else:
             location = preferences.user
-            name = message.author.name
-            command = 'todo'
-
-        todos = location.todo_list
+            name = 'Your'
+            todos = location.todo_list.filter(Todo.guild_id.is_(None)).all()
+            channel = None
+            guild = None
 
         splits = stripped.split(' ')
 
@@ -906,31 +915,27 @@ class BotClient(discord.AutoShardedClient):
                 if len(item) + len(s) < 2048:
                     s += item
                 else:
-                    await message.channel.send(
-                        embed=discord.Embed(title='{} TODO'.format('Server' if command == 'todos' else 'Your', name),
-                                            description=s))
+                    await message.channel.send(embed=discord.Embed(title='{} TODO'.format(name), description=s))
                     s = ''
 
             if len(s) > 0:
-                await message.channel.send(
-                    embed=discord.Embed(title='{} TODO'.format('Server' if command == 'todos' else 'Your', name),
-                                        description=s))
+                await message.channel.send(embed=discord.Embed(title='{} TODO'.format(name), description=s))
 
         elif len(splits) >= 2:
             if splits[0] == 'add':
-                a = ' '.join(splits[1:])
+                s = ' '.join(splits[1:])
 
-                todo = Todo(value=a)
-                location.todo_list.append(todo)
-                await message.channel.send(preferences.language.get_string('todo/added').format(name=a))
+                todo = Todo(value=s, guild=guild, user=preferences.user, channel=channel)
+                session.add(todo)
+                await message.channel.send(preferences.language.get_string('todo/added').format(name=s))
 
             elif splits[0] == 'remove':
                 try:
-                    a = session.query(Todo).filter(Todo.id == todos[int(splits[1]) - 1].id).first()
+                    todo = session.query(Todo).filter(Todo.id == todos[int(splits[1]) - 1].id).first()
                     session.query(Todo).filter(Todo.id == todos[int(splits[1]) - 1].id).delete(
                         synchronize_session='fetch')
 
-                    await message.channel.send(preferences.language.get_string('todo/removed').format(a.value))
+                    await message.channel.send(preferences.language.get_string('todo/removed').format(todo.value))
 
                 except ValueError:
                     await message.channel.send(
