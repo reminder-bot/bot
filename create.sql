@@ -124,13 +124,15 @@ FOR EACH ROW
 
 CREATE TABLE reminders.todos (
     id INT UNSIGNED AUTO_INCREMENT UNIQUE NOT NULL,
-    guild_id INT UNSIGNED,
     user_id INT UNSIGNED,
+    guild_id INT UNSIGNED,
+    channel_id INT UNSIGNED,
     value VARCHAR(2000) NOT NULL,
 
     PRIMARY KEY (id),
+    FOREIGN KEY (user_id) REFERENCES reminders.users(id) ON DELETE CASCADE,
     FOREIGN KEY (guild_id) REFERENCES reminders.guilds(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES reminders.users(id) ON DELETE CASCADE
+    FOREIGN KEY (channel_id) REFERENCES reminders.channels(id) ON DELETE SET NULL
 );
 
 CREATE TABLE reminders.command_restrictions (
