@@ -187,6 +187,15 @@ CREATE TABLE reminders.command_aliases (
     UNIQUE KEY (`guild_id`, `name`)
 );
 
+CREATE TABLE reminders.guild_users (
+    guild INT UNSIGNED NOT NULL,
+    user INT UNSIGNED NOT NULL,
+
+    FOREIGN KEY (guild) REFERENCES reminders.guilds(id) ON DELETE CASCADE,
+    FOREIGN KEY (user) REFERENCES reminders.users(id) ON DELETE CASCADE,
+    UNIQUE KEY (guild, user)
+);
+
 CREATE EVENT reminders.event_cleanup
 ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 DAY
 ON COMPLETION PRESERVE
