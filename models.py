@@ -214,7 +214,7 @@ class Reminder(Base):
 
     interval = Column(INT(unsigned=True))
 
-    method = Column(ENUM('remind', 'natural', 'dashboard'))
+    method = Column(ENUM('remind', 'natural', 'dashboard', 'todo'))
     set_by = Column(INT(unsigned=True), ForeignKey(User.id, ondelete='SET NULL'), nullable=True)
     set_at = Column(TIMESTAMP, nullable=True, default=datetime.now, server_default='CURRENT_TIMESTAMP()')
 

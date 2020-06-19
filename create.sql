@@ -9,7 +9,12 @@ CREATE TABLE reminders.guilds (
     prefix VARCHAR(5) DEFAULT '$' NOT NULL,
     timezone VARCHAR(32) DEFAULT 'UTC' NOT NULL,
 
-    PRIMARY KEY (id)
+    default_channel_id INT UNSIGNED,
+    default_username VARCHAR(32) DEFAULT 'Reminder' NOT NULL,
+    default_avatar VARCHAR(512) DEFAULT 'https://raw.githubusercontent.com/reminder-bot/logos/master/Remind_Me_Bot_Logo_PPic.jpg' NOT NULL,
+
+    PRIMARY KEY (id),
+    FOREIGN KEY (default_channel_id) REFERENCES reminders.channels(id) ON DELETE SET NULL
 );
 
 CREATE TABLE reminders.channels (
@@ -104,7 +109,7 @@ CREATE TABLE reminders.reminders (
     avatar VARCHAR(512) DEFAULT 'https://raw.githubusercontent.com/reminder-bot/logos/master/Remind_Me_Bot_Logo_PPic.jpg' NOT NULL,
     username VARCHAR(32) DEFAULT 'Reminder' NOT NULL,
 
-    method ENUM('remind', 'natural', 'dashboard'),
+    method ENUM('remind', 'natural', 'dashboard', 'todo'),
     set_at TIMESTAMP DEFAULT (UNIX_TIMESTAMP()),
     set_by INT UNSIGNED,
 
