@@ -1044,6 +1044,24 @@ class BotClient(discord.AutoShardedClient):
         else:
             show_disabled = True
 
+        if 'time' in stripped:
+            def time_func(t):
+                return datetime.fromtimestamp(t, pytz.timezone(preferences.timezone)).strftime('%Y-%m-%d %H:%M:%S')
+
+        else:
+            def time_func(t):
+                minutes, seconds = divmod(int(t - unix_time()), 60)
+                hours, minutes = divmod(minutes, 60)
+                days, hours = divmod(hours, 24)
+
+                if minutes > 0:
+                    if hours > 0:
+                        if days > 0:
+                            return '{} days, {} hours, {} minutes and {} seconds'.format(days, hours, minutes, seconds)
+                        return '{} hours, {} minutes and {} seconds'.format(hours, minutes, seconds)
+                    return '{} minutes and {} seconds'.format(minutes, seconds)
+                return '{} seconds'.format(seconds)
+
         if message.guild is None:
             channel = preferences.user.channel
             new = False
@@ -1078,8 +1096,7 @@ class BotClient(discord.AutoShardedClient):
                     string = '\'{}\' *{}* **{}** {}\n'.format(
                         reminder.message_content(),
                         preferences.language.get_string('look/inter'),
-                        datetime.fromtimestamp(reminder.time, pytz.timezone(preferences.timezone)).strftime(
-                            '%Y-%m-%d %H:%M:%S'),
+                        time_func(reminder.time),
                         '' if reminder.enabled else '`disabled`')
 
                     if len(s) + len(string) > 2000:
