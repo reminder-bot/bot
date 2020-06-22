@@ -371,7 +371,8 @@ class BotClient(discord.AutoShardedClient):
             name: str = named_groups['name']
             command: typing.Optional[str] = named_groups.get('cmd')
 
-            if (name in ['list', 'remove'] or command is not None) and not message.author.guild_permissions.manage_guild:
+            if (name in ['list',
+                         'remove'] or command is not None) and not message.author.guild_permissions.manage_guild:
                 await message.channel.send(preferences.language['no_perms_restricted'])
 
             elif name == 'list':
@@ -419,7 +420,7 @@ class BotClient(discord.AutoShardedClient):
                     else:
                         await message.channel.send(
                             preferences.language[str(command_obj.permission_level)]
-                            .format(prefix=preferences.guild.prefix))
+                                .format(prefix=preferences.guild.prefix))
 
             else:
                 # command provided so create new alias
@@ -570,7 +571,8 @@ class BotClient(discord.AutoShardedClient):
             string: str = NATURAL_STRINGS.get(result.status, REMIND_STRINGS[result.status])
 
             response = server.language.get_string(string).format(location=result.location.mention,
-                                                                 offset=timedelta(seconds=int(result.time - unix_time())),
+                                                                 offset=timedelta(
+                                                                     seconds=int(result.time - unix_time())),
                                                                  min_interval=MIN_INTERVAL, max_time=MAX_TIME_DAYS)
 
             await message.channel.send(embed=discord.Embed(description=response))
@@ -985,7 +987,7 @@ class BotClient(discord.AutoShardedClient):
                 reminder.message_content(),
                 reminder.channel,
                 datetime.fromtimestamp(reminder.time, pytz.timezone(preferences.timezone)).strftime(
-                            '%Y-%m-%d %H:%M:%S'))
+                    '%Y-%m-%d %H:%M:%S'))
 
             if len(s) + len(string) > 2000:
                 await message.channel.send(s, allowed_mentions=NoMention)
@@ -998,29 +1000,35 @@ class BotClient(discord.AutoShardedClient):
 
         await message.channel.send(preferences.language.get_string('del/listed'))
 
-        num = await client.wait_for('message',
-                                    check=lambda m: m.author == message.author and m.channel == message.channel)
+        try:
+            num = await client.wait_for('message',
+                                        check=lambda m: m.author == message.author and m.channel == message.channel,
+                                        timeout=30)
 
-        num_content = num.content.replace(',', ' ')
+        except asyncio.exceptions.TimeoutError:
+            pass
 
-        nums = set([int(x) for x in re.findall(r'(\d+)(?:\s|$)', num_content)])
+        else:
+            num_content = num.content.replace(',', ' ')
 
-        removal_ids: typing.Set[int] = set()
+            nums = set([int(x) for x in re.findall(r'(\d+)(?:\s|$)', num_content)])
 
-        for count, reminder in enumerated_reminders:
-            if count in nums:
-                removal_ids.add(reminder.id)
-                nums.remove(count)
+            removal_ids: typing.Set[int] = set()
 
-        if message.guild is not None:
-            deletion_event = Event(
-                event_name='delete', bulk_count=len(removal_ids), guild=preferences.guild, user=preferences.user)
-            session.add(deletion_event)
+            for count, reminder in enumerated_reminders:
+                if count in nums:
+                    removal_ids.add(reminder.id)
+                    nums.remove(count)
 
-        session.query(Reminder).filter(Reminder.id.in_(removal_ids)).delete(synchronize_session='fetch')
-        session.commit()
+            if message.guild is not None:
+                deletion_event = Event(
+                    event_name='delete', bulk_count=len(removal_ids), guild=preferences.guild, user=preferences.user)
+                session.add(deletion_event)
 
-        await message.channel.send(preferences.language.get_string('del/count').format(len(removal_ids)))
+            session.query(Reminder).filter(Reminder.id.in_(removal_ids)).delete(synchronize_session='fetch')
+            session.commit()
+
+            await message.channel.send(preferences.language.get_string('del/count').format(len(removal_ids)))
 
     @staticmethod
     async def look(message, stripped, preferences):
