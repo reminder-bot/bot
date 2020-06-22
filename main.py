@@ -1169,7 +1169,9 @@ class BotClient(discord.AutoShardedClient):
                 channel.paused = True
                 channel.paused_until = datetime.now() + timedelta(seconds=t)
 
-                display = channel.paused_until.strftime('%Y-%m-%d, %H:%M:%S')
+                display = channel.paused_until \
+                    .astimezone(pytz.timezone(preferences.timezone)) \
+                    .strftime('%Y-%m-%d, %H:%M:%S')
 
                 await message.channel.send(
                     embed=discord.Embed(description=preferences.language['pause/paused_until'].format(display)))
