@@ -29,6 +29,9 @@ CREATE TABLE reminders.channels (
     webhook_id BIGINT UNSIGNED UNIQUE,
     webhook_token TEXT,
 
+    paused BOOL NOT NULL DEFAULT 0,
+    paused_until TIMESTAMP,
+
     guild_id INT UNSIGNED,
 
     PRIMARY KEY (id),
@@ -195,6 +198,8 @@ CREATE TABLE reminders.command_aliases (
 CREATE TABLE reminders.guild_users (
     guild INT UNSIGNED NOT NULL,
     user INT UNSIGNED NOT NULL,
+
+    permit_access BOOL NOT NULL DEFAULT 0,
 
     FOREIGN KEY (guild) REFERENCES reminders.guilds(id) ON DELETE CASCADE,
     FOREIGN KEY (user) REFERENCES reminders.users(id) ON DELETE CASCADE,

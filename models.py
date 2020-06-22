@@ -72,6 +72,9 @@ class Channel(Base):
     webhook_id = Column(BIGINT(unsigned=True), unique=True)
     webhook_token = Column(Text)
 
+    paused = Column(Boolean, nullable=False, default=False)
+    paused_until = Column(TIMESTAMP)
+
     guild_id = Column(INT(unsigned=True), ForeignKey(Guild.id, ondelete='CASCADE'))
     guild = relationship(Guild, backref='channels')
 

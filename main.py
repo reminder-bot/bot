@@ -60,6 +60,7 @@ class BotClient(discord.AutoShardedClient):
 
             'offset': Command('offset', self.offset_reminders, True, PermissionLevels.RESTRICTED),
             'nudge': Command('nudge', self.nudge_channel, True, PermissionLevels.RESTRICTED),
+            'pause': Command('pause', self.pause_channel, False, PermissionLevels.RESTRICTED),
         }
 
         self.match_string = None
@@ -1148,6 +1149,43 @@ class BotClient(discord.AutoShardedClient):
             else:
                 await message.channel.send(
                     embed=discord.Embed(description=preferences.language.get_string('nudge/invalid_time')))
+
+    async def pause_channel(self, message, stripped, preferences):
+
+        channel, _ = Channel.get_or_create(message.channel)
+
+        if len(stripped) > 0:
+            # argument provided for time
+            time_parser = TimeExtractor(stripped, preferences.timezone)
+
+            try:
+                t = time_parser.extract_displacement()
+
+            except InvalidTime:
+                await message.channel.send(embed=discord.Embed(
+                    description=preferences.language['pause/invalid_time']))
+
+            else:
+                channel.paused = True
+                channel.paused_until = datetime.now() + timedelta(seconds=t)
+
+                display = channel.paused_until.strftime('%Y-%m-%d, %H:%M:%S')
+
+                await message.channel.send(
+                    embed=discord.Embed(description=preferences.language['pause/paused_until'].format(display)))
+
+        else:
+            # otherwise toggle the paused status and clear the time
+            channel.paused = not channel.paused
+            channel.paused_until = None
+
+            if channel.paused:
+                await message.channel.send(
+                    embed=discord.Embed(description=preferences.language['pause/paused_indefinite']))
+
+            else:
+                await message.channel.send(
+                    embed=discord.Embed(description=preferences.language['pause/unpaused']))
 
 
 client = BotClient(max_messages=100, guild_subscriptions=False, fetch_offline_members=False)
