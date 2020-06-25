@@ -499,11 +499,16 @@ class BotClient(discord.AutoShardedClient):
             )
 
     @staticmethod
-    async def clock(message, _stripped, preferences):
+    async def clock(message, stripped, preferences):
+
+        if '12' in stripped:
+            f_string = '%I:%M:%S %p'
+        else:
+            f_string = '%H:%M:%S'
 
         t = datetime.now(pytz.timezone(preferences.timezone))
 
-        await message.channel.send(preferences.language.get_string('clock/time').format(t.strftime('%H:%M:%S')))
+        await message.channel.send(preferences.language.get_string('clock/time').format(t.strftime(f_string)))
 
     async def natural(self, message, stripped, server):
 
