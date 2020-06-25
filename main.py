@@ -284,6 +284,8 @@ class BotClient(discord.AutoShardedClient):
                         if channel.guild_id is None:
                             channel.guild_id = guild.id
 
+                        await channel.attach_webhook(message.channel)
+
                         if channel.blacklisted:
                             await message.channel.send(
                                 embed=discord.Embed(description=info.language.get_string('blacklisted')))
