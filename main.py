@@ -591,7 +591,18 @@ class BotClient(discord.AutoShardedClient):
 
     async def remind(self, is_interval, message, stripped, server):
 
-        args = stripped.split(' ')
+        def filter_blanks(args, max_blanks=2):
+            actual_args = 0
+
+            for arg in args:
+                if len(arg) == 0 and actual_args <= max_blanks:
+                    continue
+
+                else:
+                    actual_args += 1
+                    yield arg
+
+        args = [x for x in filter_blanks(stripped.split(' '))]
 
         if len(args) < 2:
             if is_interval:
