@@ -1051,6 +1051,22 @@ class BotClient(discord.AutoShardedClient):
     @staticmethod
     async def look(message, stripped, preferences):
 
+        def relative_time(t):
+            days, seconds = divmod(int(t - unix_time()), 86400)
+            hours, seconds = divmod(seconds, 3600)
+            minutes, seconds = divmod(seconds, 60)
+
+            sections = []
+
+            for var, name in zip((days, hours, minutes, seconds), ('days', 'hours', 'minutes', 'seconds')):
+                if var > 0:
+                    sections.append('{} {}'.format(var, name))
+
+            return ', '.join(sections)
+
+        def absolute_time(t):
+            return datetime.fromtimestamp(t, pytz.timezone(preferences.timezone)).strftime('%Y-%m-%d %H:%M:%S')
+
         r = re.search(r'(\d+)', stripped)
 
         limit: typing.Optional[int] = None
@@ -1063,22 +1079,10 @@ class BotClient(discord.AutoShardedClient):
             show_disabled = True
 
         if 'time' in stripped:
-            def time_func(t):
-                return datetime.fromtimestamp(t, pytz.timezone(preferences.timezone)).strftime('%Y-%m-%d %H:%M:%S')
+            time_func = absolute_time
 
         else:
-            def time_func(t):
-                minutes, seconds = divmod(int(t - unix_time()), 60)
-                hours, minutes = divmod(minutes, 60)
-                days, hours = divmod(hours, 24)
-
-                if minutes > 0:
-                    if hours > 0:
-                        if days > 0:
-                            return '{} days, {} hours, {} minutes and {} seconds'.format(days, hours, minutes, seconds)
-                        return '{} hours, {} minutes and {} seconds'.format(hours, minutes, seconds)
-                    return '{} minutes and {} seconds'.format(minutes, seconds)
-                return '{} seconds'.format(seconds)
+            time_func = relative_time
 
         if message.guild is None:
             channel = preferences.user.channel
