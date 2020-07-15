@@ -89,7 +89,7 @@ CREATE TABLE reminders.messages (
     embed_id INT UNSIGNED,
 
     attachment MEDIUMBLOB,
-    attachment_name VARCHAR(32),
+    attachment_name VARCHAR(260),
 
     PRIMARY KEY (id),
     FOREIGN KEY (embed_id) REFERENCES reminders.embeds(id) ON DELETE SET NULL
