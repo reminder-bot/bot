@@ -29,6 +29,7 @@ class BotClient(discord.AutoShardedClient):
             'ping': Command('ping', self.time_stats),
 
             'help': Command('help', self.help, blacklists=False),
+            'dashboard': Command('dashboard', self.dash),
             'info': Command('info', self.info),
             'donate': Command('donate', self.donate),
 
@@ -326,6 +327,14 @@ class BotClient(discord.AutoShardedClient):
     async def help(message, _stripped, preferences):
         await message.channel.send(embed=discord.Embed(
             description=preferences.language.get_string('help'),
+            color=THEME_COLOR
+        ))
+
+    @staticmethod
+    async def dash(message, _stripped, _preferences):
+        await message.channel.send(embed=discord.Embed(
+            title='Dashboard',
+            description='https://reminder-bot.com/dashboard',
             color=THEME_COLOR
         ))
 
