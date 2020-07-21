@@ -174,7 +174,7 @@ class BotClient(discord.AutoShardedClient):
         session.query(Channel).filter(Channel.channel == channel.id).delete(synchronize_session='fetch')
 
     async def send(self):
-        if self.config.dbl_token:
+        if self.config.dbl_token and self.c_session is not None:
             guild_count = len(self.guilds)
 
             dump = json_dump({
