@@ -127,17 +127,6 @@ class BotClient(discord.AutoShardedClient):
         else:
             return True
 
-    @staticmethod
-    async def welcome(guild, *_):
-
-        for channel in guild.text_channels:
-            if channel.permissions_for(guild.me).send_messages and not channel.is_nsfw():
-                await channel.send('Thank you for adding reminder-bot! To begin, type `$help`!')
-                break
-
-            else:
-                continue
-
     async def on_error(self, *a, **k):
         session.rollback()
         raise
@@ -161,9 +150,20 @@ class BotClient(discord.AutoShardedClient):
         print('Local language set to *{}*'.format(self.config.local_language))
 
     async def on_guild_join(self, guild):
+
+        async def welcome(guild, *_):
+
+            for channel in guild.text_channels:
+                if channel.permissions_for(guild.me).send_messages and not channel.is_nsfw():
+                    await channel.send('Thank you for adding reminder-bot! To begin, type `$help`!')
+                    break
+
+                else:
+                    continue
+
         await self.send()
 
-        await self.welcome(guild)
+        await welcome(guild)
 
     # noinspection PyMethodMayBeStatic
     async def on_guild_remove(self, guild):
@@ -247,64 +247,64 @@ class BotClient(discord.AutoShardedClient):
                         await command.func(message, args, Preferences(None, user))
 
         elif _check_self_permissions(message.channel):
-            # command sent in guild. check for prefix & call
-            match = re.match(
-                self.match_string,
-                message.content,
-                re.MULTILINE | re.DOTALL | re.IGNORECASE
-            )
+            if not message.guild.me.guild_permissions.manage_webhooks:
+                await message.channel.send(ENGLISH_STRINGS.get_string('no_perms_webhook'))
 
-            if match is not None:
-                # matched command structure; now query for guild to compare prefix
-                guild = session.query(Guild).filter(Guild.guild == message.guild.id).first()
-                if guild is None:
-                    guild = Guild(guild=message.guild.id)
+            else:
+                # command sent in guild. check for prefix & call
+                match = re.match(
+                    self.match_string,
+                    message.content,
+                    re.MULTILINE | re.DOTALL | re.IGNORECASE
+                )
 
-                    session.add(guild)
-                    session.flush()
+                if match is not None:
+                    # matched command structure; now query for guild to compare prefix
+                    guild = session.query(Guild).filter(Guild.guild == message.guild.id).first()
+                    if guild is None:
+                        guild = Guild(guild=message.guild.id)
 
-                # if none, suggests mention has been provided instead since pattern still matched
-                if (prefix := match.group('prefix')) in (guild.prefix, None):
-                    # prefix matched, might as well get the user now since this is a very small subset of messages
-                    user = await _get_user(message)
+                        session.add(guild)
+                        session.flush()
 
-                    if guild not in user.guilds:
-                        guild.users.append(user)
+                    # if none, suggests mention has been provided instead since pattern still matched
+                    if (prefix := match.group('prefix')) in (guild.prefix, None):
+                        # prefix matched, might as well get the user now since this is a very small subset of messages
+                        user = await _get_user(message)
 
-                    # create the nice info manager
-                    info = Preferences(guild, user)
+                        if guild not in user.guilds:
+                            guild.users.append(user)
 
-                    command_word = match.group('cmd').lower()
-                    stripped = match.group('args') or ''
-                    command = self.commands[command_word]
+                        # create the nice info manager
+                        info = Preferences(guild, user)
 
-                    # some commands dont get blacklisted e.g help, blacklist
-                    if command.blacklists:
-                        channel, just_created = Channel.get_or_create(message.channel)
+                        command_word = match.group('cmd').lower()
+                        stripped = match.group('args') or ''
+                        command = self.commands[command_word]
 
-                        if channel.guild_id is None:
-                            channel.guild_id = guild.id
+                        # some commands dont get blacklisted e.g help, blacklist
+                        if command.blacklists:
+                            channel, just_created = Channel.get_or_create(message.channel)
 
-                        await channel.attach_webhook(message.channel)
+                            if channel.guild_id is None:
+                                channel.guild_id = guild.id
 
-                        if channel.blacklisted:
-                            await message.channel.send(
-                                embed=discord.Embed(description=info.language.get_string('blacklisted')))
-                            return
+                            await channel.attach_webhook(message.channel)
 
-                    # blacklist checked; now do command permissions
-                    if command.check_permissions(message.author, guild):
-                        if message.guild.me.guild_permissions.manage_webhooks:
+                            if channel.blacklisted:
+                                await message.channel.send(
+                                    embed=discord.Embed(description=info.language.get_string('blacklisted')))
+                                return
+
+                        # blacklist checked; now do command permissions
+                        if command.check_permissions(message.author, guild):
                             await command.func(message, stripped, info)
                             session.commit()
 
                         else:
-                            await message.channel.send(info.language.get_string('no_perms_webhook'))
-
-                    else:
-                        await message.channel.send(
-                            info.language.get_string(
-                                str(command.permission_level)).format(prefix=prefix))
+                            await message.channel.send(
+                                info.language.get_string(
+                                    str(command.permission_level)).format(prefix=prefix))
 
         else:
             return
