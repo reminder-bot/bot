@@ -138,7 +138,7 @@ CREATE TABLE reminders.todos (
     value VARCHAR(2000) NOT NULL,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (user_id) REFERENCES reminders.users(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES reminders.users(id) ON DELETE SET NULL,
     FOREIGN KEY (guild_id) REFERENCES reminders.guilds(id) ON DELETE CASCADE,
     FOREIGN KEY (channel_id) REFERENCES reminders.channels(id) ON DELETE SET NULL
 );
