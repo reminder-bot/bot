@@ -374,7 +374,7 @@ class BotClient(discord.AutoShardedClient):
                 prefix=preferences.prefix))
 
     async def create_alias(self, message, stripped, preferences):
-        groups = re.fullmatch(r'(?P<name>[a-zA-Z0-9]{1,12})(?:(?: (?P<cmd>.*)$)|$)', stripped)
+        groups = re.fullmatch(r'(?P<name>[\S]{1,12})(?:(?: (?P<cmd>.*)$)|$)', stripped)
 
         if groups is not None:
             named_groups: typing.Dict[str, str] = groups.groupdict()
