@@ -73,6 +73,10 @@ CREATE TABLE reminders.embeds (
 
     title VARCHAR(256) NOT NULL DEFAULT '',
     description VARCHAR(2048) NOT NULL DEFAULT '',
+
+    image_url VARCHAR(512),
+    thumbnail_url VARCHAR(512),
+
     footer VARCHAR(2048) NOT NULL DEFAULT '',
     footer_icon VARCHAR(512),
 
