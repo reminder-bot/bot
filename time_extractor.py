@@ -1,3 +1,4 @@
+import regex as re
 import pytz
 from datetime import datetime
 from time import time as unix_time
@@ -111,3 +112,17 @@ class TimeExtractor:
             full = -full
 
         return full
+
+
+class NaturalExtractor:
+    three_piece_match = \
+        r'(?:(?:send|say)\s+(?P<content>.*)(?:\s+|$)' \
+        r'|' \
+        r'(?P<time>(?:in|at|on|every)\s+.*)(?:\s+|$)){2}' \
+        r'(?:to (?P<mentions>((?:<@\d+>)|(?:<@!\d+>)|(?:<#\d+>)|(?:\s+))+)$)'
+
+    def __init__(self, in_data, timezone=None):
+        self.time = datetime.now(pytz.timezone(timezone))
+
+        # we need to match the input against some string
+        match = re.match(self.three_piece_match, in_data)
