@@ -940,7 +940,11 @@ class BotClient(discord.AutoShardedClient):
         splits = stripped.split(' ')
 
         if len(splits) == 1 and splits[0] == '':
-            msg = ['\n{}: {}'.format(i, todo.value) for i, todo in enumerate(todos, start=1)]
+            msg = [
+                '\n{}{}: {}'.format(i, ' (guild)' if todo.channel_id is None else '', todo.value)
+                for i, todo
+                in enumerate(todos, start=1)
+            ]
             if len(msg) == 0:
                 msg.append(preferences.language.get_string('todo/add').format(
                     prefix=preferences.prefix, command=command))
@@ -986,7 +990,7 @@ class BotClient(discord.AutoShardedClient):
 
         else:
             if stripped == 'clear':
-                todos.clear()
+                location.todo_list.delete(synchronize_session='fetch')
                 await message.channel.send(preferences.language.get_string('todo/cleared'))
 
             else:
