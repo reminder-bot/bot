@@ -1,3 +1,4 @@
+import regex as re
 import pytz
 from datetime import datetime
 from time import time as unix_time
@@ -111,3 +112,59 @@ class TimeExtractor:
             full = -full
 
         return full
+
+
+class NaturalExtractor:
+    class ChannelId:
+        def __init__(self, channel_id):
+            self.id = int(channel_id)
+
+    class MemberId:
+        def __init__(self, member_id):
+            self.id = int(member_id)
+
+    contents_specifiers = ('send', 'say', )
+    time_specifiers = ('in', 'at', 'on', )
+    interval_specifiers = ('every', 'each', )
+
+    find_contents = r'(?:send|say)\s+(?P<content>.*)'
+    find_time = r'(?P<time>(?:in|at|on)\s+.*)'
+    find_interval = r'(?P<interval>(?:every|each)\s+.*)'
+
+    find_mentions = r'(?:to (?P<mentions>((?:<@\d+>)|(?:<@!\d+>)|(?:<#\d+>)|(?:\s+))+))$'
+
+    two_piece = [find_contents, find_time]
+
+    def __init__(self, in_data, timezone=None):
+        self.time = datetime.now(pytz.timezone(timezone))
+        self.time_provided = False
+        self.interval_provided = False
+
+        self.targets = []
+
+        self.content = 'Reminder'
+        self.content_provided = False
+
+        mentions = re.search(self.find_mentions, in_data)
+        in_data = re.subn(self.find_mentions, '', in_data, 1)
+
+        self.process_mentions(mentions)
+        self.try_and_match(in_data)
+
+    def process_mentions(self, mentions):
+        for mention in re.findall(r'<(@|@!|#)(\d+)>', mentions):
+            if mention.groups()[0][0] == '@':
+                self.targets.append(self.MemberId(mention.groups()[1]))
+
+            else:
+                self.targets.append(self.ChannelId(mention.groups()[1]))
+
+    def try_and_match(self, in_data):
+        if in_data.startswith(self.contents_specifiers) and not self.content_provided:
+            pass
+
+        elif in_data.startswith(self.time_specifiers):
+            pass
+
+        else:
+            pass

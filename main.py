@@ -42,6 +42,7 @@ class BotClient(discord.AutoShardedClient):
 
             'natural': Command('natural', self.natural, True, PermissionLevels.MANAGED),
             'n': Command('natural', self.natural, True, PermissionLevels.MANAGED),
+            '': Command('natural', self.natural, True, PermissionLevels.MANAGED),
             'remind': Command('remind', self.remind_cmd, True, PermissionLevels.MANAGED),
             'r': Command('remind', self.remind_cmd, True, PermissionLevels.MANAGED),
             'interval': Command('interval', self.interval_cmd, True, PermissionLevels.MANAGED),
@@ -138,7 +139,7 @@ class BotClient(discord.AutoShardedClient):
         print(self.user.id)
 
         self.match_string = \
-            r'(?:(?:<@ID>\s+)|(?:<@!ID>\s+)|(?P<prefix>\S{1,5}?))(?P<cmd>COMMANDS)(?:$|\s+(?P<args>.*))' \
+            r'(?:(?:<@ID>\s*)|(?:<@!ID>\s*)|(?P<prefix>\S{1,5}?))(?P<cmd>COMMANDS)(?:$|\s+(?P<args>.*))' \
                 .replace('ID', str(self.user.id)).replace('COMMANDS', self.joined_names)
 
         self.c_session: aiohttp.client.ClientSession = aiohttp.ClientSession()
@@ -939,7 +940,11 @@ class BotClient(discord.AutoShardedClient):
         splits = stripped.split(' ')
 
         if len(splits) == 1 and splits[0] == '':
-            msg = ['\n{}: {}'.format(i, todo.value) for i, todo in enumerate(todos, start=1)]
+            msg = [
+                '\n{}{}: {}'.format(i, ' (guild)' if todo.channel_id is None else '', todo.value)
+                for i, todo
+                in enumerate(todos, start=1)
+            ]
             if len(msg) == 0:
                 msg.append(preferences.language.get_string('todo/add').format(
                     prefix=preferences.prefix, command=command))
@@ -985,7 +990,7 @@ class BotClient(discord.AutoShardedClient):
 
         else:
             if stripped == 'clear':
-                todos.clear()
+                location.todo_list.delete(synchronize_session='fetch')
                 await message.channel.send(preferences.language.get_string('todo/cleared'))
 
             else:
