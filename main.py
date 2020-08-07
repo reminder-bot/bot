@@ -941,7 +941,7 @@ class BotClient(discord.AutoShardedClient):
 
         if len(splits) == 1 and splits[0] == '':
             msg = [
-                '\n{}{}: {}'.format(i, ' (guild)' if todo.channel_id is None else '', todo.value)
+                '\n{}{}: {}'.format(i, ' (guild)' if todo.channel_id is None and guild is not None else '', todo.value)
                 for i, todo
                 in enumerate(todos, start=1)
             ]
