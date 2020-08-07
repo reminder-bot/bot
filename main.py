@@ -991,11 +991,17 @@ class BotClient(discord.AutoShardedClient):
 
             elif splits[0] == 'remove':
                 try:
-                    todo = session.query(Todo).filter(Todo.id == todos[int(splits[1]) - 1].id).first()
-                    session.query(Todo).filter(Todo.id == todos[int(splits[1]) - 1].id).delete(
-                        synchronize_session='fetch')
+                    pos = int(splits[1]) - 1
 
-                    await message.channel.send(preferences.language.get_string('todo/removed').format(todo.value))
+                    if pos < 0:
+                        raise IndexError
+
+                    else:
+                        todo = session.query(Todo).filter(Todo.id == todos[pos].id).first()
+                        session.query(Todo).filter(Todo.id == todos[pos].id).delete(
+                            synchronize_session='fetch')
+
+                        await message.channel.send(preferences.language.get_string('todo/removed').format(todo.value))
 
                 except ValueError:
                     await message.channel.send(
