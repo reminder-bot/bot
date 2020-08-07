@@ -1063,23 +1063,27 @@ class BotClient(discord.AutoShardedClient):
 
         else:
             num_content = num.content.replace(',', ' ')
-
-            nums = set([int(x) for x in re.findall(r'(\d+)(?:\s|$)', num_content)])
-
             removal_ids: typing.Set[int] = set()
 
-            for count, reminder in enumerated_reminders:
-                if count in nums:
-                    removal_ids.add(reminder.id)
-                    nums.remove(count)
+            try:
+                nums = set([int(x) for x in num_content.split(' ') if len(x) > 0])
 
-            if message.guild is not None:
-                deletion_event = Event(
-                    event_name='delete', bulk_count=len(removal_ids), guild=preferences.guild, user=preferences.user)
-                session.add(deletion_event)
+            except ValueError:
+                pass
 
-            session.query(Reminder).filter(Reminder.id.in_(removal_ids)).delete(synchronize_session='fetch')
-            session.commit()
+            else:
+                for count, reminder in enumerated_reminders:
+                    if count in nums:
+                        removal_ids.add(reminder.id)
+                        nums.remove(count)
+
+                if message.guild is not None:
+                    deletion_event = Event(
+                        event_name='delete', bulk_count=len(removal_ids), guild=preferences.guild, user=preferences.user)
+                    session.add(deletion_event)
+
+                session.query(Reminder).filter(Reminder.id.in_(removal_ids)).delete(synchronize_session='fetch')
+                session.commit()
 
             await message.channel.send(preferences.language.get_string('del/count').format(len(removal_ids)))
 
