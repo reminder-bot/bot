@@ -16,6 +16,7 @@ from consts import *
 from models import Reminder, Todo, Timer, Message, Channel, Event, CommandAlias
 from passers import *
 from time_extractor import TimeExtractor, InvalidTime
+from enums import TodoScope
 
 THEME_COLOR = 0x8fb677
 
@@ -37,8 +38,13 @@ class BotClient(discord.AutoShardedClient):
             'lang': Command('lang', self.set_language),
             'clock': Command('clock', self.clock),
 
-            'todo': Command('todo', self.todo),
-            'todos': Command('todos', self.todos, False, PermissionLevels.MANAGED),
+            'todo': Command('todo', self.todo_user),
+            'todoc': Command('todo', self.todo_channel),
+            'todos': Command('todos', self.todo_guild, False, PermissionLevels.MANAGED),
+
+            'todo user': Command('todo', self.todo_user),
+            'todo channel': Command('todo', self.todo_channel),
+            'todo server': Command('todo', self.todo_guild),
 
             'natural': Command('natural', self.natural, True, PermissionLevels.MANAGED),
             'n': Command('natural', self.natural, True, PermissionLevels.MANAGED),
@@ -68,7 +74,7 @@ class BotClient(discord.AutoShardedClient):
         self.match_string = None
 
         self.command_names = set(self.commands.keys())
-        self.joined_names = '|'.join(self.command_names)
+        self.joined_names = '|'.join(sorted(self.commands.keys(), key=len, reverse=True))
 
         # used in restrict command for filtration
         self.max_command_length = max(len(x) for x in self.command_names)
@@ -915,36 +921,51 @@ class BotClient(discord.AutoShardedClient):
 
         session.commit()
 
-    async def todo(self, message, stripped, preferences):
-        await self.todo_command(message, stripped, preferences, 'todo')
+    async def todo_user(self, message, stripped, preferences):
+        await self.todo_command(message, stripped, preferences, TodoScope.USER)
 
-    async def todos(self, message, stripped, preferences):
-        await self.todo_command(message, stripped, preferences, 'todos')
+    async def todo_channel(self, message, stripped, preferences):
+        await self.todo_command(message, stripped, preferences, TodoScope.CHANNEL)
+
+    async def todo_guild(self, message, stripped, preferences):
+        await self.todo_command(message, stripped, preferences, TodoScope.GUILD)
 
     @staticmethod
-    async def todo_command(message, stripped, preferences, command):
-        if command == 'todos':
+    async def todo_command(message, stripped, preferences, scope):
+        if scope == TodoScope.CHANNEL:
             location, _ = Channel.get_or_create(message.channel)
-            name = 'Channel'
-            todos = location.todo_list.all() + preferences.guild.todo_list.filter(Todo.channel_id.is_(None)).all()
+            location_name = 'Channel'
+            todos = location.todo_list.all()
             channel = location
             guild = preferences.guild
 
-        else:
+        elif scope == TodoScope.USER:
             location = preferences.user
-            name = 'Your'
+            location_name = 'User'
             todos = location.todo_list.filter(Todo.guild_id.is_(None)).all()
             channel = None
             guild = None
 
+        else:
+            location = preferences.guild
+            location_name = 'Server'
+            todos = location.todo_list.filter(Todo.channel_id.is_(None)).all()
+            channel = None
+            guild = preferences.guild
+
+        command = 'todo {}'.format(location_name.lower())
+
         splits = stripped.split(' ')
 
         if len(splits) == 1 and splits[0] == '':
-            msg = [
-                '\n{}{}: {}'.format(i, ' (guild)' if todo.channel_id is None and guild is not None else '', todo.value)
-                for i, todo
-                in enumerate(todos, start=1)
-            ]
+            msg = []
+            for i, todo in enumerate(todos, start=1):
+                msg.append('\n{}{}: {}'.format(
+                    i,
+                    ' (server)' if todo.channel_id is None and scope == TodoScope.CHANNEL else '',
+                    todo.value)
+                )
+
             if len(msg) == 0:
                 msg.append(preferences.language.get_string('todo/add').format(
                     prefix=preferences.prefix, command=command))
@@ -954,11 +975,11 @@ class BotClient(discord.AutoShardedClient):
                 if len(item) + len(s) < 2048:
                     s += item
                 else:
-                    await message.channel.send(embed=discord.Embed(title='{} TODO'.format(name), description=s))
+                    await message.channel.send(embed=discord.Embed(title='{} TODO'.format(location_name), description=s))
                     s = ''
 
             if len(s) > 0:
-                await message.channel.send(embed=discord.Embed(title='{} TODO'.format(name), description=s))
+                await message.channel.send(embed=discord.Embed(title='{} TODO'.format(location_name), description=s))
 
         elif len(splits) >= 2:
             if splits[0] == 'add':

@@ -1,6 +1,13 @@
 from enum import Enum, IntEnum
 
 
+# enumerate possible scopes for the todo command
+class TodoScope(Enum):
+    GUILD = 0
+    CHANNEL = 1
+    USER = 2
+
+
 # enumerate possible error types from the remind and natural commands
 class CreateReminderResponse(Enum):
     OK = 0
