@@ -930,8 +930,7 @@ class BotClient(discord.AutoShardedClient):
     async def todo_guild(self, message, stripped, preferences):
         await self.todo_command(message, stripped, preferences, TodoScope.GUILD)
 
-    @staticmethod
-    async def todo_command(message, stripped, preferences, scope):
+    async def todo_command(self, message, stripped, preferences, scope):
         if scope == TodoScope.CHANNEL:
             location, _ = Channel.get_or_create(message.channel)
             location_name = 'Channel'
@@ -975,7 +974,8 @@ class BotClient(discord.AutoShardedClient):
                 if len(item) + len(s) < 2048:
                     s += item
                 else:
-                    await message.channel.send(embed=discord.Embed(title='{} TODO'.format(location_name), description=s))
+                    await message.channel.send(
+                        embed=discord.Embed(title='{} TODO'.format(location_name), description=s))
                     s = ''
 
             if len(s) > 0:
@@ -1017,8 +1017,29 @@ class BotClient(discord.AutoShardedClient):
 
         else:
             if stripped == 'clear':
-                location.todo_list.delete(synchronize_session='fetch')
-                await message.channel.send(preferences.language.get_string('todo/cleared'))
+                await message.channel.send(
+                    preferences.language.get_string('todo/confirm').format(
+                        location.todo_list.count(),
+                        location_name.lower()
+                    )
+                )
+
+                try:
+                    confirm = await client.wait_for('message',
+                                                    check=lambda m:
+                                                        m.author == message.author and m.channel == message.channel,
+                                                    timeout=30)
+
+                except asyncio.exceptions.TimeoutError:
+                    pass
+
+                else:
+                    if confirm.content.lower() == 'yes':
+                        location.todo_list.delete(synchronize_session='fetch')
+                        await message.channel.send(preferences.language.get_string('todo/cleared'))
+
+                    else:
+                        await message.channel.send(preferences.language.get_string('todo/canceled'))
 
             else:
                 await message.channel.send(
@@ -1085,7 +1106,8 @@ class BotClient(discord.AutoShardedClient):
 
                 if message.guild is not None:
                     deletion_event = Event(
-                        event_name='delete', bulk_count=len(removal_ids), guild=preferences.guild, user=preferences.user)
+                        event_name='delete', bulk_count=len(removal_ids), guild=preferences.guild,
+                        user=preferences.user)
                     session.add(deletion_event)
 
                 session.query(Reminder).filter(Reminder.id.in_(removal_ids)).delete(synchronize_session='fetch')
