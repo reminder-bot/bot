@@ -885,7 +885,7 @@ class BotClient(discord.AutoShardedClient):
             role_id: int = int(role_tag.group(1))
             enabled: bool = False
 
-            for command in filter(lambda x: len(x) <= 9, args):
+            for command in args:
                 c: typing.Optional[Command] = self.commands.get(command)
 
                 if c is not None and c.permission_level == PermissionLevels.MANAGED:
