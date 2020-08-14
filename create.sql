@@ -1,3 +1,5 @@
+SET FOREIGN_KEY_CHECKS=0;
+
 USE reminders;
 
 CREATE TABLE reminders.guilds (
@@ -203,7 +205,7 @@ CREATE TABLE reminders.guild_users (
     guild INT UNSIGNED NOT NULL,
     user INT UNSIGNED NOT NULL,
 
-    permit_access BOOL NOT NULL DEFAULT 0,
+    can_access BOOL NOT NULL DEFAULT 0,
 
     FOREIGN KEY (guild) REFERENCES reminders.guilds(id) ON DELETE CASCADE,
     FOREIGN KEY (user) REFERENCES reminders.users(id) ON DELETE CASCADE,
