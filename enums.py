@@ -16,6 +16,7 @@ class CreateReminderResponse(Enum):
     SHORT_INTERVAL = 3
     INVALID_TAG = 5
     PAST_TIME = 6
+    NO_WEBHOOK = 7
 
 
 # enumerate possible permission levels for command execution

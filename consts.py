@@ -16,6 +16,7 @@ REMIND_STRINGS: dict = {
     CreateReminderResponse.SHORT_INTERVAL: 'interval/short_interval',
     CreateReminderResponse.INVALID_TAG: 'remind/invalid_tag',
     CreateReminderResponse.PAST_TIME: 'remind/past_time',
+    CreateReminderResponse.NO_WEBHOOK: 'remind/no_webhook',
 }
 
 NATURAL_STRINGS: dict = {

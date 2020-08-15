@@ -296,12 +296,19 @@ class BotClient(discord.AutoShardedClient):
                             if channel.guild_id is None:
                                 channel.guild_id = guild.id
 
-                            await channel.attach_webhook(message.channel)
+                            try:
+                                await channel.attach_webhook(message.channel)
 
-                            if channel.blacklisted:
-                                await message.channel.send(
-                                    embed=discord.Embed(description=info.language.get_string('blacklisted')))
+                            except discord.errors.HTTPException:
+                                await message.channel.send('Too many webhooks on this channel. Please delete one and try again')
+
                                 return
+
+                            else:
+                                if channel.blacklisted:
+                                    await message.channel.send(
+                                        embed=discord.Embed(description=info.language.get_string('blacklisted')))
+                                    return
 
                         # blacklist checked; now do command permissions
                         if command.check_permissions(message.author, guild):
@@ -713,9 +720,14 @@ class BotClient(discord.AutoShardedClient):
 
                 channel, _ = Channel.get_or_create(discord_channel)
 
-                await channel.attach_webhook(discord_channel)
+                try:
+                    await channel.attach_webhook(discord_channel)
 
-                time += channel.nudge
+                except discord.errors.HTTPException:
+                    return ReminderInformation(CreateReminderResponse.NO_WEBHOOK)
+
+                else:
+                    time += channel.nudge
 
             else:
                 user = await self.find_and_create_member(location, message.guild)
@@ -1203,7 +1215,7 @@ class BotClient(discord.AutoShardedClient):
     async def offset_reminders(message, stripped, preferences):
 
         if message.guild is None:
-            reminders = preferences.user.reminders
+            reminders = preferences.user.channel.reminders
         else:
             reminders = itertools.chain(*[channel.reminders for channel in preferences.guild.channels])
 
