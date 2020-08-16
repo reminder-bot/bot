@@ -946,21 +946,21 @@ class BotClient(discord.AutoShardedClient):
         if scope == TodoScope.CHANNEL:
             location, _ = Channel.get_or_create(message.channel)
             location_name = 'Channel'
-            todos = location.todo_list.all()
+            todos = location.todo_list
             channel = location
             guild = preferences.guild
 
         elif scope == TodoScope.USER:
             location = preferences.user
             location_name = 'User'
-            todos = location.todo_list.filter(Todo.guild_id.is_(None)).all()
+            todos = location.todo_list.filter(Todo.guild_id.is_(None))
             channel = None
             guild = None
 
         else:
             location = preferences.guild
             location_name = 'Server'
-            todos = location.todo_list.filter(Todo.channel_id.is_(None)).all()
+            todos = location.todo_list.filter(Todo.channel_id.is_(None))
             channel = None
             guild = preferences.guild
 
@@ -1031,7 +1031,7 @@ class BotClient(discord.AutoShardedClient):
             if stripped == 'clear':
                 await message.channel.send(
                     preferences.language.get_string('todo/confirm').format(
-                        location.todo_list.count(),
+                        todos.count(),
                         location_name.lower()
                     )
                 )
@@ -1047,7 +1047,7 @@ class BotClient(discord.AutoShardedClient):
 
                 else:
                     if confirm.content.lower() == 'yes':
-                        location.todo_list.delete(synchronize_session='fetch')
+                        todos.delete(synchronize_session='fetch')
                         await message.channel.send(preferences.language.get_string('todo/cleared'))
 
                     else:
