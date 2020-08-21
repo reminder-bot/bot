@@ -300,15 +300,12 @@ class BotClient(discord.AutoShardedClient):
                                 await channel.attach_webhook(message.channel)
 
                             except discord.errors.HTTPException:
-                                await message.channel.send('Too many webhooks on this channel. Please delete one and try again')
+                                pass
 
+                            if channel.blacklisted:
+                                await message.channel.send(
+                                    embed=discord.Embed(description=info.language.get_string('blacklisted')))
                                 return
-
-                            else:
-                                if channel.blacklisted:
-                                    await message.channel.send(
-                                        embed=discord.Embed(description=info.language.get_string('blacklisted')))
-                                    return
 
                         # blacklist checked; now do command permissions
                         if command.check_permissions(message.author, guild):
