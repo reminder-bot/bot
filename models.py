@@ -116,6 +116,8 @@ class Channel(Base):
             self.webhook_token = hook.token
             self.webhook_id = hook.id
 
+            session.flush()
+
 
 class Role(Base):
     __tablename__ = 'roles'
