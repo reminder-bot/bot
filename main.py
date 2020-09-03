@@ -714,7 +714,8 @@ class BotClient(discord.AutoShardedClient):
                 try:
                     await channel.attach_webhook(discord_channel)
 
-                except discord.errors.HTTPException:
+                except discord.errors.HTTPException as e:
+                    print(e)
                     return ReminderInformation(CreateReminderResponse.NO_WEBHOOK)
 
                 else:
