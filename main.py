@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from functools import partial
 from json import dumps as json_dump
 from time import time as unix_time
+import logging
 
 import aiohttp
 import dateparser
@@ -19,6 +20,8 @@ from time_extractor import TimeExtractor, InvalidTime
 from enums import TodoScope
 
 THEME_COLOR = 0x8fb677
+
+logging.basicConfig(level=logging.INFO)
 
 
 class BotClient(discord.AutoShardedClient):
@@ -140,9 +143,9 @@ class BotClient(discord.AutoShardedClient):
 
     async def on_ready(self):
 
-        print('Logged in as')
-        print(self.user.name)
-        print(self.user.id)
+        logging.info('Logged in as')
+        logging.info(self.user.name)
+        logging.info(self.user.id)
 
         self.match_string = \
             r'(?:(?:<@ID>\s*)|(?:<@!ID>\s*)|(?P<prefix>\S{1,5}?))(?P<cmd>COMMANDS)(?:$|\s+(?P<args>.*))' \
@@ -151,10 +154,10 @@ class BotClient(discord.AutoShardedClient):
         self.c_session: aiohttp.client.ClientSession = aiohttp.ClientSession()
 
         if self.config.patreon_enabled:
-            print('Patreon is enabled. Will look for servers {}'.format(self.config.patreon_server))
+            logging.info('Patreon is enabled. Will look for servers {}'.format(self.config.patreon_server))
 
-        print('Local timezone set to *{}*'.format(self.config.local_timezone))
-        print('Local language set to *{}*'.format(self.config.local_language))
+        logging.info('Local timezone set to *{}*'.format(self.config.local_timezone))
+        logging.info('Local language set to *{}*'.format(self.config.local_language))
 
     async def on_guild_join(self, guild):
 
@@ -195,7 +198,7 @@ class BotClient(discord.AutoShardedClient):
 
             url = 'https://discordbots.org/api/bots/stats'
             async with self.c_session.post(url, data=dump, headers=head) as resp:
-                print('returned {0.status} for {1}'.format(resp, dump))
+                logging.debug('returned {0.status} for {1}'.format(resp, dump))
 
     # noinspection PyBroadException
     async def on_message(self, message):
@@ -715,7 +718,7 @@ class BotClient(discord.AutoShardedClient):
                     await channel.attach_webhook(discord_channel)
 
                 except discord.errors.HTTPException as e:
-                    print(e)
+                    logging.info(e)
                     return ReminderInformation(CreateReminderResponse.NO_WEBHOOK)
 
                 else:
