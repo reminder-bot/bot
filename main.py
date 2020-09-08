@@ -773,10 +773,11 @@ class BotClient(discord.AutoShardedClient):
 
     @staticmethod
     async def timer(message, stripped, preferences):
-        owner: int = message.guild.id
 
         if message.guild is None:
             owner = message.author.id
+        else:
+            owner = message.guild.id
 
         if stripped == 'list':
             timers = session.query(Timer).filter(Timer.owner == owner)
