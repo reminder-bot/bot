@@ -6,10 +6,10 @@
 
 #### Deps:
 
-* Python 3.8+
 * MySQL 8+
+* Python 3.8+
+* pymysql, discord.py>=1.3.0a, pytz, dateparser, sqlalchemy, tinyconf, aiohttp
 * libmysqlclient21 and libmysqlclient-dev
-* pymysql, discord.py>=1.3.0a, pytz, dateparser, sqlalchemy
 * Rust 1.42 with Cargo (for compilation only)
 
 #### Optional Deps:

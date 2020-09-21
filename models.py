@@ -3,6 +3,7 @@ from sqlalchemy import Column, Integer, String, Text, Boolean, Table, ForeignKey
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session, relationship, backref
 from sqlalchemy.dialects.mysql import BIGINT, MEDIUMINT, SMALLINT, INTEGER as INT, TIMESTAMP, ENUM
+from sqlalchemy.sql import functions
 import configparser
 from datetime import datetime
 import typing
@@ -153,7 +154,7 @@ class User(Base):
     allowed_dm = Column(Boolean, default=True, nullable=False)
 
     patreon = Column(Boolean, nullable=False, default=False)
-    dm_channel = Column(INT(unsigned=True), ForeignKey('channels.id', ondelete='SET NULL'), nullable=False)
+    dm_channel = Column(INT(unsigned=True), ForeignKey('channels.id', ondelete='RESTRICT'), nullable=False)
     channel = relationship(Channel)
 
     def __repr__(self):
@@ -219,7 +220,7 @@ class Reminder(Base):
 
     method = Column(ENUM('remind', 'natural', 'dashboard', 'todo'))
     set_by = Column(INT(unsigned=True), ForeignKey(User.id, ondelete='SET NULL'), nullable=True)
-    set_at = Column(TIMESTAMP, nullable=True, default=datetime.now, server_default='CURRENT_TIMESTAMP()')
+    set_at = Column(TIMESTAMP, default=datetime.now, server_default=functions.now())
 
     @staticmethod
     def create_uid() -> str:
@@ -265,7 +266,7 @@ class Timer(Base):
 
     id = Column(INT(unsigned=True), primary_key=True)
 
-    start_time = Column(TIMESTAMP, default=datetime.now, server_default='CURRENT_TIMESTAMP()', nullable=False)
+    start_time = Column(TIMESTAMP, default=datetime.now, server_default=functions.now(), nullable=False)
     name = Column(String(32), nullable=False)
     owner = Column(BIGINT(unsigned=True), nullable=False)
 
@@ -274,7 +275,7 @@ class Event(Base):
     __tablename__ = 'events'
 
     id = Column(INT(unsigned=True), primary_key=True)
-    time = Column(TIMESTAMP, default=datetime.now, server_default='CURRENT_TIMESTAMP()', nullable=False)
+    time = Column(TIMESTAMP, default=datetime.now, server_default=functions.now(), nullable=False)
 
     event_name = Column(ENUM('edit', 'enable', 'disable', 'delete'), nullable=False)
     bulk_count = Column(INT(unsigned=True))
