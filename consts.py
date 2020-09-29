@@ -22,5 +22,3 @@ REMIND_STRINGS: dict = {
 NATURAL_STRINGS: dict = {
     CreateReminderResponse.LONG_TIME: 'natural/long_time',
 }
-
-NoMention: AllowedMentions = AllowedMentions(everyone=False, roles=False, users=False)

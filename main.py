@@ -1078,13 +1078,13 @@ class BotClient(discord.AutoShardedClient):
                     '%Y-%m-%d %H:%M:%S'))
 
             if len(s) + len(string) > 2000:
-                await message.channel.send(s, allowed_mentions=NoMention)
+                await message.channel.send(s)
                 s = string
             else:
                 s += string
 
         if s:
-            await message.channel.send(s, allowed_mentions=NoMention)
+            await message.channel.send(s)
 
         await message.channel.send(preferences.language.get_string('del/listed'))
 
@@ -1197,12 +1197,12 @@ class BotClient(discord.AutoShardedClient):
                         '' if reminder.enabled else '`disabled`')
 
                     if len(s) + len(string) > 2000:
-                        await message.channel.send(s, allowed_mentions=NoMention)
+                        await message.channel.send(s)
                         s = string
                     else:
                         s += string
 
-                await message.channel.send(s, allowed_mentions=NoMention)
+                await message.channel.send(s)
 
             else:
                 await message.channel.send(preferences.language.get_string('look/no_reminders'))
@@ -1312,5 +1312,16 @@ class BotClient(discord.AutoShardedClient):
                     embed=discord.Embed(description=preferences.language['pause/unpaused']))
 
 
-client = BotClient(max_messages=100, guild_subscriptions=False, fetch_offline_members=False)
+intents = discord.Intents.none()
+intents.guilds = True
+intents.members = True
+intents.messages = True
+
+client = BotClient(
+    max_messages=None,
+    intents=intents,
+    guild_subscriptions=False,
+    allowed_mentions=discord.AllowedMentions.none(),
+    fetch_offline_members=False)
+
 client.run(client.config.token)
