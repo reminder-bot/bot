@@ -94,12 +94,13 @@ class BotClient(discord.AutoShardedClient):
         a, _ = await asyncio.wait([self.loop.run_in_executor(self.executor, method)])
         return [x.result() for x in a][0]
 
-    async def find_and_create_member(self, member_id: int, context_guild: typing.Optional[discord.Guild]) \
+    @staticmethod
+    async def find_and_create_member(member_id: int, context_guild: typing.Optional[discord.Guild]) \
             -> typing.Optional[User]:
         u: User = session.query(User).filter(User.user == member_id).first()
 
         if u is None and context_guild is not None:
-            m = context_guild.get_member(member_id) or self.get_user(member_id)
+            m = await context_guild.fetch_member(member_id)
 
             if m is not None:
                 c = Channel(channel=(await m.create_dm()).id)
@@ -1314,7 +1315,6 @@ class BotClient(discord.AutoShardedClient):
 
 intents = discord.Intents.none()
 intents.guilds = True
-intents.members = True
 intents.messages = True
 
 client = BotClient(
