@@ -540,8 +540,8 @@ class BotClient(discord.AutoShardedClient):
 
         location_ids: typing.List[int] = [message.channel.id]
 
-        time_crop = stripped.split(server.language.get_string('natural/send'))[0]
-        message_crop = stripped.split(server.language.get_string('natural/send'), 1)[1]
+        time_crop = stripped.split(' {} '.format(server.language['natural/send']))[0]
+        message_crop = stripped.split(' {} '.format(server.language['natural/send']), 1)[1]
         datetime_obj = await self.do_blocking(partial(dateparser.parse, time_crop, settings={
             'TIMEZONE': server.timezone,
             'TO_TIMEZONE': config.local_timezone,
@@ -555,13 +555,13 @@ class BotClient(discord.AutoShardedClient):
             return
 
         if message.guild is not None:
-            chan_split = message_crop.split(server.language.get_string('natural/to'))
+            chan_split = message_crop.split(' {} '.format(server.language['natural/to']))
             if len(chan_split) > 1 and all(bool(set(x) & set('0123456789')) for x in chan_split[-1].split(' ')):
                 location_ids = [int(''.join([x for x in z if x in '0123456789'])) for z in chan_split[-1].split(' ')]
 
                 message_crop: str = message_crop.rsplit(server.language.get_string('natural/to'), 1)[0]
 
-        interval_split = message_crop.split(server.language.get_string('natural/every'))
+        interval_split = message_crop.split(' {} '.format(server.language['natural/every']))
         recurring: bool = False
         interval: int = 0
 

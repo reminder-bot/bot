@@ -41,9 +41,6 @@ local_language = EN
 ignore_bots = 1
 
 [SHARDS]
-min_shard = 0
-max_shard = 0
-shard_count = 1
 
 [MYSQL]
 user = 
