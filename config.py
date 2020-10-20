@@ -8,6 +8,10 @@ class Config(IniDeserializer):
     patreon_server = IntegerField()
     patreon_enabled = BooleanField(default=False)
 
+    min_shard = IntegerField()
+    max_shard = IntegerField()
+    shard_count = IntegerField()
+
     dbl_token = Field()
     token = Field(strict=True)
 
@@ -24,5 +28,11 @@ class Config(IniDeserializer):
         token,
         local_timezone,
         local_language,
-        ignore_bots
+        ignore_bots,
+    )
+
+    SHARDS = Section(
+        min_shard,
+        max_shard,
+        shard_count,
     )

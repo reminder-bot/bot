@@ -297,11 +297,13 @@ class Language(Base):
     name = Column(String(20), nullable=False, unique=True)
     code = Column(String(2), nullable=False, unique=True)
 
-    def get_string(self, string):
-        s = session.query(Strings).filter(Strings.c.name == string)
-        req = getattr(s.first(), 'value_{}'.format(self.code))
+    def get_string(self, string) -> str:
+        query = session.query(Strings) \
+            .filter(Strings.c.language.in_((self.code, 'EN'))) \
+            .order_by(Strings.c.language == 'EN') \
+            .filter(Strings.c.name == string)
 
-        return req if req is not None else s.first().value_EN
+        return query.first().value
 
     def __getitem__(self, item):
         return self.get_string(item)
@@ -355,9 +357,8 @@ languages = session.query(Language.code).all()
 Strings = Table('strings', Base.metadata,
                 Column('id', Integer, primary_key=True),
                 Column('name', Text),
-                *(
-                    Column('value_{}'.format(lang[0]), Text) for lang in languages
-                )
+                Column('language', String(2)),
+                Column('value', Text),
                 )
 
 ENGLISH_STRINGS: typing.Optional[Language] = session.query(Language) \

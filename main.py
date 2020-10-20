@@ -82,8 +82,6 @@ class BotClient(discord.AutoShardedClient):
         # used in restrict command for filtration
         self.max_command_length = max(len(x) for x in self.command_names)
 
-        self.config: Config = Config(filename='config.ini')
-
         self.executor: concurrent.futures.ThreadPoolExecutor = concurrent.futures.ThreadPoolExecutor()
         self.c_session: typing.Optional[aiohttp.ClientSession] = None
 
@@ -115,12 +113,12 @@ class BotClient(discord.AutoShardedClient):
         return u
 
     async def is_patron(self, member_id) -> bool:
-        if self.config.patreon_enabled:
+        if config.patreon_enabled:
 
-            url = 'https://discordapp.com/api/v6/guilds/{}/members/{}'.format(self.config.patreon_server, member_id)
+            url = 'https://discordapp.com/api/v6/guilds/{}/members/{}'.format(config.patreon_server, member_id)
 
             head = {
-                'authorization': 'Bot {}'.format(self.config.token),
+                'authorization': 'Bot {}'.format(config.token),
                 'content-type': 'application/json'
             }
 
@@ -133,7 +131,7 @@ class BotClient(discord.AutoShardedClient):
                 else:
                     return False
 
-            return self.config.patreon_role in roles
+            return config.patreon_role in roles
 
         else:
             return True
@@ -154,11 +152,11 @@ class BotClient(discord.AutoShardedClient):
 
         self.c_session: aiohttp.client.ClientSession = aiohttp.ClientSession()
 
-        if self.config.patreon_enabled:
-            logging.info('Patreon is enabled. Will look for servers {}'.format(self.config.patreon_server))
+        if config.patreon_enabled:
+            logging.info('Patreon is enabled. Will look for servers {}'.format(config.patreon_server))
 
-        logging.info('Local timezone set to *{}*'.format(self.config.local_timezone))
-        logging.info('Local language set to *{}*'.format(self.config.local_language))
+        logging.info('Local timezone set to *{}*'.format(config.local_timezone))
+        logging.info('Local language set to *{}*'.format(config.local_language))
 
     async def on_guild_join(self, guild):
 
@@ -185,7 +183,7 @@ class BotClient(discord.AutoShardedClient):
         session.query(Channel).filter(Channel.channel == channel.id).delete(synchronize_session='fetch')
 
     async def send(self):
-        if self.config.dbl_token and self.c_session is not None:
+        if config.dbl_token and self.c_session is not None:
             guild_count = len(self.guilds)
 
             dump = json_dump({
@@ -193,7 +191,7 @@ class BotClient(discord.AutoShardedClient):
             })
 
             head = {
-                'authorization': self.config.dbl_token,
+                'authorization': config.dbl_token,
                 'content-type': 'application/json'
             }
 
@@ -228,7 +226,7 @@ class BotClient(discord.AutoShardedClient):
 
             return _user
 
-        if (message.author.bot and self.config.ignore_bots) or \
+        if (message.author.bot and config.ignore_bots) or \
                 message.content is None or \
                 message.tts or \
                 len(message.attachments) > 0 or \
@@ -336,7 +334,8 @@ class BotClient(discord.AutoShardedClient):
     async def help(message, _stripped, preferences):
         await message.channel.send(embed=discord.Embed(
             description=preferences.language.get_string('help'),
-            color=THEME_COLOR
+            color=THEME_COLOR,
+            footer_text='reminder-bot ver final'
         ))
 
     @staticmethod
@@ -344,13 +343,15 @@ class BotClient(discord.AutoShardedClient):
         await message.channel.send(embed=discord.Embed(
             title='Dashboard',
             description='https://reminder-bot.com/dashboard',
-            color=THEME_COLOR
+            color=THEME_COLOR,
+            footer_text='reminder-bot ver final'
         ))
 
     async def info(self, message, _stripped, preferences):
         await message.channel.send(embed=discord.Embed(
             description=preferences.language.get_string('info').format(prefix=preferences.prefix, user=self.user.name),
-            color=THEME_COLOR
+            color=THEME_COLOR,
+            footer_text='reminder-bot ver final'
         ))
 
     @staticmethod
@@ -543,7 +544,7 @@ class BotClient(discord.AutoShardedClient):
         message_crop = stripped.split(server.language.get_string('natural/send'), 1)[1]
         datetime_obj = await self.do_blocking(partial(dateparser.parse, time_crop, settings={
             'TIMEZONE': server.timezone,
-            'TO_TIMEZONE': self.config.local_timezone,
+            'TO_TIMEZONE': config.local_timezone,
             'RELATIVE_BASE': datetime.now(pytz.timezone(server.timezone)).replace(tzinfo=None),
             'PREFER_DATES_FROM': 'future'
         }))
@@ -939,7 +940,8 @@ class BotClient(discord.AutoShardedClient):
     async def todo_guild(self, message, stripped, preferences):
         await self.todo_command(message, stripped, preferences, TodoScope.GUILD)
 
-    async def todo_command(self, message, stripped, preferences, scope):
+    @staticmethod
+    async def todo_command(message, stripped, preferences, scope):
         if scope == TodoScope.CHANNEL:
             location, _ = Channel.get_or_create(message.channel)
             location_name = 'Channel'
@@ -1273,7 +1275,8 @@ class BotClient(discord.AutoShardedClient):
                 await message.channel.send(
                     embed=discord.Embed(description=preferences.language.get_string('nudge/invalid_time')))
 
-    async def pause_channel(self, message, stripped, preferences):
+    @staticmethod
+    async def pause_channel(message, stripped, preferences):
 
         channel, _ = Channel.get_or_create(message.channel)
 
@@ -1317,11 +1320,24 @@ intents = discord.Intents.none()
 intents.guilds = True
 intents.messages = True
 
-client = BotClient(
-    max_messages=None,
-    intents=intents,
-    guild_subscriptions=False,
-    allowed_mentions=discord.AllowedMentions.none(),
-    fetch_offline_members=False)
+config: Config = Config(filename='config.ini')
 
-client.run(client.config.token)
+if (config.min_shard and config.max_shard and config.shard_count) is not None:
+    client = BotClient(
+        shard_ids=[x for x in range(config.min_shard, config.max_shard + 1)],
+        shard_count=config.shard_count,
+        max_messages=None,
+        intents=intents,
+        guild_subscriptions=False,
+        allowed_mentions=discord.AllowedMentions.none(),
+        fetch_offline_members=False)
+
+else:
+    client = BotClient(
+        max_messages=None,
+        intents=intents,
+        guild_subscriptions=False,
+        allowed_mentions=discord.AllowedMentions.none(),
+        fetch_offline_members=False)
+
+client.run(config.token)
