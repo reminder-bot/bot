@@ -170,7 +170,7 @@ class BotClient(discord.AutoShardedClient):
                 else:
                     continue
 
-        await self.send()
+        await self.send_guild_counts(guild)
 
         await welcome(guild)
 
@@ -182,12 +182,14 @@ class BotClient(discord.AutoShardedClient):
     async def on_guild_channel_delete(self, channel):
         session.query(Channel).filter(Channel.channel == channel.id).delete(synchronize_session='fetch')
 
-    async def send(self):
+    async def send_guild_counts(self, new_guild):
         if config.dbl_token and self.c_session is not None:
-            guild_count = len(self.guilds)
+            guild_count = len([1 for g in self.guilds if g.shard_id == new_guild.shard_id])
 
             dump = json_dump({
-                'server_count': guild_count
+                'server_count': guild_count,
+                'shard_id': new_guild.shard_id,
+                'shard_count': self.shard_count,
             })
 
             head = {
@@ -332,27 +334,39 @@ class BotClient(discord.AutoShardedClient):
 
     @staticmethod
     async def help(message, _stripped, preferences):
-        await message.channel.send(embed=discord.Embed(
+        embed = discord.Embed(
             description=preferences.language.get_string('help'),
             color=THEME_COLOR,
-            footer_text='reminder-bot ver final'
-        ))
+        )
+
+        embed.set_footer(text='reminder-bot ver final')
+
+        await message.channel.send(embed=embed)
 
     @staticmethod
     async def dash(message, _stripped, _preferences):
-        await message.channel.send(embed=discord.Embed(
+        embed = discord.Embed(
             title='Dashboard',
             description='https://reminder-bot.com/dashboard',
             color=THEME_COLOR,
-            footer_text='reminder-bot ver final'
-        ))
+        )
+
+        embed.set_footer(text='reminder-bot ver final')
+
+        await message.channel.send(embed=embed)
 
     async def info(self, message, _stripped, preferences):
-        await message.channel.send(embed=discord.Embed(
-            description=preferences.language.get_string('info').format(prefix=preferences.prefix, user=self.user.name),
+        embed = discord.Embed(
+            description=preferences.language.get_string('info').format(
+                prefix=preferences.prefix,
+                user=self.user.name,
+                default_prefix='$'),
             color=THEME_COLOR,
-            footer_text='reminder-bot ver final'
-        ))
+        )
+
+        embed.set_footer(text='reminder-bot ver final')
+
+        await message.channel.send(embed=embed)
 
     @staticmethod
     async def donate(message, _stripped, preferences):
